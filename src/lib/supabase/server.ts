@@ -1,4 +1,8 @@
-import { createServerClient, type CookieMethodsServer } from '@supabase/ssr'
+import {
+  createServerClient,
+  type CookieMethodsServer,
+  type CookieOptions,
+} from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 // ---------------------------------------------------------------------------
@@ -21,19 +25,19 @@ function parseCookies(cookieHeader: string): { name: string; value: string }[] {
 function serializeCookie(
   name: string,
   value: string,
-  options?: Record<string, unknown>,
+  options?: CookieOptions,
 ): string {
   let cookie = `${name}=${value}`
   if (!options) return cookie
 
-  if (options['maxAge'] != null) cookie += `; Max-Age=${options['maxAge']}`
-  if (options['domain']) cookie += `; Domain=${options['domain']}`
-  if (options['path']) cookie += `; Path=${options['path']}`
-  if (options['expires'] instanceof Date)
-    cookie += `; Expires=${(options['expires'] as Date).toUTCString()}`
-  if (options['httpOnly']) cookie += '; HttpOnly'
-  if (options['secure']) cookie += '; Secure'
-  if (options['sameSite']) cookie += `; SameSite=${options['sameSite']}`
+  if (options.maxAge != null) cookie += `; Max-Age=${options.maxAge}`
+  if (options.domain) cookie += `; Domain=${options.domain}`
+  if (options.path) cookie += `; Path=${options.path}`
+  if (options.expires instanceof Date)
+    cookie += `; Expires=${options.expires.toUTCString()}`
+  if (options.httpOnly) cookie += '; HttpOnly'
+  if (options.secure) cookie += '; Secure'
+  if (options.sameSite) cookie += `; SameSite=${options.sameSite}`
   return cookie
 }
 
