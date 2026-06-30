@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Comments from '#/components/Comments'
 import type { CardRow } from '#/lib/board-data'
 import type { BoardMeta } from '#/routes/board.$boardId'
 
@@ -184,7 +185,8 @@ export default function CardDetail({
 
             {error && <p className="text-xs text-red-600">{error}</p>}
 
-            {/* ── SLOT: Task 11 — Comments will mount here ─────────────────── */}
+            {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
+            <Comments cardId={card.id} members={meta.members} />
             {/* ── SLOT: Task 12 — Attachments will mount here ──────────────── */}
 
             <div className="flex justify-end gap-2 pt-2">
@@ -257,7 +259,8 @@ export default function CardDetail({
               </div>
             )}
 
-            {/* ── SLOT: Task 11 — Comments will mount here ─────────────────── */}
+            {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
+            <Comments cardId={card.id} members={meta.members} />
             {/* ── SLOT: Task 12 — Attachments will mount here ──────────────── */}
 
             <div className="flex justify-end pt-2">
