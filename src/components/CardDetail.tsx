@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import Attachments from '#/components/Attachments'
 import Comments from '#/components/Comments'
 import type { CardRow } from '#/lib/board-data'
 import type { BoardMeta } from '#/routes/board.$boardId'
 
 interface CardDetailProps {
   card: CardRow
+  boardId: string
   meta: BoardMeta
   isOwner: boolean
   onClose: () => void
@@ -23,6 +25,7 @@ interface CardDetailProps {
 
 export default function CardDetail({
   card,
+  boardId,
   meta,
   isOwner,
   onClose,
@@ -187,7 +190,8 @@ export default function CardDetail({
 
             {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
             <Comments cardId={card.id} members={meta.members} />
-            {/* ── SLOT: Task 12 — Attachments will mount here ──────────────── */}
+            {/* ── SLOT: Task 12 — Attachments ──────────────────────────────── */}
+            <Attachments cardId={card.id} boardId={boardId} />
 
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -261,7 +265,8 @@ export default function CardDetail({
 
             {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
             <Comments cardId={card.id} members={meta.members} />
-            {/* ── SLOT: Task 12 — Attachments will mount here ──────────────── */}
+            {/* ── SLOT: Task 12 — Attachments ──────────────────────────────── */}
+            <Attachments cardId={card.id} boardId={boardId} />
 
             <div className="flex justify-end pt-2">
               <button

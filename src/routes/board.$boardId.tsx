@@ -417,6 +417,7 @@ function BoardView() {
       {selectedCard && (
         <CardDetail
           card={selectedCard}
+          boardId={board.id}
           meta={boardMeta ?? { members: [], labels: [] }}
           isOwner={isOwner}
           onClose={closeCardDetail}
