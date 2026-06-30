@@ -13,15 +13,22 @@ interface ColumnProps {
 export default function Column({ column, isOwner, onAddCard }: ColumnProps) {
   const [newTitle, setNewTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [addError, setAddError] = useState(false)
   const { setNodeRef } = useDroppable({ id: column.id })
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!newTitle.trim() || !onAddCard) return
     setBusy(true)
-    await onAddCard(column.id, newTitle.trim())
-    setNewTitle('')
-    setBusy(false)
+    setAddError(false)
+    try {
+      await onAddCard(column.id, newTitle.trim())
+      setNewTitle('')
+    } catch {
+      setAddError(true)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const cardIds = column.cards.map((c) => c.id)
@@ -39,21 +46,26 @@ export default function Column({ column, isOwner, onAddCard }: ColumnProps) {
         )}
       </div>
       {isOwner && onAddCard && (
-        <form onSubmit={handleAdd} className="mt-3 flex gap-1">
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Add card…"
-            className="flex-1 rounded-lg border border-[rgba(23,58,64,0.2)] px-2 py-1.5 text-xs"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-lg bg-[var(--lagoon-deep)] px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-          >
-            +
-          </button>
-        </form>
+        <>
+          <form onSubmit={handleAdd} className="mt-3 flex gap-1">
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Add card…"
+              className="flex-1 rounded-lg border border-[rgba(23,58,64,0.2)] px-2 py-1.5 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-lg bg-[var(--lagoon-deep)] px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              +
+            </button>
+          </form>
+          {addError && (
+            <p className="mt-1 px-1 text-xs text-red-600">Failed to add card.</p>
+          )}
+        </>
       )}
     </div>
   )

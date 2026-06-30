@@ -154,11 +154,18 @@ test('moveCard moves a card to a different column', async () => {
       .select('id')
     const [colA, colB] = cols!
 
-    const { data: cardA } = await admin
+    // Col A has 3 cards; we'll move the middle one to Col B.
+    const { data: aCards } = await admin
       .from('cards')
-      .insert({ column_id: colA.id, title: 'Traveler', position: 0 })
-      .select('id')
-      .single()
+      .insert([
+        { column_id: colA.id, title: 'A0', position: 0 },
+        { column_id: colA.id, title: 'A1-mover', position: 1 },
+        { column_id: colA.id, title: 'A2', position: 2 },
+      ])
+      .select('id,title')
+    const a0 = aCards!.find((c: { title: string }) => c.title === 'A0')!
+    const mover = aCards!.find((c: { title: string }) => c.title === 'A1-mover')!
+    const a2 = aCards!.find((c: { title: string }) => c.title === 'A2')!
 
     const { data: existingB } = await admin
       .from('cards')
@@ -166,8 +173,15 @@ test('moveCard moves a card to a different column', async () => {
       .select('id')
       .single()
 
-    // Move Traveler to colB, placing it after Resident
-    await moveCard(admin, cardA!.id, colB.id, [existingB!.id, cardA!.id])
+    // Move mover (index 1 in Col A) to Col B after Resident.
+    // Source Col A remainder: [a0, a2]. Dest Col B: [Resident, mover].
+    await moveCard(
+      admin,
+      mover.id,
+      colB.id,
+      [existingB!.id, mover.id],
+      [a0.id, a2.id],
+    )
 
     const { data: colBCards } = await admin
       .from('cards')
@@ -175,12 +189,18 @@ test('moveCard moves a card to a different column', async () => {
       .eq('column_id', colB.id)
       .order('position')
 
-    expect(colBCards!.map((c: { id: string }) => c.id)).toEqual([
-      existingB!.id,
-      cardA!.id,
-    ])
+    expect(colBCards!.map((c: { id: string }) => c.id)).toEqual([existingB!.id, mover.id])
     // All colB cards should have column_id = colB.id
     expect(colBCards!.every((c: { column_id: string }) => c.column_id === colB.id)).toBe(true)
+
+    // SOURCE column (Col A) must stay contiguous 0,1 with no gap left behind.
+    const { data: colACards } = await admin
+      .from('cards')
+      .select('id,position')
+      .eq('column_id', colA.id)
+      .order('position')
+    expect(colACards!.map((c: { position: number }) => c.position)).toEqual([0, 1])
+    expect(colACards!.map((c: { id: string }) => c.id)).toEqual([a0.id, a2.id])
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     await admin.auth.admin.deleteUser(uid)

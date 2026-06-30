@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -9,6 +9,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
@@ -77,24 +78,38 @@ const addCardFn = createServerFn({ method: 'POST' })
 
 const moveCardFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const { cardId, toColumnId, orderedIds } = (d ?? {}) as {
+    const { cardId, toColumnId, orderedIds, sourceOrderedIds } = (d ?? {}) as {
       cardId?: unknown
       toColumnId?: unknown
       orderedIds?: unknown
+      sourceOrderedIds?: unknown
     }
+    const isStringArray = (x: unknown): x is string[] =>
+      Array.isArray(x) && x.every((v) => typeof v === 'string')
     if (
       typeof cardId !== 'string' ||
       typeof toColumnId !== 'string' ||
-      !Array.isArray(orderedIds) ||
-      !orderedIds.every((x) => typeof x === 'string')
+      !isStringArray(orderedIds) ||
+      (sourceOrderedIds !== undefined && !isStringArray(sourceOrderedIds))
     )
       throw new Error('cardId, toColumnId, orderedIds required')
-    return { cardId, toColumnId, orderedIds: orderedIds as string[] }
+    return {
+      cardId,
+      toColumnId,
+      orderedIds,
+      sourceOrderedIds: (sourceOrderedIds as string[] | undefined) ?? [],
+    }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
-    await moveCard(supabase, data.cardId, data.toColumnId, data.orderedIds)
+    await moveCard(
+      supabase,
+      data.cardId,
+      data.toColumnId,
+      data.orderedIds,
+      data.sourceOrderedIds,
+    )
     flush(headers)
   })
 
@@ -111,6 +126,9 @@ function BoardView() {
   const [result, setResult] = useState<string | null>(null)
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
+  // The column a card started in, captured at drag-start (handleDragOver moves
+  // the card across columns optimistically, so by drag-end the origin is lost).
+  const dragOriginColRef = useRef<string | null>(null)
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
@@ -148,6 +166,10 @@ function BoardView() {
     return columns.find((c) => c.cards.some((card) => card.id === id))?.id
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    dragOriginColRef.current = findColumnId(String(event.active.id)) ?? null
+  }
+
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
     if (!over) return
@@ -181,42 +203,53 @@ function BoardView() {
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
+    const originColId = dragOriginColRef.current
+    dragOriginColRef.current = null
     if (!over) return
 
-    const activeColId = findColumnId(String(active.id))
-    const overColId = findColumnId(String(over.id))
+    // handleDragOver has already moved the card into the destination column in
+    // local state, so `over`'s column is the destination.
+    const destColId = findColumnId(String(over.id))
+    if (!destColId || !originColId) return
 
-    if (!activeColId || !overColId) return
+    const crossColumn = originColId !== destColId
 
-    setColumns((prev) => {
-      const overCol = prev.find((c) => c.id === overColId)!
+    // No-op: same column AND no positional change → skip the optimistic update
+    // and the 1+N writes entirely.
+    if (!crossColumn && String(active.id) === String(over.id)) return
 
-      let newCards = [...overCol.cards]
-      if (activeColId === overColId) {
-        // Same column reorder
-        const oldIndex = newCards.findIndex((c) => c.id === String(active.id))
-        const newIndex = newCards.findIndex((c) => c.id === String(over.id))
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          newCards = arrayMove(newCards, oldIndex, newIndex)
-        }
-      }
+    const destCol = columns.find((c) => c.id === destColId)!
+    let destCards = [...destCol.cards]
+    if (!crossColumn) {
+      const oldIndex = destCards.findIndex((c) => c.id === String(active.id))
+      const newIndex = destCards.findIndex((c) => c.id === String(over.id))
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return // no-op
+      destCards = arrayMove(destCards, oldIndex, newIndex)
+    }
 
-      const orderedIds = newCards.map((c) => c.id)
+    const orderedIds = destCards.map((c) => c.id)
+    const sourceOrderedIds = crossColumn
+      ? (columns.find((c) => c.id === originColId)?.cards.map((c) => c.id) ?? [])
+      : []
 
-      // Persist to DB (fire-and-forget, optimistic UI already applied)
-      moveCardFn({
-        data: { cardId: String(active.id), toColumnId: overColId, orderedIds },
-      }).catch(() => {
-        // On error, refresh from server
-        router.invalidate()
-      })
+    // Apply final order to local state (same-column reorder needs it; cross-
+    // column was already applied by handleDragOver).
+    if (!crossColumn) {
+      setColumns((prev) =>
+        prev.map((col) => (col.id === destColId ? { ...col, cards: destCards } : col)),
+      )
+    }
 
-      if (activeColId === overColId) {
-        return prev.map((col) =>
-          col.id === overColId ? { ...col, cards: newCards } : col,
-        )
-      }
-      return prev
+    // Persist outside any state updater so it fires exactly once.
+    moveCardFn({
+      data: {
+        cardId: String(active.id),
+        toColumnId: destColId,
+        orderedIds,
+        sourceOrderedIds,
+      },
+    }).catch(() => {
+      router.invalidate()
     })
   }
 
@@ -272,6 +305,7 @@ function BoardView() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >

@@ -11,6 +11,9 @@ export function reorderPositions(ids: string[]): { id: string; position: number 
 
 /**
  * Insert a new card at the end of a column.
+ * Uses max(position)+1 rather than a row count: moveCard re-sequences both
+ * affected columns so positions stay contiguous, but max+1 is collision-safe
+ * even if a column's positions ever drift out of a clean 0..n-1 range.
  * The supabase client must have write access to `cards`
  * (use the RLS-scoped client for the owner, or the service client in tests).
  */
@@ -19,14 +22,18 @@ export async function createCard(
   columnId: string,
   title: string,
 ): Promise<CardRow> {
-  const { count } = await supabase
+  const { data: last } = await supabase
     .from('cards')
-    .select('id', { count: 'exact', head: true })
+    .select('position')
     .eq('column_id', columnId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextPosition = last ? last.position + 1 : 0
 
   const { data, error } = await supabase
     .from('cards')
-    .insert({ column_id: columnId, title, position: count ?? 0 })
+    .insert({ column_id: columnId, title, position: nextPosition })
     .select('id,title,due_date,assignee_id,position,card_labels(label_id)')
     .single()
 
@@ -35,17 +42,23 @@ export async function createCard(
 }
 
 /**
- * Move a card to toColumnId and re-sequence positions for that column.
- * orderedIds must be the complete ordered list of card ids for the
- * destination column *after* the move (including cardId itself).
+ * Move a card to toColumnId and re-sequence positions.
  *
- * Note: this is N+1 writes per reorder — acceptable at small scale (ponytail).
+ * - `destOrderedIds`: the complete ordered list of the DESTINATION column's
+ *   card ids *after* the move (including cardId itself).
+ * - `sourceOrderedIds` (optional): the SOURCE column's remaining ordered ids
+ *   after the card left. Pass it for a cross-column move so the source column's
+ *   positions stay contiguous (0,1,2,…) instead of leaving a gap. Omit (or pass
+ *   []) for a same-column reorder.
+ *
+ * Note: this is N writes per reorder — acceptable at small scale (ponytail).
  */
 export async function moveCard(
   supabase: SupabaseClient,
   cardId: string,
   toColumnId: string,
-  orderedIds: string[],
+  destOrderedIds: string[],
+  sourceOrderedIds: string[] = [],
 ): Promise<void> {
   const { error: moveErr } = await supabase
     .from('cards')
@@ -53,7 +66,11 @@ export async function moveCard(
     .eq('id', cardId)
   if (moveErr) throw moveErr
 
-  for (const { id, position } of reorderPositions(orderedIds)) {
+  const updates = [
+    ...reorderPositions(destOrderedIds),
+    ...reorderPositions(sourceOrderedIds),
+  ]
+  for (const { id, position } of updates) {
     const { error } = await supabase.from('cards').update({ position }).eq('id', id)
     if (error) throw error
   }
