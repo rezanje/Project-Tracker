@@ -1,11 +1,23 @@
 import { useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core'
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
-import { loadBoard } from '#/lib/board-data'
+import { loadBoard, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
+import { createCard, moveCard } from '#/lib/cards'
 import Column from '#/components/Column'
 
 function flush(headers: Headers) {
@@ -36,7 +48,6 @@ const inviteFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    // service client bypasses RLS, so gate ownership here explicitly
     const { data: m } = await supabase
       .from('board_members')
       .select('role')
@@ -49,16 +60,64 @@ const inviteFn = createServerFn({ method: 'POST' })
     return res
   })
 
+const addCardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { columnId, title } = (d ?? {}) as { columnId?: unknown; title?: unknown }
+    if (typeof columnId !== 'string' || typeof title !== 'string' || !title.trim())
+      throw new Error('columnId and title required')
+    return { columnId, title: title.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const card = await createCard(supabase, data.columnId, data.title)
+    flush(headers)
+    return card
+  })
+
+const moveCardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { cardId, toColumnId, orderedIds } = (d ?? {}) as {
+      cardId?: unknown
+      toColumnId?: unknown
+      orderedIds?: unknown
+    }
+    if (
+      typeof cardId !== 'string' ||
+      typeof toColumnId !== 'string' ||
+      !Array.isArray(orderedIds) ||
+      !orderedIds.every((x) => typeof x === 'string')
+    )
+      throw new Error('cardId, toColumnId, orderedIds required')
+    return { cardId, toColumnId, orderedIds: orderedIds as string[] }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await moveCard(supabase, data.cardId, data.toColumnId, data.orderedIds)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
 })
 
 function BoardView() {
-  const board = Route.useLoaderData()
-  const isOwner = board.role === 'owner'
+  const initialBoard = Route.useLoaderData()
+  const router = useRouter()
+  const isOwner = initialBoard.role === 'owner'
   const [email, setEmail] = useState('')
   const [result, setResult] = useState<string | null>(null)
+  // Local optimistic columns state (ids only, for drag ordering)
+  const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
+  // Sync columns when loader data changes (e.g. after router.invalidate)
+  const board = { ...initialBoard, columns }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -72,6 +131,104 @@ function BoardView() {
       setResult('Failed to invite.')
     }
   }
+
+  async function onAddCard(columnId: string, title: string) {
+    await addCardFn({ data: { columnId, title } })
+    router.invalidate()
+  }
+
+  /** Find which column a card or column id belongs to. */
+  function findColumnId(id: string): string | undefined {
+    // id might be a column id itself
+    if (columns.some((c) => c.id === id)) return id
+    // or a card id
+    return columns.find((c) => c.cards.some((card) => card.id === id))?.id
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event
+    if (!over) return
+
+    const activeColId = findColumnId(String(active.id))
+    const overColId = findColumnId(String(over.id))
+
+    if (!activeColId || !overColId || activeColId === overColId) return
+
+    // Optimistically move the card to the target column
+    setColumns((prev) => {
+      const activeCol = prev.find((c) => c.id === activeColId)!
+      const overCol = prev.find((c) => c.id === overColId)!
+      const draggedCard = activeCol.cards.find((c) => c.id === String(active.id))!
+      const overIndex = overCol.cards.findIndex((c) => c.id === String(over.id))
+      const insertAt = overIndex >= 0 ? overIndex : overCol.cards.length
+
+      return prev.map((col) => {
+        if (col.id === activeColId) {
+          return { ...col, cards: col.cards.filter((c) => c.id !== String(active.id)) }
+        }
+        if (col.id === overColId) {
+          const newCards = [...col.cards]
+          newCards.splice(insertAt, 0, { ...draggedCard, position: insertAt })
+          return { ...col, cards: newCards }
+        }
+        return col
+      })
+    })
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over) return
+
+    const activeColId = findColumnId(String(active.id))
+    const overColId = findColumnId(String(over.id))
+
+    if (!activeColId || !overColId) return
+
+    setColumns((prev) => {
+      const overCol = prev.find((c) => c.id === overColId)!
+
+      let newCards = [...overCol.cards]
+      if (activeColId === overColId) {
+        // Same column reorder
+        const oldIndex = newCards.findIndex((c) => c.id === String(active.id))
+        const newIndex = newCards.findIndex((c) => c.id === String(over.id))
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          newCards = arrayMove(newCards, oldIndex, newIndex)
+        }
+      }
+
+      const orderedIds = newCards.map((c) => c.id)
+
+      // Persist to DB (fire-and-forget, optimistic UI already applied)
+      moveCardFn({
+        data: { cardId: String(active.id), toColumnId: overColId, orderedIds },
+      }).catch(() => {
+        // On error, refresh from server
+        router.invalidate()
+      })
+
+      if (activeColId === overColId) {
+        return prev.map((col) =>
+          col.id === overColId ? { ...col, cards: newCards } : col,
+        )
+      }
+      return prev
+    })
+  }
+
+  const columnsContent = (
+    <div className="flex gap-4 overflow-x-auto pb-4">
+      {board.columns.map((col) => (
+        <Column
+          key={col.id}
+          column={col}
+          isOwner={isOwner}
+          onAddCard={onAddCard}
+        />
+      ))}
+    </div>
+  )
 
   return (
     <main className="page-wrap mx-auto max-w-6xl px-4 pb-12 pt-14">
@@ -108,12 +265,17 @@ function BoardView() {
 
       {board.columns.length === 0 ? (
         <p className="text-[var(--sea-ink-soft)]">No columns yet.</p>
+      ) : isOwner ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          {columnsContent}
+        </DndContext>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {board.columns.map((col) => (
-            <Column key={col.id} column={col} />
-          ))}
-        </div>
+        columnsContent
       )}
     </main>
   )
