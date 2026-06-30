@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import Card from './Card'
-import type { ColumnRow } from '#/lib/board-data'
+import type { ColumnRow, CardRow } from '#/lib/board-data'
 
 interface ColumnProps {
   column: ColumnRow
   isOwner?: boolean
   onAddCard?: (columnId: string, title: string) => Promise<void>
+  onCardClick?: (card: CardRow) => void
 }
 
-export default function Column({ column, isOwner, onAddCard }: ColumnProps) {
+export default function Column({ column, isOwner, onAddCard, onCardClick }: ColumnProps) {
   const [newTitle, setNewTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [addError, setAddError] = useState(false)
@@ -42,7 +43,9 @@ export default function Column({ column, isOwner, onAddCard }: ColumnProps) {
         {column.cards.length === 0 ? (
           <p className="px-1 text-xs text-[var(--sea-ink-soft)]">No cards</p>
         ) : (
-          column.cards.map((c) => <Card key={c.id} card={c} isDraggable={isOwner} />)
+          column.cards.map((c) => (
+            <Card key={c.id} card={c} isDraggable={isOwner} onCardClick={onCardClick} />
+          ))
         )}
       </div>
       {isOwner && onAddCard && (

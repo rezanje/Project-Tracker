@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
-import { reorderPositions, createCard, moveCard } from './cards'
+import { reorderPositions, createCard, moveCard, updateCard, setCardLabels } from './cards'
 
 // ─── Unit test (no DB) ────────────────────────────────────────────────────────
 
@@ -201,6 +201,127 @@ test('moveCard moves a card to a different column', async () => {
       .order('position')
     expect(colACards!.map((c: { position: number }) => c.position)).toEqual([0, 1])
     expect(colACards!.map((c: { id: string }) => c.id)).toEqual([a0.id, a2.id])
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+}, 25000)
+
+// ─── updateCard + setCardLabels persistence tests ─────────────────────────────
+
+test('updateCard persists due_date and assignee_id', async () => {
+  const email = `cards.update.${Date.now()}@gmail.com`
+  const { data: u } = await admin.auth.admin.createUser({
+    email,
+    password: 'Babikeguling1!',
+    email_confirm: true,
+    user_metadata: { name: 'Update Tester' },
+  })
+  const uid = u.user!.id
+  let boardId: string | undefined
+  try {
+    const { data: board } = await admin
+      .from('boards')
+      .insert({ owner_id: uid, title: 'Update Test Board' })
+      .select('id')
+      .single()
+    boardId = board!.id
+
+    const { data: col } = await admin
+      .from('columns')
+      .insert({ board_id: boardId, title: 'Col', position: 0 })
+      .select('id')
+      .single()
+
+    const card = await createCard(admin, col!.id, 'Original Title')
+
+    // Update due_date and assignee_id (use owner uid as assignee for simplicity)
+    await updateCard(admin, card.id, { due_date: '2026-12-31', assignee_id: uid })
+
+    const { data: updated } = await admin
+      .from('cards')
+      .select('due_date,assignee_id,title')
+      .eq('id', card.id)
+      .single()
+
+    expect(updated!.due_date).toBe('2026-12-31')
+    expect(updated!.assignee_id).toBe(uid)
+    expect(updated!.title).toBe('Original Title') // unchanged
+
+    // Clear due_date and assignee
+    await updateCard(admin, card.id, { due_date: null, assignee_id: null })
+    const { data: cleared } = await admin
+      .from('cards')
+      .select('due_date,assignee_id')
+      .eq('id', card.id)
+      .single()
+    expect(cleared!.due_date).toBeNull()
+    expect(cleared!.assignee_id).toBeNull()
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+}, 25000)
+
+test('setCardLabels replaces labels (delete-then-insert)', async () => {
+  const email = `cards.labels.${Date.now()}@gmail.com`
+  const { data: u } = await admin.auth.admin.createUser({
+    email,
+    password: 'Babikeguling1!',
+    email_confirm: true,
+    user_metadata: { name: 'Label Tester' },
+  })
+  const uid = u.user!.id
+  let boardId: string | undefined
+  try {
+    const { data: board } = await admin
+      .from('boards')
+      .insert({ owner_id: uid, title: 'Label Test Board' })
+      .select('id')
+      .single()
+    boardId = board!.id
+
+    const { data: col } = await admin
+      .from('columns')
+      .insert({ board_id: boardId, title: 'Col', position: 0 })
+      .select('id')
+      .single()
+
+    const card = await createCard(admin, col!.id, 'Labeled Card')
+
+    // Create two labels on this board
+    const { data: labels } = await admin
+      .from('labels')
+      .insert([
+        { board_id: boardId, name: 'Bug', color: '#ef4444' },
+        { board_id: boardId, name: 'Feature', color: '#3b82f6' },
+      ])
+      .select('id')
+    const [labelA, labelB] = labels!
+
+    // Set first label only
+    await setCardLabels(admin, card.id, [labelA.id])
+    const { data: first } = await admin
+      .from('card_labels')
+      .select('label_id')
+      .eq('card_id', card.id)
+    expect(first!.map((r: { label_id: string }) => r.label_id)).toEqual([labelA.id])
+
+    // Replace with second label only — verifies delete-then-insert
+    await setCardLabels(admin, card.id, [labelB.id])
+    const { data: second } = await admin
+      .from('card_labels')
+      .select('label_id')
+      .eq('card_id', card.id)
+    expect(second!.map((r: { label_id: string }) => r.label_id)).toEqual([labelB.id])
+
+    // Clear all labels
+    await setCardLabels(admin, card.id, [])
+    const { data: empty } = await admin
+      .from('card_labels')
+      .select('label_id')
+      .eq('card_id', card.id)
+    expect(empty).toHaveLength(0)
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     await admin.auth.admin.deleteUser(uid)

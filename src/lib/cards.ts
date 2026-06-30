@@ -2,6 +2,38 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CardRow } from '#/lib/board-data'
 
 /**
+ * Update card fields (title, description, due_date, assignee_id).
+ * Uses the RLS-scoped client so Postgres owner-write policy is enforced.
+ */
+export async function updateCard(
+  supabase: SupabaseClient,
+  cardId: string,
+  fields: Partial<{ title: string; description: string; due_date: string | null; assignee_id: string | null }>,
+): Promise<void> {
+  const { error } = await supabase.from('cards').update(fields).eq('id', cardId)
+  if (error) throw error
+}
+
+/**
+ * Replace a card's labels (delete-then-insert).
+ * An empty labelIds array clears all labels.
+ */
+export async function setCardLabels(
+  supabase: SupabaseClient,
+  cardId: string,
+  labelIds: string[],
+): Promise<void> {
+  const { error: delErr } = await supabase.from('card_labels').delete().eq('card_id', cardId)
+  if (delErr) throw delErr
+  if (labelIds.length) {
+    const { error: insErr } = await supabase
+      .from('card_labels')
+      .insert(labelIds.map((label_id) => ({ card_id: cardId, label_id })))
+    if (insErr) throw insErr
+  }
+}
+
+/**
  * Pure helper: map an ordered array of ids to sequential position values.
  * Used by moveCard and by callers doing optimistic reordering.
  */

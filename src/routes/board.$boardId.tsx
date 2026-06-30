@@ -18,8 +18,15 @@ import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
-import { createCard, moveCard } from '#/lib/cards'
+import { createCard, moveCard, updateCard, setCardLabels } from '#/lib/cards'
 import Column from '#/components/Column'
+import CardDetail from '#/components/CardDetail'
+import type { CardRow } from '#/lib/board-data'
+
+export type BoardMeta = {
+  members: { id: string; name: string }[]
+  labels: { id: string; name: string; color: string }[]
+}
 
 function flush(headers: Headers) {
   for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
@@ -113,6 +120,81 @@ const moveCardFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const fetchBoardMeta = createServerFn({ method: 'GET' })
+  .validator((d: unknown) => {
+    const id = (d as { boardId?: unknown })?.boardId
+    if (typeof id !== 'string') throw new Error('boardId required')
+    return { boardId: id }
+  })
+  .handler(async ({ data }): Promise<BoardMeta> => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { data: members, error: mErr } = await supabase
+      .from('board_members')
+      .select('user_id, profiles(id,name)')
+      .eq('board_id', data.boardId)
+    if (mErr) throw mErr
+    const { data: labels, error: lErr } = await supabase
+      .from('labels')
+      .select('id,name,color')
+      .eq('board_id', data.boardId)
+    if (lErr) throw lErr
+    flush(headers)
+    return {
+      members: (members ?? []).map((m) => {
+        const p = (m.profiles as unknown) as { id: string; name: string } | null
+        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown' }
+      }),
+      labels: (labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
+    }
+  })
+
+const updateCardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { cardId, fields } = (d ?? {}) as {
+      cardId?: unknown
+      fields?: unknown
+    }
+    if (typeof cardId !== 'string') throw new Error('cardId required')
+    const f = (fields ?? {}) as Record<string, unknown>
+    return {
+      cardId,
+      fields: {
+        ...(typeof f.title === 'string' ? { title: f.title } : {}),
+        ...(typeof f.description === 'string' || f.description === null
+          ? { description: f.description as string | null }
+          : {}),
+        ...(typeof f.due_date === 'string' || f.due_date === null
+          ? { due_date: f.due_date as string | null }
+          : {}),
+        ...(typeof f.assignee_id === 'string' || f.assignee_id === null
+          ? { assignee_id: f.assignee_id as string | null }
+          : {}),
+      } as Partial<{ title: string; description: string; due_date: string | null; assignee_id: string | null }>,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await updateCard(supabase, data.cardId, data.fields)
+    flush(headers)
+  })
+
+const setCardLabelsFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { cardId, labelIds } = (d ?? {}) as { cardId?: unknown; labelIds?: unknown }
+    if (typeof cardId !== 'string') throw new Error('cardId required')
+    if (!Array.isArray(labelIds) || !labelIds.every((v) => typeof v === 'string'))
+      throw new Error('labelIds must be string[]')
+    return { cardId, labelIds: labelIds as string[] }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await setCardLabels(supabase, data.cardId, data.labelIds)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
@@ -129,14 +211,29 @@ function BoardView() {
   // The column a card started in, captured at drag-start (handleDragOver moves
   // the card across columns optimistically, so by drag-end the origin is lost).
   const dragOriginColRef = useRef<string | null>(null)
+  // Selected card for detail panel
+  const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
+  const [boardMeta, setBoardMeta] = useState<BoardMeta | null>(null)
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
   }, [initialBoard])
   const board = { ...initialBoard, columns }
 
+  async function openCardDetail(card: CardRow) {
+    setSelectedCard(card)
+    if (!boardMeta) {
+      const meta = await fetchBoardMeta({ data: { boardId: board.id } })
+      setBoardMeta(meta)
+    }
+  }
+
+  function closeCardDetail() {
+    setSelectedCard(null)
+  }
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -261,13 +358,14 @@ function BoardView() {
           column={col}
           isOwner={isOwner}
           onAddCard={onAddCard}
+          onCardClick={openCardDetail}
         />
       ))}
     </div>
   )
 
   return (
-    <main className="page-wrap mx-auto max-w-6xl px-4 pb-12 pt-14">
+    <main className="page-wrap mx-auto max-w-6xl px-4 pb-12 pt-14" style={{ position: 'relative' }}>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <Link to="/" className="text-sm text-[var(--sea-ink-soft)]">
@@ -314,6 +412,21 @@ function BoardView() {
         >
           {columnsContent}
         </DndContext>
+      )}
+
+      {selectedCard && (
+        <CardDetail
+          card={selectedCard}
+          meta={boardMeta ?? { members: [], labels: [] }}
+          isOwner={isOwner}
+          onClose={closeCardDetail}
+          onSaved={() => {
+            router.invalidate()
+            closeCardDetail()
+          }}
+          onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
+          onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
+        />
       )}
     </main>
   )
