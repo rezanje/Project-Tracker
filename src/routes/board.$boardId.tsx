@@ -301,7 +301,10 @@ function BoardView() {
 
       {board.columns.length === 0 ? (
         <p className="text-[var(--sea-ink-soft)]">No columns yet.</p>
-      ) : isOwner ? (
+      ) : (
+        // Always wrap in DndContext so Column's useDroppable hook is inside a
+        // context even for clients. Drag is a no-op for clients anyway: cards
+        // are disabled (disabled:!isDraggable) and SortableContext is owner-only.
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -311,8 +314,6 @@ function BoardView() {
         >
           {columnsContent}
         </DndContext>
-      ) : (
-        columnsContent
       )}
     </main>
   )
