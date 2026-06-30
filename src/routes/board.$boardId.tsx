@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -109,9 +109,12 @@ function BoardView() {
   const isOwner = initialBoard.role === 'owner'
   const [email, setEmail] = useState('')
   const [result, setResult] = useState<string | null>(null)
-  // Local optimistic columns state (ids only, for drag ordering)
+  // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
-  // Sync columns when loader data changes (e.g. after router.invalidate)
+  // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
+  useEffect(() => {
+    setColumns(initialBoard.columns)
+  }, [initialBoard])
   const board = { ...initialBoard, columns }
 
   const sensors = useSensors(
