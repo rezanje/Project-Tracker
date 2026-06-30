@@ -27,14 +27,21 @@ export async function uploadAttachment(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('not signed in')
+  if (!user) {
+    await supabase.storage.from('card-files').remove([path])
+    throw new Error('not signed in')
+  }
 
   const { data, error: insertError } = await supabase
     .from('attachments')
     .insert({ card_id: cardId, path, filename: file.name, uploaded_by: user.id })
     .select()
     .single()
-  if (insertError) throw insertError
+  if (insertError) {
+    // Avoid orphaning the uploaded object if the row insert fails.
+    await supabase.storage.from('card-files').remove([path])
+    throw insertError
+  }
 
   return data as Attachment
 }

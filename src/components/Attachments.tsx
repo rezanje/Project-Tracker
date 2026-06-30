@@ -109,9 +109,6 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
             onChange={handleUpload}
           />
         </label>
-        {busy && (
-          <span className="text-xs text-[var(--sea-ink-soft)]">Uploading…</span>
-        )}
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
