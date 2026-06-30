@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export type CardRow = {
   id: string
   title: string
+  description: string | null
   due_date: string | null
   assignee_id: string | null
   position: number
@@ -40,7 +41,7 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,due_date,assignee_id,position,card_labels(label_id))',
+      'id,title,position,cards(id,title,description,due_date,assignee_id,position,card_labels(label_id))',
     )
     .eq('board_id', boardId)
     .order('position')

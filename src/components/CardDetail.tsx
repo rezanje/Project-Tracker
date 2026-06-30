@@ -12,7 +12,7 @@ interface CardDetailProps {
     cardId: string,
     fields: Partial<{
       title: string
-      description: string
+      description: string | null
       due_date: string | null
       assignee_id: string | null
     }>,
@@ -30,6 +30,7 @@ export default function CardDetail({
   onSetLabels,
 }: CardDetailProps) {
   const [title, setTitle] = useState(card.title)
+  const [description, setDescription] = useState(card.description ?? '')
   const [dueDate, setDueDate] = useState(card.due_date ?? '')
   const [assigneeId, setAssigneeId] = useState(card.assignee_id ?? '')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(
@@ -51,6 +52,7 @@ export default function CardDetail({
     try {
       await onUpdateCard(card.id, {
         title: title.trim() || card.title,
+        description: description.trim() || null,
         due_date: dueDate || null,
         assignee_id: assigneeId || null,
       })
@@ -100,6 +102,18 @@ export default function CardDetail({
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 className="w-full rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className="w-full resize-y rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
               />
             </div>
 
@@ -194,6 +208,17 @@ export default function CardDetail({
           // ── Client: read-only fields ──────────────────────────────────────────
           <div className="flex flex-col gap-4">
             <h2 className="pr-6 text-xl font-bold text-[var(--sea-ink)]">{card.title}</h2>
+
+            {card.description && (
+              <div>
+                <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">
+                  Description
+                </p>
+                <p className="whitespace-pre-wrap text-sm text-[var(--sea-ink)]">
+                  {card.description}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">Due Date</p>

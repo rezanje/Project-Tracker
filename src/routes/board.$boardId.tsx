@@ -170,7 +170,7 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.assignee_id === 'string' || f.assignee_id === null
           ? { assignee_id: f.assignee_id as string | null }
           : {}),
-      } as Partial<{ title: string; description: string; due_date: string | null; assignee_id: string | null }>,
+      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null }>,
     }
   })
   .handler(async ({ data }) => {

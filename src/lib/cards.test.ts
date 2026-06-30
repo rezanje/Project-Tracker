@@ -235,28 +235,38 @@ test('updateCard persists due_date and assignee_id', async () => {
 
     const card = await createCard(admin, col!.id, 'Original Title')
 
-    // Update due_date and assignee_id (use owner uid as assignee for simplicity)
-    await updateCard(admin, card.id, { due_date: '2026-12-31', assignee_id: uid })
+    // Update due_date, assignee_id and description (owner uid as assignee for simplicity)
+    await updateCard(admin, card.id, {
+      due_date: '2026-12-31',
+      assignee_id: uid,
+      description: 'Some details here',
+    })
 
     const { data: updated } = await admin
       .from('cards')
-      .select('due_date,assignee_id,title')
+      .select('due_date,assignee_id,title,description')
       .eq('id', card.id)
       .single()
 
     expect(updated!.due_date).toBe('2026-12-31')
     expect(updated!.assignee_id).toBe(uid)
+    expect(updated!.description).toBe('Some details here')
     expect(updated!.title).toBe('Original Title') // unchanged
 
-    // Clear due_date and assignee
-    await updateCard(admin, card.id, { due_date: null, assignee_id: null })
+    // Clear due_date, assignee and description
+    await updateCard(admin, card.id, {
+      due_date: null,
+      assignee_id: null,
+      description: null,
+    })
     const { data: cleared } = await admin
       .from('cards')
-      .select('due_date,assignee_id')
+      .select('due_date,assignee_id,description')
       .eq('id', card.id)
       .single()
     expect(cleared!.due_date).toBeNull()
     expect(cleared!.assignee_id).toBeNull()
+    expect(cleared!.description).toBeNull()
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     await admin.auth.admin.deleteUser(uid)
