@@ -1,11 +1,18 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Calendar, Tag } from 'lucide-react'
 import type { CardRow } from '#/lib/board-data'
 
 interface CardProps {
   card: CardRow
   isDraggable?: boolean
   onCardClick?: (card: CardRow) => void
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export default function Card({ card, isDraggable, onCardClick }: CardProps) {
@@ -28,28 +35,43 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
     }
   }
 
+  const labelCount = card.card_labels.length
+
   return (
-    <div
+    <article
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...(isDraggable ? listeners : {})}
       onClick={handleClick}
-      className="card card-hover p-2.5 text-sm"
+      className="card card-hover p-3.5"
     >
-      <p className="font-medium text-[var(--sea-ink)]">{card.title}</p>
-      {(card.due_date || card.card_labels.length > 0) && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <p className="text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
+        {card.title}
+      </p>
+
+      {card.description && (
+        <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-snug text-[var(--ink2)]">
+          {card.description}
+        </p>
+      )}
+
+      {(card.due_date || labelCount > 0) && (
+        <div className="mt-3 flex items-center gap-2.5">
           {card.due_date && (
-            <span className="chip">{card.due_date}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-xs font-semibold text-[var(--accent-ink)]">
+              <Calendar size={13} aria-hidden="true" />
+              {shortDate(card.due_date)}
+            </span>
           )}
-          {card.card_labels.length > 0 && (
-            <span className="chip">
-              {card.card_labels.length} label{card.card_labels.length > 1 ? 's' : ''}
+          {labelCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
+              <Tag size={14} aria-hidden="true" />
+              {labelCount}
             </span>
           )}
         </div>
       )}
-    </div>
+    </article>
   )
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
+import AuthShell from '#/components/AuthShell'
 
 export const Route = createFileRoute('/signup')({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -8,6 +9,8 @@ export const Route = createFileRoute('/signup')({
   }),
   component: Signup,
 })
+
+const fieldLabel = 'mb-1.5 block text-xs font-bold text-[var(--ink2)]'
 
 function Signup() {
   const navigate = useNavigate()
@@ -39,51 +42,64 @@ function Signup() {
   }
 
   return (
-    <main className="page-wrap flex min-h-[calc(100vh-8rem)] max-w-md items-center">
-      <div className="card w-full p-7">
-        <h1 className="display-title mb-1 text-2xl font-bold text-[var(--sea-ink)]">
-          Create your account
-        </h1>
-        <p className="mb-6 text-sm text-[var(--sea-ink-soft)]">
-          Start tracking projects in GenTrack.
-        </p>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          <input
-            required
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="field"
-          />
-          <input
-            type="email"
-            required
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="field"
-          />
-          <input
-            type="password"
-            required
-            minLength={6}
-            placeholder="Password (min 6 chars)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="field"
-          />
-          {error && <p className="text-sm text-[#b23b3b]">{error}</p>}
-          <button type="submit" disabled={loading} className="btn btn-primary mt-1">
-            {loading ? 'Creating…' : 'Sign up'}
-          </button>
-        </form>
-        <p className="mt-5 text-sm text-[var(--sea-ink-soft)]">
-          Have an account?{' '}
-          <Link to="/login" className="font-semibold">
-            Log in
-          </Link>
-        </p>
-      </div>
-    </main>
+    <AuthShell
+      heading="Create your account"
+      subtitle="Start tracking projects in minutes."
+    >
+      <form onSubmit={onSubmit}>
+        <label htmlFor="signup-name" className={fieldLabel}>
+          Name
+        </label>
+        <input
+          id="signup-name"
+          required
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="field mb-4"
+        />
+        <label htmlFor="signup-email" className={fieldLabel}>
+          Email
+        </label>
+        <input
+          id="signup-email"
+          type="email"
+          required
+          placeholder="you@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="field mb-4"
+        />
+        <label htmlFor="signup-password" className={fieldLabel}>
+          Password
+        </label>
+        <input
+          id="signup-password"
+          type="password"
+          required
+          minLength={6}
+          placeholder="At least 6 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="field mb-2.5"
+        />
+        {error && (
+          <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn btn-primary btn-square mt-2 w-full"
+        >
+          {loading ? 'Creating…' : 'Sign up'}
+        </button>
+      </form>
+      <p className="mt-[18px] text-center text-[13px] text-[var(--ink2)]">
+        Already have an account?{' '}
+        <Link to="/login" className="font-bold text-[var(--accent-ink)] no-underline">
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

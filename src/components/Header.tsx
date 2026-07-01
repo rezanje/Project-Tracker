@@ -4,6 +4,30 @@ import { LogOut } from 'lucide-react'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import ThemeToggle from './ThemeToggle'
 
+// Two-letter avatar initials from an email local part (e.g. reza.g → RG).
+function initials(email: string): string {
+  const local = email.split('@')[0] ?? ''
+  const parts = local.split(/[.\-_+]/).filter(Boolean)
+  const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : local.slice(0, 2)
+  return chars.toUpperCase() || '?'
+}
+
+function BrandMark() {
+  return (
+    <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[11px] bg-[var(--btn)]">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M5 12.5l4.5 4.5L19 7.5"
+          stroke="#7be0a6"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
 export default function Header() {
   const navigate = useNavigate()
   const [email, setEmail] = useState<string | null>(null)
@@ -29,36 +53,36 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] backdrop-blur-md">
-      <nav className="page-wrap flex items-center gap-3 py-3">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-[var(--sea-ink)] no-underline"
-        >
-          <span className="h-2.5 w-2.5 rounded-full bg-[var(--lagoon-deep)]" />
-          <span className="text-base font-bold tracking-tight">GenTrack</span>
-        </Link>
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 py-3 backdrop-blur-md sm:px-6">
+      <Link to="/" className="flex items-center gap-2.5 text-[var(--ink)] no-underline">
+        <BrandMark />
+        <span className="display-title text-[19px] font-extrabold">GenTrack</span>
+      </Link>
 
-        <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
-          {email && (
-            <>
-              <span className="hidden max-w-[14rem] truncate text-sm text-[var(--sea-ink-soft)] sm:inline">
+      <div className="flex items-center gap-2.5">
+        <ThemeToggle />
+        {email && (
+          <>
+            <div className="hidden items-center gap-2.5 rounded-full border border-[var(--line)] bg-[var(--card)] py-1 pl-3.5 pr-1 sm:flex">
+              <span className="max-w-[13rem] truncate text-[13px] font-semibold text-[var(--ink2)]">
                 {email}
               </span>
-              <button
-                type="button"
-                onClick={logout}
-                className="btn btn-ghost"
-                aria-label="Log out"
-              >
-                <LogOut size={15} aria-hidden="true" />
-                <span className="hidden sm:inline">Log out</span>
-              </button>
-            </>
-          )}
-        </div>
-      </nav>
+              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--accent)] text-[12px] font-bold text-white">
+                {initials(email)}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="btn btn-ghost"
+              aria-label="Log out"
+            >
+              <LogOut size={15} aria-hidden="true" />
+              <span className="hidden sm:inline">Log out</span>
+            </button>
+          </>
+        )}
+      </div>
     </header>
   )
 }

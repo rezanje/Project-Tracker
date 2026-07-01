@@ -1,8 +1,8 @@
 export default function Footer() {
   return (
-    <footer className="page-wrap mt-16 border-t border-[var(--line)] py-6 text-xs text-[var(--sea-ink-soft)]">
-      <span className="font-semibold text-[var(--sea-ink)]">GenTrack</span> — project
-      &amp; task tracker.
+    <footer className="mt-12 border-t border-[var(--line)] px-6 py-6 text-center text-xs text-[var(--ink3)]">
+      <span className="display-title font-bold text-[var(--ink2)]">GenTrack</span> —
+      track your work, share the progress.
     </footer>
   )
 }

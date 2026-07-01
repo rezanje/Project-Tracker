@@ -14,6 +14,7 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { ChevronLeft } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, type ColumnRow } from '#/lib/board-data'
@@ -30,6 +31,14 @@ export type BoardMeta = {
 
 function flush(headers: Headers) {
   for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
+}
+
+// Deterministic accent per board (matches the boards grid) — derived from id.
+const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+function accentFor(id: string): string {
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return ACCENTS[h % ACCENTS.length]
 }
 
 const fetchBoard = createServerFn({ method: 'GET' })
@@ -351,7 +360,7 @@ function BoardView() {
   }
 
   const columnsContent = (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="gt-scroll mx-auto flex max-w-[1400px] items-start gap-4 overflow-x-auto pb-3.5">
       {board.columns.map((col) => (
         <Column
           key={col.id}
@@ -365,39 +374,68 @@ function BoardView() {
   )
 
   return (
-    <main className="page-wrap max-w-6xl pb-12 pt-8" style={{ position: 'relative' }}>
-      <Link
-        to="/"
-        className="text-sm text-[var(--sea-ink-soft)] no-underline hover:text-[var(--sea-ink)]"
-      >
-        ← Boards
-      </Link>
-      <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)]">
-            {board.title}
-          </h1>
-          <span className="chip capitalize">{board.role}</span>
-        </div>
-        {isOwner && (
-          <form onSubmit={onInvite} className="flex w-full max-w-sm gap-2 sm:w-auto">
-            <input
-              type="email"
-              placeholder="Invite client by email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="field flex-1 sm:w-56"
+    <main className="relative px-4 pb-11 pt-6 sm:px-6 gt-fade">
+      <div className="mx-auto mb-5 flex max-w-[1400px] flex-wrap items-start justify-between gap-5">
+        <div>
+          <Link
+            to="/"
+            className="mb-2.5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+            Projects
+          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="h-3.5 w-3.5 rounded-full"
+              style={{ background: accentFor(board.id) }}
+              aria-hidden="true"
             />
-            <button type="submit" className="btn btn-ghost shrink-0">
-              Invite
-            </button>
-          </form>
+            <h1 className="display-title text-[32px] font-extrabold text-[var(--ink)]">
+              {board.title}
+            </h1>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
+                isOwner
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]'
+                  : 'bg-[var(--col)] text-[var(--ink2)]'
+              }`}
+            >
+              {board.role}
+            </span>
+          </div>
+        </div>
+
+        {isOwner ? (
+          <div className="flex flex-col items-end gap-2">
+            <form onSubmit={onInvite} className="flex w-full gap-2 sm:w-auto">
+              <input
+                type="email"
+                placeholder="Invite client by email…"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field flex-1 rounded-full px-4 py-2.5 text-[13px] sm:w-[230px]"
+              />
+              <button type="submit" className="btn btn-primary shrink-0">
+                Invite
+              </button>
+            </form>
+            {result && (
+              <span className="text-xs font-semibold text-[var(--accent-ink)]">
+                {result}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="max-w-[290px] rounded-[14px] border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-[13px] leading-relaxed text-[var(--ink2)]">
+            You're viewing as a{' '}
+            <b className="text-[var(--ink)]">client</b> — read-only. You can still
+            comment and upload files.
+          </p>
         )}
       </div>
-      {result && <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">{result}</p>}
 
       {board.columns.length === 0 ? (
-        <div className="card grid place-items-center px-6 py-16 text-center text-[var(--sea-ink-soft)]">
+        <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
           No columns yet.
         </div>
       ) : (
