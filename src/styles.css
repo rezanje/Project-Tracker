@@ -215,6 +215,9 @@ a {
 @keyframes gtfade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes gtpop { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes gtback { from { opacity: 0; } to { opacity: 1; } }
-.gt-fade { animation: gtfade 0.4s ease both; }
+/* backwards (not both): forwards-fill would hold `to{transform:none}` as an
+   identity matrix, which still establishes a containing block and traps any
+   position:fixed descendant (e.g. the card-detail modal) inside <main>. */
+.gt-fade { animation: gtfade 0.4s ease backwards; }
 .gt-pop { animation: gtpop 0.24s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 .gt-back { animation: gtback 0.2s ease both; }
