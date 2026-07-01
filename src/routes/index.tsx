@@ -13,14 +13,6 @@ function flush(headers: Headers) {
   for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
 }
 
-const fetchBoards = createServerFn({ method: 'GET' }).handler(async () => {
-  const headers = new Headers()
-  const { supabase } = await requireUser(getRequest(), headers)
-  const boards = await listMyBoards(supabase)
-  flush(headers)
-  return boards
-})
-
 const newBoard = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
     const title = (d as { title?: unknown })?.title
@@ -40,8 +32,9 @@ const fetchHome = createServerFn({ method: 'GET' }).handler(async () => {
   const { user, supabase } = await requireUser(getRequest(), headers)
   const today = new Date().toISOString().slice(0, 10)
 
-  const [{ data: me }, { data: cardRows }, { data: cols }, { data: mem }] =
+  const [boards, { data: me }, { data: cardRows }, { data: cols }, { data: mem }] =
     await Promise.all([
+      listMyBoards(supabase),
       supabase.from('profiles').select('name').eq('id', user.id).single(),
       supabase
         .from('cards')
@@ -98,7 +91,10 @@ const fetchHome = createServerFn({ method: 'GET' }).handler(async () => {
   }
 
   flush(headers)
-  return { name: me?.name ?? null, todayTasks, stats, members: members.slice(0, 5) }
+  return {
+    boards,
+    home: { name: me?.name ?? null, todayTasks, stats, members: members.slice(0, 5) },
+  }
 })
 
 type HomeData = {
@@ -118,10 +114,10 @@ type HomeData = {
 
 export const Route = createFileRoute('/')({
   component: Home,
-  loader: async () => {
-    const [boards, home] = await Promise.all([fetchBoards(), fetchHome()])
-    return { boards, home }
-  },
+  // Single server fn → single requireUser/getUser. Two parallel auth'd server
+  // fns raced to refresh the same single-use Supabase token, corrupting the
+  // session and yielding malformed (content-type-less) responses.
+  loader: async () => await fetchHome(),
 })
 
 // Deterministic accent per board so the grid reads with variety — derived from
