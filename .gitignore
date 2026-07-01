@@ -1,7 +1,10 @@
 node_modules
 .env
 .env.local
+.dev.vars
 .wrangler
 dist
 .output
 .vercel
+.superpowers
+.cta.json
