@@ -108,15 +108,19 @@ Deno.serve(async (req) => {
       return new Response('ok (no-op)', { status: 200 })
     }
 
+    const resendKey = Deno.env.get('RESEND_API_KEY')
+    if (!resendKey) {
+      console.error('missing RESEND_API_KEY')
+      return new Response('ok (no api key)', { status: 200 })
+    }
+    const appUrl = Deno.env.get('APP_BASE_URL') ?? 'http://localhost:5180'
+
     const svc = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
     const recipients = await resolveRecipients(svc, eventType, payload)
-
-    const resendKey = Deno.env.get('RESEND_API_KEY')
-    const appUrl = Deno.env.get('APP_BASE_URL') ?? 'http://localhost:5180'
 
     for (const email of recipients) {
       const res = await fetch('https://api.resend.com/emails', {
@@ -140,7 +144,9 @@ Deno.serve(async (req) => {
 
     return new Response('ok', { status: 200 })
   } catch (err) {
+    // Return 200 so a malformed webhook body doesn't create a false pg_net
+    // delivery-failure row; the error is logged for debugging.
     console.error('notify function error:', err)
-    return new Response('error', { status: 500 })
+    return new Response('error', { status: 200 })
   }
 })
