@@ -12,6 +12,7 @@ interface CardDetailProps {
   isOwner: boolean
   onClose: () => void
   onSaved: () => void
+  onDelete: () => void
   onUpdateCard: (
     cardId: string,
     fields: Partial<{
@@ -40,6 +41,7 @@ export default function CardDetail({
   isOwner,
   onClose,
   onSaved,
+  onDelete,
   onUpdateCard,
   onSetLabels,
 }: CardDetailProps) {
@@ -242,6 +244,9 @@ export default function CardDetail({
               </button>
               <button onClick={onClose} className="btn btn-ghost btn-square">
                 Cancel
+              </button>
+              <button onClick={onDelete} className="btn btn-danger btn-square ml-auto">
+                Delete
               </button>
             </div>
           )}

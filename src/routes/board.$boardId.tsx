@@ -19,7 +19,7 @@ import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
-import { createCard, moveCard, updateCard, setCardLabels } from '#/lib/cards'
+import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import type { CardRow } from '#/lib/board-data'
@@ -204,6 +204,19 @@ const setCardLabelsFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const deleteCardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const cardId = (d as { cardId?: unknown })?.cardId
+    if (typeof cardId !== 'string') throw new Error('cardId required')
+    return { cardId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await deleteCard(supabase, data.cardId)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
@@ -239,6 +252,37 @@ function BoardView() {
 
   function closeCardDetail() {
     setSelectedCard(null)
+  }
+
+  // Deferred delete + undo: hide the card immediately, but only commit the DB
+  // delete after a grace window. Undo re-syncs from the server, where the card
+  // still exists — so nothing (comments/labels/attachments) is ever lost.
+  const [pendingDelete, setPendingDelete] = useState<CardRow | null>(null)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleDeleteCard(card: CardRow) {
+    const columnId = findColumnId(card.id)
+    if (!columnId) return
+    setSelectedCard(null)
+    setColumns((prev) =>
+      prev.map((col) =>
+        col.id === columnId ? { ...col, cards: col.cards.filter((c) => c.id !== card.id) } : col,
+      ),
+    )
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    setPendingDelete(card)
+    deleteTimerRef.current = setTimeout(() => {
+      deleteCardFn({ data: { cardId: card.id } }).then(() => router.invalidate())
+      deleteTimerRef.current = null
+      setPendingDelete(null)
+    }, 5000)
+  }
+
+  function undoDelete() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    deleteTimerRef.current = null
+    setPendingDelete(null)
+    router.invalidate() // card was never deleted server-side; refetch restores it
   }
 
   const sensors = useSensors(
@@ -464,9 +508,23 @@ function BoardView() {
             router.invalidate()
             closeCardDetail()
           }}
+          onDelete={() => handleDeleteCard(selectedCard)}
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
         />
+      )}
+
+      {pendingDelete && (
+        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(16,28,22,0.5)] gt-back">
+          <span>Card deleted</span>
+          <button
+            type="button"
+            onClick={undoDelete}
+            className="font-bold text-[var(--accent)] underline-offset-2 hover:underline"
+          >
+            Undo
+          </button>
+        </div>
       )}
     </main>
   )

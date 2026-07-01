@@ -15,6 +15,15 @@ export async function updateCard(
 }
 
 /**
+ * Delete a card. Comments, labels and attachments cascade via their FK
+ * `on delete cascade`. RLS restricts this to the board owner.
+ */
+export async function deleteCard(supabase: SupabaseClient, cardId: string): Promise<void> {
+  const { error } = await supabase.from('cards').delete().eq('id', cardId)
+  if (error) throw error
+}
+
+/**
  * Replace a card's labels (delete-then-insert).
  * An empty labelIds array clears all labels.
  */
