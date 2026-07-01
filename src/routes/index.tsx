@@ -3,6 +3,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import {
+  ArrowUpRight,
   BarChart3,
   CheckCircle2,
   ChevronRight,
@@ -285,6 +286,7 @@ function Home() {
             </button>
           </div>
         ) : (
+          <>
           <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
             {/* Left column: project + progress + activity */}
             <div className="flex flex-col gap-4">
@@ -503,6 +505,103 @@ function Home() {
               </div>
             </div>
           </div>
+
+          {/* Your projects — click a card to switch the dashboard above */}
+          <div className="mb-4 mt-10 flex items-baseline justify-between px-0.5">
+            <h2 className="display-title text-2xl font-bold text-[var(--ink)]">
+              Your projects
+            </h2>
+            <span className="text-[13px] font-semibold text-[var(--ink2)]">
+              {projects.length} project{projects.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+            {projects.map((p) => {
+              const accent = accentFor(p.id)
+              const total = p.tasks.length
+              const done = p.tasks.filter((t) => t.done).length
+              const pct = total ? Math.round((done / total) * 100) : 0
+              const selected = p.id === project.id
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(p.id)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className={`card card-hover flex flex-col gap-4 p-5 text-left ${
+                    selected ? 'ring-2 ring-[var(--accent)]' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: accent }}
+                      />
+                      <span className="truncate text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--ink2)]">
+                        Project
+                      </span>
+                    </span>
+                    <ArrowUpRight
+                      size={17}
+                      className="shrink-0 text-[var(--ink3)]"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div className="display-title text-[21px] font-bold leading-tight text-[var(--ink)]">
+                    {p.title}
+                  </div>
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-[var(--ink3)]">
+                      <span>
+                        {done}/{total} task{total === 1 ? '' : 's'}
+                      </span>
+                      <span>{pct}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--line)]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: accent }}
+                      />
+                    </div>
+                  </div>
+                  {p.members.length > 0 && (
+                    <div className="flex -space-x-2">
+                      {p.members.slice(0, 4).map((m, j) => (
+                        <Avatar key={j} name={m.name} url={m.avatar_url} />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+
+            <form
+              onSubmit={onCreate}
+              className="flex flex-col justify-center gap-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--line)] p-5"
+            >
+              <div className="display-title text-base font-bold text-[var(--ink2)]">
+                Start a new project
+              </div>
+              <input
+                placeholder="Project name…"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="field"
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="btn btn-primary btn-square w-full"
+              >
+                {busy ? 'Creating…' : 'Create project'}
+              </button>
+            </form>
+          </div>
+          </>
         )}
       </main>
     </>
