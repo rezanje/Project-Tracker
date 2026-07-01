@@ -522,18 +522,11 @@ function Home() {
               const total = p.tasks.length
               const done = p.tasks.filter((t) => t.done).length
               const pct = total ? Math.round((done / total) * 100) : 0
-              const selected = p.id === project.id
               return (
-                <button
+                <a
                   key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(p.id)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  className={`card card-hover flex flex-col gap-4 p-5 text-left ${
-                    selected ? 'ring-2 ring-[var(--accent)]' : ''
-                  }`}
+                  href={`/board/${p.id}`}
+                  className="card card-hover flex flex-col gap-4 p-5 no-underline"
                 >
                   <div className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-2">
@@ -575,7 +568,7 @@ function Home() {
                       ))}
                     </div>
                   )}
-                </button>
+                </a>
               )
             })}
 
