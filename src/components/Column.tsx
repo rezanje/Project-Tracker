@@ -35,9 +35,12 @@ export default function Column({ column, isOwner, onAddCard, onCardClick }: Colu
   const cardIds = column.cards.map((c) => c.id)
 
   const inner = (
-    <div ref={setNodeRef} className="island-shell w-72 shrink-0 rounded-2xl p-3">
-      <h3 className="mb-3 px-1 text-sm font-semibold text-[var(--sea-ink)]">
+    <div ref={setNodeRef} className="col-surface flex w-72 shrink-0 flex-col p-3">
+      <h3 className="mb-3 flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-[var(--sea-ink-soft)]">
         {column.title}
+        <span className="rounded-full bg-[var(--chip-bg)] px-1.5 text-[0.65rem] font-semibold text-[var(--sea-ink-soft)]">
+          {column.cards.length}
+        </span>
       </h3>
       <div className="flex flex-col gap-2">
         {column.cards.length === 0 ? (
@@ -55,18 +58,19 @@ export default function Column({ column, isOwner, onAddCard, onCardClick }: Colu
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="Add card…"
-              className="flex-1 rounded-lg border border-[rgba(23,58,64,0.2)] px-2 py-1.5 text-xs"
+              className="field flex-1 px-2 py-1.5 text-xs"
             />
             <button
               type="submit"
               disabled={busy}
-              className="rounded-lg bg-[var(--lagoon-deep)] px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              className="btn btn-primary px-2.5 py-1.5 text-xs"
+              aria-label="Add card"
             >
               +
             </button>
           </form>
           {addError && (
-            <p className="mt-1 px-1 text-xs text-red-600">Failed to add card.</p>
+            <p className="mt-1 px-1 text-xs text-[#b23b3b]">Failed to add card.</p>
           )}
         </>
       )}

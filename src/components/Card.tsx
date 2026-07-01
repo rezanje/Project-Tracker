@@ -35,16 +35,20 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
       {...attributes}
       {...(isDraggable ? listeners : {})}
       onClick={handleClick}
-      className="cursor-pointer rounded-lg border border-[rgba(23,58,64,0.18)] bg-white/60 p-2.5 text-sm shadow-sm transition-shadow hover:shadow-md"
+      className="card card-hover p-2.5 text-sm"
     >
       <p className="font-medium text-[var(--sea-ink)]">{card.title}</p>
-      {card.due_date && (
-        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">Due {card.due_date}</p>
-      )}
-      {card.card_labels.length > 0 && (
-        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-          {card.card_labels.length} label{card.card_labels.length > 1 ? 's' : ''}
-        </p>
+      {(card.due_date || card.card_labels.length > 0) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {card.due_date && (
+            <span className="chip">{card.due_date}</span>
+          )}
+          {card.card_labels.length > 0 && (
+            <span className="chip">
+              {card.card_labels.length} label{card.card_labels.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       )}
     </div>
   )

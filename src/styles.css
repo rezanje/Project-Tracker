@@ -27,9 +27,22 @@
   --link-bg-hover: rgba(255, 255, 255, 0.9);
   --hero-a: rgba(79, 184, 178, 0.36);
   --hero-b: rgba(47, 106, 74, 0.2);
+  /* Accent button: dark-enough teal for AA contrast with white ink */
+  --btn-bg: #1c6b6f;
+  --btn-bg-hover: #175a5e;
+  --btn-ink: #ffffff;
+  --card-bg: #ffffff;
+  --col-bg: rgba(23, 58, 64, 0.045);
+  --ring: rgba(50, 143, 151, 0.32);
 }
 
 :root[data-theme="dark"] {
+  --btn-bg: #67e0d6;
+  --btn-bg-hover: #7eeae0;
+  --btn-ink: #06171a;
+  --card-bg: #12242a;
+  --col-bg: rgba(141, 229, 219, 0.06);
+  --ring: rgba(96, 215, 207, 0.34);
   --sea-ink: #d7ece8;
   --sea-ink-soft: #afcdc8;
   --lagoon: #60d7cf;
@@ -72,6 +85,12 @@
     --link-bg-hover: rgba(24, 44, 49, 0.8);
     --hero-a: rgba(96, 215, 207, 0.18);
     --hero-b: rgba(110, 200, 154, 0.12);
+    --btn-bg: #67e0d6;
+    --btn-bg-hover: #7eeae0;
+    --btn-ink: #06171a;
+    --card-bg: #12242a;
+    --col-bg: rgba(141, 229, 219, 0.06);
+    --ring: rgba(96, 215, 207, 0.34);
   }
 }
 
@@ -89,42 +108,14 @@ body {
   margin: 0;
   color: var(--sea-ink);
   font-family: var(--font-sans);
+  /* Calm, near-solid surface. One faint top wash — no glow orbs, no grid. */
   background-color: var(--bg-base);
   background:
-    radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
-    radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
-    radial-gradient(720px 380px at 50% 115%, rgba(79, 184, 178, 0.1), transparent 68%),
-    linear-gradient(180deg, color-mix(in oklab, var(--sand) 68%, white) 0%, var(--foam) 44%, var(--bg-base) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--foam) 88%, var(--lagoon) 12%) 0%, var(--bg-base) 46%);
+  background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.28;
-  background:
-    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.8), transparent 34%),
-    radial-gradient(circle at 78% 26%, rgba(79, 184, 178, 0.2), transparent 42%),
-    radial-gradient(circle at 42% 82%, rgba(47, 106, 74, 0.14), transparent 36%);
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
 }
 
 a {
@@ -166,12 +157,91 @@ pre code {
 
 .island-shell {
   border: 1px solid var(--line);
-  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
-  box-shadow:
-    0 1px 0 var(--inset-glint) inset,
-    0 22px 44px rgba(30, 90, 72, 0.1),
-    0 6px 18px rgba(23, 58, 64, 0.08);
-  backdrop-filter: blur(4px);
+  background: var(--surface-strong);
+  box-shadow: 0 1px 2px rgba(23, 58, 64, 0.05);
+}
+
+/* ---- Product component classes (Linear-style restraint) ---- */
+.card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: 0 1px 2px rgba(23, 58, 64, 0.05);
+}
+.card-hover {
+  transition: border-color 160ms ease, transform 160ms ease;
+  cursor: pointer;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--lagoon-deep) 42%, var(--line));
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--sea-ink);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.field::placeholder { color: color-mix(in oklab, var(--sea-ink-soft) 78%, transparent); }
+.field:focus {
+  border-color: var(--lagoon-deep);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary { background: var(--btn-bg); color: var(--btn-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--btn-bg-hover); }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--sea-ink);
+}
+.btn-ghost:hover:not(:disabled) { background: color-mix(in oklab, var(--sea-ink) 6%, transparent); }
+.btn-danger {
+  background: transparent;
+  border-color: rgba(196, 71, 71, 0.4);
+  color: #b23b3b;
+}
+:root[data-theme="dark"] .btn-danger { color: #f0a0a0; border-color: rgba(240, 160, 160, 0.35); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--chip-line);
+  background: var(--chip-bg);
+  color: var(--sea-ink-soft);
+}
+
+/* Recessed column lane so the white cards read as the protagonist */
+.col-surface {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--col-bg);
 }
 
 .feature-card {

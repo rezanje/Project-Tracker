@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import Attachments from '#/components/Attachments'
 import Comments from '#/components/Comments'
 import type { CardRow } from '#/lib/board-data'
@@ -22,6 +23,8 @@ interface CardDetailProps {
   ) => Promise<void>
   onSetLabels: (cardId: string, labelIds: string[]) => Promise<void>
 }
+
+const labelCls = 'mb-1.5 block text-xs font-semibold text-[var(--sea-ink-soft)]'
 
 export default function CardDetail({
   card,
@@ -69,7 +72,6 @@ export default function CardDetail({
     }
   }
 
-  // Backdrop click closes the modal
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose()
   }
@@ -77,86 +79,72 @@ export default function CardDetail({
   const assignee = meta.members.find((m) => m.id === (card.assignee_id ?? ''))
 
   return (
-    // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 py-10"
       onClick={handleBackdropClick}
     >
-      {/* Panel */}
-      <div className="island-shell relative w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-        {/* Close button */}
+      <div className="card relative w-full max-w-lg p-6">
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 rounded-full p-1 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--sea-ink)]"
+          className="btn btn-ghost absolute right-3 top-3 h-8 w-8 p-0"
         >
-          ✕
+          <X size={16} aria-hidden="true" />
         </button>
 
         {isOwner ? (
-          // ── Owner: editable fields ────────────────────────────────────────────
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
-                Title
-              </label>
+              <label className={labelCls}>Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
-                className="w-full rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
+                className="field"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
-                Description
-              </label>
+              <label className={labelCls}>Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full resize-y rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
+                className="field resize-y"
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
-                Due Date
-              </label>
-              {/* due_date is a Postgres `date` (YYYY-MM-DD) — matches input type="date" directly */}
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
-                Assignee
-              </label>
-              <select
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                className="w-full rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
-              >
-                <option value="">— Unassigned —</option>
-                {meta.members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {meta.labels.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--sea-ink-soft)]">
-                  Labels
-                </label>
+                <label className={labelCls}>Due date</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="field"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Assignee</label>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="field"
+                >
+                  <option value="">— Unassigned —</option>
+                  {meta.members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {meta.labels.length > 0 ? (
+              <div>
+                <label className={labelCls}>Labels</label>
                 <div className="flex flex-wrap gap-2">
                   {meta.labels.map((label) => {
                     const active = selectedLabelIds.includes(label.id)
@@ -165,12 +153,12 @@ export default function CardDetail({
                         key={label.id}
                         type="button"
                         onClick={() => toggleLabel(label.id)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold text-white transition ${
                           active
                             ? 'ring-2 ring-[var(--lagoon-deep)] ring-offset-1'
-                            : 'opacity-60 hover:opacity-100'
+                            : 'opacity-55 hover:opacity-100'
                         }`}
-                        style={{ backgroundColor: label.color, color: '#fff' }}
+                        style={{ backgroundColor: label.color }}
                       >
                         {label.name}
                       </button>
@@ -178,73 +166,65 @@ export default function CardDetail({
                   })}
                 </div>
               </div>
-            )}
-
-            {meta.labels.length === 0 && (
+            ) : (
               <p className="text-xs text-[var(--sea-ink-soft)]">
-                No labels on this board yet. Labels can be created in board settings.
+                No labels on this board yet.
               </p>
             )}
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
 
-            {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
-            <Comments cardId={card.id} members={meta.members} />
-            {/* ── SLOT: Task 12 — Attachments ──────────────────────────────── */}
+            <div className="border-t border-[var(--line)] pt-4">
+              <Comments cardId={card.id} members={meta.members} />
+            </div>
             <Attachments cardId={card.id} boardId={boardId} />
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-[rgba(23,58,64,0.2)] px-4 py-2 text-sm text-[var(--sea-ink)] transition-colors hover:bg-[rgba(23,58,64,0.05)]"
-              >
+            <div className="flex justify-end gap-2 border-t border-[var(--line)] pt-4">
+              <button type="button" onClick={onClose} className="btn btn-ghost">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-full bg-[var(--lagoon-deep)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
+              <button type="submit" disabled={saving} className="btn btn-primary">
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </form>
         ) : (
-          // ── Client: read-only fields ──────────────────────────────────────────
           <div className="flex flex-col gap-4">
-            <h2 className="pr-6 text-xl font-bold text-[var(--sea-ink)]">{card.title}</h2>
+            <h2 className="display-title pr-8 text-xl font-bold text-[var(--sea-ink)]">
+              {card.title}
+            </h2>
 
             {card.description && (
               <div>
-                <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">
-                  Description
-                </p>
+                <p className={labelCls}>Description</p>
                 <p className="whitespace-pre-wrap text-sm text-[var(--sea-ink)]">
                   {card.description}
                 </p>
               </div>
             )}
 
-            <div>
-              <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">Due Date</p>
-              <p className="text-sm text-[var(--sea-ink)]">
-                {card.due_date ?? <span className="italic text-[var(--sea-ink-soft)]">None</span>}
-              </p>
-            </div>
-
-            <div>
-              <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">Assignee</p>
-              <p className="text-sm text-[var(--sea-ink)]">
-                {assignee?.name ?? (
-                  <span className="italic text-[var(--sea-ink-soft)]">Unassigned</span>
-                )}
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={labelCls}>Due date</p>
+                <p className="text-sm text-[var(--sea-ink)]">
+                  {card.due_date ?? (
+                    <span className="italic text-[var(--sea-ink-soft)]">None</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className={labelCls}>Assignee</p>
+                <p className="text-sm text-[var(--sea-ink)]">
+                  {assignee?.name ?? (
+                    <span className="italic text-[var(--sea-ink-soft)]">Unassigned</span>
+                  )}
+                </p>
+              </div>
             </div>
 
             {card.card_labels.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-semibold text-[var(--sea-ink-soft)]">Labels</p>
+                <p className={labelCls}>Labels</p>
                 <div className="flex flex-wrap gap-2">
                   {card.card_labels.map((cl) => {
                     const label = meta.labels.find((l) => l.id === cl.label_id)
@@ -263,16 +243,13 @@ export default function CardDetail({
               </div>
             )}
 
-            {/* ── SLOT: Task 11 — Comments ─────────────────────────────────── */}
-            <Comments cardId={card.id} members={meta.members} />
-            {/* ── SLOT: Task 12 — Attachments ──────────────────────────────── */}
+            <div className="border-t border-[var(--line)] pt-4">
+              <Comments cardId={card.id} members={meta.members} />
+            </div>
             <Attachments cardId={card.id} boardId={boardId} />
 
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={onClose}
-                className="rounded-full bg-[var(--lagoon-deep)] px-4 py-2 text-sm font-semibold text-white"
-              >
+            <div className="flex justify-end border-t border-[var(--line)] pt-4">
+              <button onClick={onClose} className="btn btn-primary">
                 Close
               </button>
             </div>

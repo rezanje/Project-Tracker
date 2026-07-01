@@ -143,7 +143,7 @@ export default function Comments({ cardId, members }: CommentsProps) {
     <div className="flex flex-col gap-2">
       <p className="text-xs font-semibold text-[var(--sea-ink-soft)]">Comments</p>
 
-      <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-lg border border-[rgba(23,58,64,0.2)] p-2">
+      <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-[10px] border border-[var(--line)] bg-[var(--col-bg)] p-2">
         {comments.length === 0 ? (
           <p className="text-xs italic text-[var(--sea-ink-soft)]">No comments yet.</p>
         ) : (
@@ -167,18 +167,18 @@ export default function Comments({ cardId, members }: CommentsProps) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Add a comment…"
-          className="flex-1 rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
+          className="field flex-1"
         />
         <button
           type="submit"
           disabled={posting || !body.trim()}
-          className="rounded-full bg-[var(--lagoon-deep)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="btn btn-primary shrink-0"
         >
           {posting ? 'Posting…' : 'Post'}
         </button>
       </form>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
     </div>
   )
 }

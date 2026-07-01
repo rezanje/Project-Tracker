@@ -39,45 +39,51 @@ function Signup() {
   }
 
   return (
-    <main className="page-wrap mx-auto max-w-sm px-4 pt-20">
-      <h1 className="mb-6 text-2xl font-bold text-[var(--sea-ink)]">Sign up</h1>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input
-          required
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2"
-        />
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2"
-        />
-        <input
-          type="password"
-          required
-          minLength={6}
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2"
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {loading ? 'Creating…' : 'Sign up'}
-        </button>
-      </form>
-      <p className="mt-4 text-sm text-[var(--sea-ink-soft)]">
-        Have an account? <Link to="/login">Log in</Link>
-      </p>
+    <main className="page-wrap flex min-h-[calc(100vh-8rem)] max-w-md items-center">
+      <div className="card w-full p-7">
+        <h1 className="display-title mb-1 text-2xl font-bold text-[var(--sea-ink)]">
+          Create your account
+        </h1>
+        <p className="mb-6 text-sm text-[var(--sea-ink-soft)]">
+          Start tracking projects in GenTrack.
+        </p>
+        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+          <input
+            required
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="field"
+          />
+          <input
+            type="email"
+            required
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="field"
+          />
+          <input
+            type="password"
+            required
+            minLength={6}
+            placeholder="Password (min 6 chars)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="field"
+          />
+          {error && <p className="text-sm text-[#b23b3b]">{error}</p>}
+          <button type="submit" disabled={loading} className="btn btn-primary mt-1">
+            {loading ? 'Creating…' : 'Sign up'}
+          </button>
+        </form>
+        <p className="mt-5 text-sm text-[var(--sea-ink-soft)]">
+          Have an account?{' '}
+          <Link to="/login" className="font-semibold">
+            Log in
+          </Link>
+        </p>
+      </div>
     </main>
   )
 }

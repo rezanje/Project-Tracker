@@ -365,40 +365,41 @@ function BoardView() {
   )
 
   return (
-    <main className="page-wrap mx-auto max-w-6xl px-4 pb-12 pt-14" style={{ position: 'relative' }}>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <Link to="/" className="text-sm text-[var(--sea-ink-soft)]">
-            ← Boards
-          </Link>
-          <h1 className="text-3xl font-bold text-[var(--sea-ink)]">{board.title}</h1>
+    <main className="page-wrap max-w-6xl pb-12 pt-8" style={{ position: 'relative' }}>
+      <Link
+        to="/"
+        className="text-sm text-[var(--sea-ink-soft)] no-underline hover:text-[var(--sea-ink)]"
+      >
+        ← Boards
+      </Link>
+      <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)]">
+            {board.title}
+          </h1>
+          <span className="chip capitalize">{board.role}</span>
         </div>
-        <span className="rounded-full bg-[rgba(79,184,178,0.18)] px-3 py-1 text-xs font-semibold text-[var(--lagoon-deep)]">
-          {board.role}
-        </span>
+        {isOwner && (
+          <form onSubmit={onInvite} className="flex w-full max-w-sm gap-2 sm:w-auto">
+            <input
+              type="email"
+              placeholder="Invite client by email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="field flex-1 sm:w-56"
+            />
+            <button type="submit" className="btn btn-ghost shrink-0">
+              Invite
+            </button>
+          </form>
+        )}
       </div>
-
-      {isOwner && (
-        <form onSubmit={onInvite} className="mb-6 flex max-w-md gap-2">
-          <input
-            type="email"
-            placeholder="Invite client by email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-[var(--lagoon-deep)] px-4 py-2 text-sm font-semibold text-white"
-          >
-            Invite
-          </button>
-        </form>
-      )}
       {result && <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">{result}</p>}
 
       {board.columns.length === 0 ? (
-        <p className="text-[var(--sea-ink-soft)]">No columns yet.</p>
+        <div className="card grid place-items-center px-6 py-16 text-center text-[var(--sea-ink-soft)]">
+          No columns yet.
+        </div>
       ) : (
         // Always wrap in DndContext so Column's useDroppable hook is inside a
         // context even for clients. Drag is a no-op for clients anyway: cards

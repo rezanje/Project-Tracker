@@ -75,7 +75,7 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
     <div className="flex flex-col gap-2">
       <p className="text-xs font-semibold text-[var(--sea-ink-soft)]">Attachments</p>
 
-      <div className="rounded-lg border border-[rgba(23,58,64,0.2)] p-2">
+      <div className="rounded-[10px] border border-[var(--line)] bg-[var(--col-bg)] p-2">
         {items.length === 0 ? (
           <p className="text-xs italic text-[var(--sea-ink-soft)]">No attachments yet.</p>
         ) : (
@@ -85,7 +85,7 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
                 <a
                   href={item.signedUrl}
                   download={item.filename}
-                  className="truncate text-[var(--sea-ink)] underline hover:text-[var(--lagoon-deep)]"
+                  className="truncate text-[var(--sea-ink)] hover:text-[var(--lagoon-deep)]"
                 >
                   {item.filename}
                 </a>
@@ -98,8 +98,8 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[rgba(23,58,64,0.2)] px-3 py-2 text-sm text-[var(--sea-ink)] transition-colors hover:bg-[rgba(23,58,64,0.05)]">
+      <div>
+        <label className="btn btn-ghost cursor-pointer">
           <span>{busy ? 'Uploading…' : 'Choose file'}</span>
           <input
             ref={fileInputRef}
@@ -111,7 +111,7 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
         </label>
       </div>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
     </div>
   )
 }
