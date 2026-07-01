@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { FileText, Upload } from 'lucide-react'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { uploadAttachment, type Attachment } from '#/lib/attachments'
 
@@ -72,34 +73,40 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold text-[var(--sea-ink-soft)]">Attachments</p>
+    <div className="flex flex-col gap-3.5">
+      <p className="display-title text-[15px] font-bold text-[var(--ink)]">Attachments</p>
 
-      <div className="rounded-[10px] border border-[var(--line)] bg-[var(--col-bg)] p-2">
-        {items.length === 0 ? (
-          <p className="text-xs italic text-[var(--sea-ink-soft)]">No attachments yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-1">
-            {items.map((item) => (
-              <li key={item.id} className="flex items-center gap-2 text-sm">
-                <a
-                  href={item.signedUrl}
-                  download={item.filename}
-                  className="truncate text-[var(--sea-ink)] hover:text-[var(--lagoon-deep)]"
-                >
-                  {item.filename}
-                </a>
-                <span className="shrink-0 text-[10px] text-[var(--sea-ink-soft)]">
-                  {new Date(item.created_at).toLocaleDateString()}
+      {items.length === 0 ? (
+        <p className="text-[13px] text-[var(--ink3)]">No files attached.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {items.map((item) => (
+            <li key={item.id}>
+              <a
+                href={item.signedUrl}
+                download={item.filename}
+                className="flex items-center gap-2.5 rounded-[12px] bg-[var(--col)] px-3 py-2.5 no-underline"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-[var(--line)] bg-[var(--card)] text-[var(--accent-ink)]">
+                  <FileText size={15} aria-hidden="true" />
                 </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-[var(--accent-ink)] underline">
+                    {item.filename}
+                  </span>
+                  <span className="block text-[11px] text-[var(--ink3)]">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div>
-        <label className="btn btn-ghost cursor-pointer">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--card)] px-4 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition hover:border-[var(--accent)]">
+          <Upload size={15} aria-hidden="true" />
           <span>{busy ? 'Uploading…' : 'Choose file'}</span>
           <input
             ref={fileInputRef}
@@ -111,7 +118,7 @@ export default function Attachments({ cardId, boardId }: AttachmentsProps) {
         </label>
       </div>
 
-      {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
     </div>
   )
 }

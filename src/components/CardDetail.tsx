@@ -24,7 +24,14 @@ interface CardDetailProps {
   onSetLabels: (cardId: string, labelIds: string[]) => Promise<void>
 }
 
-const labelCls = 'mb-1.5 block text-xs font-semibold text-[var(--sea-ink-soft)]'
+const fieldLabel =
+  'mb-1.5 text-xs font-bold uppercase tracking-[0.04em] text-[var(--ink3)]'
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2)
+  return chars.toUpperCase() || '?'
+}
 
 export default function CardDetail({
   card,
@@ -52,8 +59,7 @@ export default function CardDetail({
     )
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSave() {
     setSaving(true)
     setError(null)
     try {
@@ -80,181 +86,174 @@ export default function CardDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 py-10"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={handleBackdropClick}
     >
-      <div className="card relative w-full max-w-lg p-6">
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="btn btn-ghost absolute right-3 top-3 h-8 w-8 p-0"
-        >
-          <X size={16} aria-hidden="true" />
-        </button>
+      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+        {/* Header */}
+        <div className="relative px-6 pt-6">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-[18px] top-[18px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--ink)]"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
 
-        {isOwner ? (
-          <form onSubmit={handleSave} className="flex flex-col gap-4">
+          {isOwner ? (
+            meta.labels.length > 0 && (
+              <div className="mb-3.5 flex flex-wrap gap-2 pr-10">
+                {meta.labels.map((label) => {
+                  const active = selectedLabelIds.includes(label.id)
+                  return (
+                    <button
+                      key={label.id}
+                      type="button"
+                      onClick={() => toggleLabel(label.id)}
+                      className="rounded-full border px-3 py-1 text-xs font-bold text-white transition"
+                      style={
+                        active
+                          ? { backgroundColor: label.color, borderColor: label.color }
+                          : {
+                              backgroundColor: 'transparent',
+                              borderColor: 'var(--line)',
+                              color: 'var(--ink2)',
+                            }
+                      }
+                    >
+                      {label.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          ) : (
+            card.card_labels.length > 0 && (
+              <div className="mb-3.5 flex flex-wrap gap-2 pr-10">
+                {card.card_labels.map((cl) => {
+                  const label = meta.labels.find((l) => l.id === cl.label_id)
+                  if (!label) return null
+                  return (
+                    <span
+                      key={cl.label_id}
+                      className="rounded-full px-3 py-1 text-xs font-bold text-white"
+                      style={{ backgroundColor: label.color }}
+                    >
+                      {label.name}
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          )}
+
+          {isOwner ? (
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              aria-label="Card title"
+              className="display-title w-full bg-transparent pr-10 text-[25px] font-extrabold text-[var(--ink)] outline-none"
+            />
+          ) : (
+            <h2 className="display-title pr-10 text-[25px] font-extrabold text-[var(--ink)]">
+              {card.title}
+            </h2>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pb-6 pt-4">
+          <div className="mb-5 mt-4 grid grid-cols-2 gap-3.5">
             <div>
-              <label className={labelCls}>Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="field"
-              />
-            </div>
-
-            <div>
-              <label className={labelCls}>Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="field resize-y"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Due date</label>
+              <div className={fieldLabel}>Due date</div>
+              {isOwner ? (
                 <input
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="field"
                 />
-              </div>
-              <div>
-                <label className={labelCls}>Assignee</label>
+              ) : (
+                <div className="pt-0.5 text-sm font-semibold text-[var(--ink)]">
+                  {card.due_date ?? (
+                    <span className="italic text-[var(--ink3)]">None</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className={fieldLabel}>Assignee</div>
+              {isOwner ? (
                 <select
                   value={assigneeId}
                   onChange={(e) => setAssigneeId(e.target.value)}
-                  className="field"
+                  className="field cursor-pointer"
                 >
-                  <option value="">— Unassigned —</option>
+                  <option value="">Unassigned</option>
                   {meta.members.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
                   ))}
                 </select>
-              </div>
-            </div>
-
-            {meta.labels.length > 0 ? (
-              <div>
-                <label className={labelCls}>Labels</label>
-                <div className="flex flex-wrap gap-2">
-                  {meta.labels.map((label) => {
-                    const active = selectedLabelIds.includes(label.id)
-                    return (
-                      <button
-                        key={label.id}
-                        type="button"
-                        onClick={() => toggleLabel(label.id)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold text-white transition ${
-                          active
-                            ? 'ring-2 ring-[var(--lagoon-deep)] ring-offset-1'
-                            : 'opacity-55 hover:opacity-100'
-                        }`}
-                        style={{ backgroundColor: label.color }}
-                      >
-                        {label.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--sea-ink-soft)]">
-                No labels on this board yet.
-              </p>
-            )}
-
-            {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
-
-            <div className="border-t border-[var(--line)] pt-4">
-              <Comments cardId={card.id} members={meta.members} />
-            </div>
-            <Attachments cardId={card.id} boardId={boardId} />
-
-            <div className="flex justify-end gap-2 border-t border-[var(--line)] pt-4">
-              <button type="button" onClick={onClose} className="btn btn-ghost">
-                Cancel
-              </button>
-              <button type="submit" disabled={saving} className="btn btn-primary">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <h2 className="display-title pr-8 text-xl font-bold text-[var(--sea-ink)]">
-              {card.title}
-            </h2>
-
-            {card.description && (
-              <div>
-                <p className={labelCls}>Description</p>
-                <p className="whitespace-pre-wrap text-sm text-[var(--sea-ink)]">
-                  {card.description}
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className={labelCls}>Due date</p>
-                <p className="text-sm text-[var(--sea-ink)]">
-                  {card.due_date ?? (
-                    <span className="italic text-[var(--sea-ink-soft)]">None</span>
+              ) : (
+                <div className="flex items-center gap-2 pt-0.5">
+                  {assignee && (
+                    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                      {initials(assignee.name)}
+                    </span>
                   )}
-                </p>
-              </div>
-              <div>
-                <p className={labelCls}>Assignee</p>
-                <p className="text-sm text-[var(--sea-ink)]">
-                  {assignee?.name ?? (
-                    <span className="italic text-[var(--sea-ink-soft)]">Unassigned</span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {card.card_labels.length > 0 && (
-              <div>
-                <p className={labelCls}>Labels</p>
-                <div className="flex flex-wrap gap-2">
-                  {card.card_labels.map((cl) => {
-                    const label = meta.labels.find((l) => l.id === cl.label_id)
-                    if (!label) return null
-                    return (
-                      <span
-                        key={cl.label_id}
-                        className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-                        style={{ backgroundColor: label.color }}
-                      >
-                        {label.name}
-                      </span>
-                    )
-                  })}
+                  <span className="text-sm font-semibold text-[var(--ink)]">
+                    {assignee?.name ?? (
+                      <span className="italic text-[var(--ink3)]">Unassigned</span>
+                    )}
+                  </span>
                 </div>
-              </div>
-            )}
-
-            <div className="border-t border-[var(--line)] pt-4">
-              <Comments cardId={card.id} members={meta.members} />
-            </div>
-            <Attachments cardId={card.id} boardId={boardId} />
-
-            <div className="flex justify-end border-t border-[var(--line)] pt-4">
-              <button onClick={onClose} className="btn btn-primary">
-                Close
-              </button>
+              )}
             </div>
           </div>
-        )}
+
+          <div className="mb-5">
+            <div className={fieldLabel}>Description</div>
+            {isOwner ? (
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add a description…"
+                className="field min-h-[88px] resize-y leading-relaxed"
+              />
+            ) : (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--ink2)]">
+                {card.description || (
+                  <span className="italic text-[var(--ink3)]">No description.</span>
+                )}
+              </p>
+            )}
+          </div>
+
+          {isOwner && (
+            <div className="mb-5 flex gap-2.5">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="btn btn-primary btn-square"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={onClose} className="btn btn-ghost btn-square">
+                Cancel
+              </button>
+            </div>
+          )}
+          {error && <p className="mb-4 text-[13px] text-[var(--danger)]">{error}</p>}
+
+          <div className="my-5 h-px bg-[var(--line)]" />
+
+          <div className="mb-6">
+            <Comments cardId={card.id} members={meta.members} />
+          </div>
+          <Attachments cardId={card.id} boardId={boardId} />
+        </div>
       </div>
     </div>
   )

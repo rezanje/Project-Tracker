@@ -26,6 +26,12 @@ function shortTime(iso: string): string {
   })
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2)
+  return chars.toUpperCase() || '?'
+}
+
 export default function Comments({ cardId, members }: CommentsProps) {
   const [comments, setComments] = useState<CommentItem[]>([])
   const [body, setBody] = useState('')
@@ -140,45 +146,56 @@ export default function Comments({ cardId, members }: CommentsProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold text-[var(--sea-ink-soft)]">Comments</p>
+    <div className="flex flex-col gap-3.5">
+      <p className="display-title text-[15px] font-bold text-[var(--ink)]">Comments</p>
 
-      <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-[10px] border border-[var(--line)] bg-[var(--col-bg)] p-2">
+      <div className="flex max-h-56 flex-col gap-3.5 overflow-y-auto">
         {comments.length === 0 ? (
-          <p className="text-xs italic text-[var(--sea-ink-soft)]">No comments yet.</p>
+          <p className="text-[13px] text-[var(--ink3)]">
+            No comments yet. Start the conversation.
+          </p>
         ) : (
           comments.map((c) => (
-            <div key={c.id} className="text-sm">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-[var(--sea-ink)]">{c.authorName}</span>
-                <span className="shrink-0 text-[10px] text-[var(--sea-ink-soft)]">
-                  {shortTime(c.created_at)}
-                </span>
+            <div key={c.id} className="flex gap-2.5">
+              <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
+                {initials(c.authorName)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[13px] font-bold text-[var(--ink)]">
+                    {c.authorName}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-[var(--ink3)]">
+                    {shortTime(c.created_at)}
+                  </span>
+                </div>
+                <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[var(--ink)]">
+                  {c.body}
+                </p>
               </div>
-              <p className="whitespace-pre-wrap text-[var(--sea-ink)]">{c.body}</p>
             </div>
           ))
         )}
       </div>
 
-      <form onSubmit={handlePost} className="flex items-end gap-2">
+      <form onSubmit={handlePost} className="flex items-center gap-2">
         <input
           type="text"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Add a comment…"
+          placeholder="Write a comment…"
           className="field flex-1"
         />
         <button
           type="submit"
           disabled={posting || !body.trim()}
-          className="btn btn-primary shrink-0"
+          className="btn btn-primary btn-square shrink-0"
         >
           {posting ? 'Posting…' : 'Post'}
         </button>
       </form>
 
-      {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
     </div>
   )
 }

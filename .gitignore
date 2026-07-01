@@ -8,3 +8,4 @@ dist
 .vercel
 .superpowers
 .cta.json
+.DS_Store
