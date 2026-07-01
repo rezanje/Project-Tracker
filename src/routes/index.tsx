@@ -186,7 +186,10 @@ function Home() {
       <main className="page-wrap relative z-[1] pb-32 pt-9 gt-fade">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink3)]">
+            <p
+              suppressHydrationWarning
+              className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink3)]"
+            >
               {new Date().toLocaleDateString(undefined, {
                 weekday: 'long',
                 month: 'short',
