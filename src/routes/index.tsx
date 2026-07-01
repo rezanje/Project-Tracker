@@ -117,7 +117,7 @@ type HomeData = {
 }
 
 export const Route = createFileRoute('/')({
-  component: Boards,
+  component: Home,
   loader: async () => {
     const [boards, home] = await Promise.all([fetchBoards(), fetchHome()])
     return { boards, home }
@@ -133,9 +133,43 @@ function accentFor(id: string): string {
   return ACCENTS[h % ACCENTS.length]
 }
 
-function Boards() {
+function personInitials(name: string | null): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  const chars = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')
+  return chars.toUpperCase() || '?'
+}
+
+function Avatar({
+  name,
+  url,
+  className = '',
+}: {
+  name: string | null
+  url?: string | null
+  className?: string
+}) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name ?? ''}
+        className={`h-7 w-7 rounded-full border-2 border-[var(--card)] object-cover ${className}`}
+      />
+    )
+  }
+  return (
+    <span
+      className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] bg-[var(--accent)] text-[11px] font-bold text-white ${className}`}
+    >
+      {personInitials(name)}
+    </span>
+  )
+}
+
+function Home() {
   const router = useRouter()
-  const { boards } = Route.useLoaderData()
+  const { boards, home } = Route.useLoaderData()
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const newBoardRef = useRef<HTMLInputElement>(null)
@@ -154,23 +188,129 @@ function Boards() {
     <>
       <div className="meadow-bg" aria-hidden="true" />
       <main className="page-wrap relative z-[1] pb-32 pt-9 gt-fade">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <h1 className="display-title text-4xl font-extrabold leading-none text-[var(--ink)]">
-              Your projects
+            <p className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink3)]">
+              {new Date().toLocaleDateString(undefined, {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </p>
+            <h1 className="display-title mt-1 text-4xl font-extrabold leading-none text-[var(--ink)]">
+              Hi, {home.name ?? 'there'}
             </h1>
             <p className="mt-3 text-[15px] text-[var(--ink2)]">
-              Here's where your work stands today.
+              Here's where your projects stand today.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => newBoardRef.current?.focus()}
-            className="btn btn-primary px-5 py-3 text-sm"
-          >
-            <span className="text-[17px] leading-none">+</span>
-            New project
-          </button>
+          <div className="flex items-center gap-4">
+            {home.members.length > 0 && (
+              <div className="flex -space-x-2">
+                {home.members.map((m, i) => (
+                  <Avatar key={i} name={m.name} url={m.avatar_url} />
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => newBoardRef.current?.focus()}
+              className="btn btn-primary px-5 py-3 text-sm"
+            >
+              <span className="text-[17px] leading-none">+</span>
+              New project
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-8 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          {/* Today's tasks */}
+          <section className="card p-5">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="display-title text-xl font-bold text-[var(--ink)]">
+                Today's tasks
+              </h2>
+              <span className="text-[13px] font-semibold text-[var(--ink2)]">
+                {home.todayTasks.length} due
+              </span>
+            </div>
+
+            {home.todayTasks.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[var(--ink3)]">
+                Nothing due today. Clear runway.
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-[var(--line)]">
+                {home.todayTasks.map((t) => (
+                  <li key={t.id} className="flex items-center gap-4 py-3.5">
+                    <div className="min-w-0 flex-1">
+                      {t.label && (
+                        <span
+                          className="mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold"
+                          style={{ background: `${t.label.color}22`, color: t.label.color }}
+                        >
+                          {t.label.name}
+                        </span>
+                      )}
+                      <div className="truncate font-bold text-[var(--ink)]">{t.title}</div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-3 text-[12px] text-[var(--ink3)]">
+                        <span>{t.status}</span>
+                        <span>Due {t.due ? new Date(t.due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}</span>
+                        {t.owner?.name && <span>{t.owner.name}</span>}
+                      </div>
+                    </div>
+                    {t.owner && <Avatar name={t.owner.name} url={t.owner.avatar_url} />}
+                    <a
+                      href={`/board/${t.boardId}`}
+                      className="btn btn-ghost shrink-0 px-4 py-2 text-sm no-underline"
+                    >
+                      Open
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Focus mode / Spotify */}
+          <section className="card flex flex-col gap-4 p-5">
+            <h2 className="display-title text-xl font-bold text-[var(--ink)]">Focus mode</h2>
+            <p className="text-sm text-[var(--ink2)]">Lo-fi & instrumental while you work.</p>
+            <iframe
+              src="https://open.spotify.com/embed/playlist/37i9dQZF1DZ06evO4pXYMW?utm_source=generator"
+              width="100%"
+              height="352"
+              style={{ border: 0, borderRadius: 12 }}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title="Focus playlist"
+            />
+          </section>
+        </div>
+
+        {/* Activity strip */}
+        <div className="card mb-8 flex items-center gap-8 p-5">
+          <div>
+            <div className="display-title text-3xl font-extrabold text-[var(--ink)]">
+              {home.stats.total === 0 ? '0%' : `${Math.round((home.stats.done / home.stats.total) * 100)}%`}
+            </div>
+            <div className="text-[12px] font-semibold text-[var(--ink3)]">Progress</div>
+          </div>
+          <div className="h-10 w-px bg-[var(--line)]" />
+          <div className="flex gap-8">
+            <div>
+              <div className="display-title text-2xl font-bold text-[var(--ink)]">{home.stats.total}</div>
+              <div className="text-[12px] font-semibold text-[var(--ink3)]">Tasks</div>
+            </div>
+            <div>
+              <div className="display-title text-2xl font-bold text-[var(--ink)]">{home.stats.active}</div>
+              <div className="text-[12px] font-semibold text-[var(--ink3)]">Active</div>
+            </div>
+            <div>
+              <div className="display-title text-2xl font-bold text-[var(--ink)]">{home.stats.done}</div>
+              <div className="text-[12px] font-semibold text-[var(--ink3)]">Done</div>
+            </div>
+          </div>
         </div>
 
         <div className="mb-4 flex items-baseline justify-between px-0.5">
