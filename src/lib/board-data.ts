@@ -15,7 +15,19 @@ export type ColumnRow = {
   position: number
   cards: CardRow[]
 }
-export type BoardWithColumns = {
+export type ProjectMeta = {
+  description: string | null
+  type: string | null
+  pic: string | null
+  status: string
+  client_name: string | null
+  start_date: string | null
+  deadline: string | null
+  priority: string | null
+  // Owner-only: null for client viewers (RLS blocks the finance table for them).
+  value_idr: number | null
+}
+export type BoardWithColumns = ProjectMeta & {
   id: string
   title: string
   role: string
@@ -33,7 +45,9 @@ export async function loadBoard(
 ): Promise<BoardWithColumns> {
   const { data: board, error } = await supabase
     .from('boards')
-    .select('id,title')
+    .select(
+      'id,title,description,type,pic,status,client_name,start_date,deadline,priority',
+    )
     .eq('id', boardId)
     .single()
   if (error || !board) throw new Error('board not found')
@@ -65,10 +79,34 @@ export async function loadBoard(
     ),
   }))
 
+  const role = membership?.role ?? 'client'
+
+  // Financials are owner-only; RLS also blocks the row for clients, so this
+  // query simply returns nothing for them — the guard just avoids the round-trip.
+  let value_idr: number | null = null
+  if (role === 'owner') {
+    const { data: fin } = await supabase
+      .from('project_finance')
+      .select('value_idr')
+      .eq('board_id', boardId)
+      .maybeSingle()
+    value_idr = fin?.value_idr ?? 0
+  }
+
+  const b = board as Record<string, unknown>
   return {
     id: board.id,
     title: board.title,
-    role: membership?.role ?? 'client',
+    role,
+    description: (b.description as string | null) ?? null,
+    type: (b.type as string | null) ?? null,
+    pic: (b.pic as string | null) ?? null,
+    status: (b.status as string) ?? 'active',
+    client_name: (b.client_name as string | null) ?? null,
+    start_date: (b.start_date as string | null) ?? null,
+    deadline: (b.deadline as string | null) ?? null,
+    priority: (b.priority as string | null) ?? null,
+    value_idr,
     columns: cols,
   }
 }

@@ -31,3 +31,37 @@ export async function listMyBoards(supabase: SupabaseClient): Promise<Board[]> {
   const { data } = await supabase.from('boards').select('*').order('created_at')
   return data ?? []
 }
+
+export type BoardMetaUpdate = Partial<{
+  title: string
+  description: string | null
+  type: string | null
+  pic: string | null
+  status: string
+  client_name: string | null
+  start_date: string | null
+  deadline: string | null
+  priority: string | null
+}>
+
+/** Update project metadata. RLS restricts this to the board owner. */
+export async function updateBoard(
+  supabase: SupabaseClient,
+  boardId: string,
+  fields: BoardMetaUpdate,
+): Promise<void> {
+  const { error } = await supabase.from('boards').update(fields).eq('id', boardId)
+  if (error) throw error
+}
+
+/** Upsert the owner-only project value (whole rupiah). RLS restricts to owner. */
+export async function setBoardFinance(
+  supabase: SupabaseClient,
+  boardId: string,
+  valueIdr: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('project_finance')
+    .upsert({ board_id: boardId, value_idr: valueIdr })
+  if (error) throw error
+}

@@ -45,7 +45,15 @@ type Task = {
   owner: Member | null
   label: { name: string; color: string } | null
 }
-type Project = { id: string; title: string; tasks: Task[]; members: Member[] }
+type Project = {
+  id: string
+  title: string
+  type: string | null
+  projectStatus: string
+  value: number // owner-only project value in whole rupiah; 0 for non-owned
+  tasks: Task[]
+  members: Member[]
+}
 
 // Single server fn → single requireUser/getUser. Two parallel auth'd server
 // fns raced to refresh the same single-use Supabase token, corrupting the
@@ -54,15 +62,23 @@ const fetchHome = createServerFn({ method: 'GET' }).handler(async () => {
   const headers = new Headers()
   const { user, supabase } = await requireUser(getRequest(), headers)
 
-  const [{ data: me }, { data: boardRows }] = await Promise.all([
+  const [{ data: me }, { data: boardRows }, { data: finance }] = await Promise.all([
     supabase.from('profiles').select('name').eq('id', user.id).single(),
     supabase
       .from('boards')
       .select(
-        'id,title,columns(title,cards(id,title,due_date,card_labels(labels(name,color)),assignee:profiles!assignee_id(name,avatar_url))),board_members(profiles(id,name,avatar_url))',
+        'id,title,type,status,columns(title,cards(id,title,due_date,card_labels(labels(name,color)),assignee:profiles!assignee_id(name,avatar_url))),board_members(profiles(id,name,avatar_url))',
       )
       .order('created_at'),
+    // RLS returns only the caller's owned boards, so the total is inherently
+    // owner-scoped and clients never see other people's values.
+    supabase.from('project_finance').select('board_id,value_idr'),
   ])
+
+  const valueByBoard = new Map<string, number>()
+  for (const f of (finance ?? []) as Array<{ board_id: string; value_idr: number }>) {
+    valueByBoard.set(f.board_id, Number(f.value_idr) || 0)
+  }
 
   // Nested embeds arrive as object or single-element array depending on the
   // relationship; normalise defensively.
@@ -102,11 +118,21 @@ const fetchHome = createServerFn({ method: 'GET' }).handler(async () => {
         members.push({ name: p.name, avatar_url: p.avatar_url })
       }
     }
-    return { id: b.id as string, title: b.title as string, tasks, members }
+    return {
+      id: b.id as string,
+      title: b.title as string,
+      type: (b.type as string | null) ?? null,
+      projectStatus: (b.status as string) ?? 'active',
+      value: valueByBoard.get(b.id as string) ?? 0,
+      tasks,
+      members,
+    }
   })
 
+  const totalValue = [...valueByBoard.values()].reduce((a, b) => a + b, 0)
+
   flush(headers)
-  return { name: me?.name ?? null, projects }
+  return { name: me?.name ?? null, projects, totalValue }
 })
 
 export const Route = createFileRoute('/')({
@@ -165,7 +191,7 @@ function fmtDue(due: string | null): string {
 
 function Home() {
   const router = useRouter()
-  const { name, projects } = Route.useLoaderData()
+  const { name, projects, totalValue } = Route.useLoaderData()
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -513,6 +539,7 @@ function Home() {
             </h2>
             <span className="text-[13px] font-semibold text-[var(--ink2)]">
               {projects.length} project{projects.length === 1 ? '' : 's'}
+              {totalValue > 0 && ` · Rp ${totalValue.toLocaleString('id-ID')}`}
             </span>
           </div>
 
@@ -535,7 +562,7 @@ function Home() {
                         style={{ background: accent }}
                       />
                       <span className="truncate text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--ink2)]">
-                        Project
+                        {p.type ?? 'Project'}
                       </span>
                     </span>
                     <ArrowUpRight
@@ -546,6 +573,16 @@ function Home() {
                   </div>
                   <div className="display-title text-[21px] font-bold leading-tight text-[var(--ink)]">
                     {p.title}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[var(--col)] px-2.5 py-0.5 text-[11px] font-bold capitalize text-[var(--ink2)]">
+                      {p.projectStatus.replace('_', ' ')}
+                    </span>
+                    {p.value > 0 && (
+                      <span className="text-[11px] font-bold text-[var(--accent-ink)]">
+                        Rp {p.value.toLocaleString('id-ID')}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-[var(--ink3)]">

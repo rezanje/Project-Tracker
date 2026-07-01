@@ -20,8 +20,10 @@ import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
+import { updateBoard, setBoardFinance, type BoardMetaUpdate } from '#/lib/boards'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
+import ProjectEdit from '#/components/ProjectEdit'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
@@ -217,6 +219,43 @@ const deleteCardFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const META_KEYS = [
+  'title', 'description', 'type', 'pic', 'status', 'client_name', 'start_date', 'deadline', 'priority',
+] as const
+
+const updateBoardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, fields } = (d ?? {}) as { boardId?: unknown; fields?: unknown }
+    if (typeof boardId !== 'string') throw new Error('boardId required')
+    const f = (fields ?? {}) as Record<string, unknown>
+    const out: Record<string, string | null> = {}
+    for (const k of META_KEYS) {
+      const v = f[k]
+      if (typeof v === 'string') out[k] = v
+      else if (v === null) out[k] = null
+    }
+    return { boardId, fields: out as BoardMetaUpdate }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await updateBoard(supabase, data.boardId, data.fields)
+    flush(headers)
+  })
+
+const setFinanceFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, valueIdr } = (d ?? {}) as { boardId?: unknown; valueIdr?: unknown }
+    if (typeof boardId !== 'string') throw new Error('boardId required')
+    return { boardId, valueIdr: Math.max(0, Math.floor(Number(valueIdr) || 0)) }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await setBoardFinance(supabase, data.boardId, data.valueIdr)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
@@ -236,6 +275,7 @@ function BoardView() {
   // Selected card for detail panel
   const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
   const [boardMeta, setBoardMeta] = useState<BoardMeta | null>(null)
+  const [editing, setEditing] = useState(false)
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
@@ -447,10 +487,50 @@ function BoardView() {
               {board.role}
             </span>
           </div>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {board.type && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                style={{ background: `${accentFor(board.type)}22`, color: accentFor(board.type) }}
+              >
+                {board.type}
+              </span>
+            )}
+            <span className="rounded-full bg-[var(--col)] px-2.5 py-1 text-[11px] font-bold capitalize text-[var(--ink2)]">
+              {board.status.replace('_', ' ')}
+            </span>
+            {board.priority && (
+              <span className="text-[12px] font-semibold capitalize text-[var(--ink3)]">
+                {board.priority} priority
+              </span>
+            )}
+            {board.client_name && (
+              <span className="text-[12px] text-[var(--ink3)]">· {board.client_name}</span>
+            )}
+            {board.deadline && (
+              <span className="text-[12px] text-[var(--ink3)]">
+                · Due {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+            {board.pic && <span className="text-[12px] text-[var(--ink3)]">· PIC {board.pic}</span>}
+            {isOwner && board.value_idr != null && (
+              <span className="text-[12px] font-bold text-[var(--accent-ink)]">
+                · Rp {board.value_idr.toLocaleString('id-ID')}
+              </span>
+            )}
+          </div>
         </div>
 
         {isOwner ? (
           <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="btn btn-ghost shrink-0"
+            >
+              Edit project
+            </button>
             <form onSubmit={onInvite} className="flex w-full gap-2 sm:w-auto">
               <input
                 type="email"
@@ -511,6 +591,22 @@ function BoardView() {
           onDelete={() => handleDeleteCard(selectedCard)}
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
+        />
+      )}
+
+      {editing && (
+        <ProjectEdit
+          board={board}
+          typeSuggestions={['Design', 'Development', 'Branding', 'Marketing', 'Consulting', 'Content']}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            router.invalidate()
+          }}
+          onSave={async (fields, valueIdr) => {
+            await updateBoardFn({ data: { boardId: board.id, fields } })
+            await setFinanceFn({ data: { boardId: board.id, valueIdr } })
+          }}
         />
       )}
 
