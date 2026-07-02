@@ -24,6 +24,7 @@ import { updateBoard, setBoardFinance, type BoardMetaUpdate } from '#/lib/boards
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import ProjectEdit from '#/components/ProjectEdit'
+import TaskCreate from '#/components/TaskCreate'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
@@ -222,6 +223,29 @@ const deleteCardFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const addTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    if (typeof f.columnId !== 'string' || typeof f.title !== 'string' || !f.title.trim())
+      throw new Error('columnId and title required')
+    const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+    return {
+      columnId: f.columnId,
+      title: f.title.trim(),
+      due_date: s(f.due_date),
+      assignee_id: s(f.assignee_id),
+      category: s(f.category),
+      description: s(f.description),
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { columnId, title, ...extra } = data
+    await createCard(supabase, columnId, title, extra)
+    flush(headers)
+  })
+
 const META_KEYS = [
   'title', 'description', 'type', 'pic', 'status', 'client_name', 'start_date', 'deadline', 'priority',
 ] as const
@@ -279,10 +303,15 @@ function BoardView() {
   const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
   const [boardMeta, setBoardMeta] = useState<BoardMeta | null>(null)
   const [editing, setEditing] = useState(false)
+  const [addingTask, setAddingTask] = useState(false)
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
   }, [initialBoard])
+  // Load members/labels on mount so the Add-task assignee list is ready.
+  useEffect(() => {
+    if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
+  }, [initialBoard.id, boardMeta])
   const board = { ...initialBoard, columns }
 
   async function openCardDetail(card: CardRow) {
@@ -527,13 +556,22 @@ function BoardView() {
 
         {isOwner ? (
           <div className="flex flex-col items-end gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="btn btn-ghost shrink-0"
-            >
-              Edit project
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAddingTask(true)}
+                className="btn btn-primary shrink-0"
+              >
+                + Add task
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="btn btn-ghost shrink-0"
+              >
+                Edit project
+              </button>
+            </div>
             <form onSubmit={onInvite} className="flex w-full gap-2 sm:w-auto">
               <input
                 type="email"
@@ -595,6 +633,20 @@ function BoardView() {
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
           categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
+        />
+      )}
+
+      {addingTask && (
+        <TaskCreate
+          columns={columns.map((c) => ({ id: c.id, title: c.title }))}
+          members={(boardMeta ?? { members: [], labels: [] }).members}
+          categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
+          onClose={() => setAddingTask(false)}
+          onCreated={() => {
+            setAddingTask(false)
+            router.invalidate()
+          }}
+          onCreate={(t) => addTaskFn({ data: t })}
         />
       )}
 
