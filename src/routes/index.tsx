@@ -196,6 +196,7 @@ function Home() {
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [createErr, setCreateErr] = useState<string | null>(null)
 
   const project =
     projects.find((p) => p.id === selectedId) ?? projects[0] ?? null
@@ -221,12 +222,18 @@ function Home() {
     e.preventDefault()
     if (!title.trim()) return
     setBusy(true)
-    const board = await newBoard({ data: { title } })
-    setTitle('')
-    setBusy(false)
-    setCreating(false)
-    setSelectedId(board.id)
-    router.invalidate()
+    setCreateErr(null)
+    try {
+      const board = await newBoard({ data: { title } })
+      setTitle('')
+      setCreating(false)
+      setSelectedId(board.id)
+      router.invalidate()
+    } catch {
+      setCreateErr('Could not create project. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -292,6 +299,9 @@ function Home() {
             >
               Cancel
             </button>
+            {createErr && (
+              <p className="w-full text-[13px] font-semibold text-[var(--danger)]">{createErr}</p>
+            )}
           </form>
         )}
 
@@ -629,6 +639,9 @@ function Home() {
               >
                 {busy ? 'Creating…' : 'Create project'}
               </button>
+              {createErr && (
+                <p className="text-[13px] font-semibold text-[var(--danger)]">{createErr}</p>
+              )}
             </form>
           </div>
           </>

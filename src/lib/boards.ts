@@ -17,13 +17,14 @@ export async function createBoard(
   userId: string,
   title: string,
 ): Promise<{ id: string }> {
-  const { data, error } = await supabase
-    .from('boards')
-    .insert({ title, owner_id: userId })
-    .select('id')
-    .single()
+  // Generate the id client-side and skip RETURNING. The boards SELECT policy
+  // (is_board_member, which is `stable`) can't see the owner membership row the
+  // after-insert trigger adds within the same statement, so insert().select()
+  // trips RLS with "new row violates row-level security policy".
+  const id = crypto.randomUUID()
+  const { error } = await supabase.from('boards').insert({ id, title, owner_id: userId })
   if (error) throw error
-  return data
+  return { id }
 }
 
 /** Boards the caller can see — RLS already limits this to member boards. */
