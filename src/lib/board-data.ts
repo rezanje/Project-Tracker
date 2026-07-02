@@ -6,6 +6,7 @@ export type CardRow = {
   description: string | null
   due_date: string | null
   assignee_id: string | null
+  category: string | null
   position: number
   card_labels: { label_id: string }[]
 }
@@ -55,7 +56,7 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,description,due_date,assignee_id,position,card_labels(label_id))',
+      'id,title,position,cards(id,title,description,due_date,assignee_id,category,position,card_labels(label_id))',
     )
     .eq('board_id', boardId)
     .order('position')
@@ -109,4 +110,22 @@ export async function loadBoard(
     value_idr,
     columns: cols,
   }
+}
+
+/** Sorted, unique, non-empty category names across the given cards. */
+export function distinctCategories(cards: { category: string | null }[]): string[] {
+  const set = new Set<string>()
+  for (const c of cards) if (c.category) set.add(c.category)
+  return [...set].sort()
+}
+
+/** Bucket cards by category; null/empty categories fall into "Uncategorised". */
+export function groupByCategory(cards: CardRow[]): { category: string; cards: CardRow[] }[] {
+  const map = new Map<string, CardRow[]>()
+  for (const c of cards) {
+    const key = c.category ?? 'Uncategorised'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(c)
+  }
+  return [...map.entries()].map(([category, cards]) => ({ category, cards }))
 }

@@ -1,7 +1,24 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
-import { loadBoard } from './board-data'
+import { distinctCategories, groupByCategory, loadBoard } from './board-data'
+
+test('distinctCategories returns sorted unique non-null categories', () => {
+  const cards = [
+    { category: 'Design' }, { category: null }, { category: 'Dev' }, { category: 'Design' },
+  ]
+  expect(distinctCategories(cards)).toEqual(['Design', 'Dev'])
+})
+
+test('groupByCategory buckets by category with an Uncategorised bucket', () => {
+  const mk = (id: string, category: string | null) => ({
+    id, title: id, description: null, due_date: null, assignee_id: null,
+    category, position: 0, card_labels: [],
+  })
+  const groups = groupByCategory([mk('a', 'Design'), mk('b', null), mk('c', 'Design')])
+  expect(groups.find((g) => g.category === 'Design')!.cards.map((c) => c.id)).toEqual(['a', 'c'])
+  expect(groups.find((g) => g.category === 'Uncategorised')!.cards.map((c) => c.id)).toEqual(['b'])
+})
 
 const env = Object.fromEntries(
   readFileSync('.dev.vars', 'utf8')
@@ -54,8 +71,10 @@ test('loadBoard returns columns with position-sorted cards + caller role', async
     const result = await loadBoard(userClient, boardId!)
     expect(result.title).toBe('View Board')
     expect(result.role).toBe('owner')
-    expect(result.columns).toHaveLength(1)
-    expect(result.columns[0].cards.map((c) => c.title)).toEqual(['First', 'Second'])
+    // The on_board_created trigger seeds Backlog/In Progress/Done, plus our "To Do".
+    expect(result.columns).toHaveLength(4)
+    const todo = result.columns.find((c) => c.title === 'To Do')!
+    expect(todo.cards.map((c) => c.title)).toEqual(['First', 'Second'])
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     await admin.auth.admin.deleteUser(uid)
