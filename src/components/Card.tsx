@@ -15,6 +15,13 @@ function shortDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+const CAT_COLORS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+export function catColor(s: string): string {
+  let h = 0
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return CAT_COLORS[h % CAT_COLORS.length]
+}
+
 export default function Card({ card, isDraggable, onCardClick }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: !isDraggable })
@@ -49,6 +56,15 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
       <p className="text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
         {card.title}
       </p>
+
+      {card.category && (
+        <span
+          className="mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold"
+          style={{ background: `${catColor(card.category)}22`, color: catColor(card.category) }}
+        >
+          {card.category}
+        </span>
+      )}
 
       {card.description && (
         <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-snug text-[var(--ink2)]">

@@ -17,7 +17,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { ChevronLeft } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
-import { loadBoard, type ColumnRow } from '#/lib/board-data'
+import { loadBoard, distinctCategories, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, type BoardMetaUpdate } from '#/lib/boards'
@@ -181,7 +181,10 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.assignee_id === 'string' || f.assignee_id === null
           ? { assignee_id: f.assignee_id as string | null }
           : {}),
-      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null }>,
+        ...(typeof f.category === 'string' || f.category === null
+          ? { category: f.category as string | null }
+          : {}),
+      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null }>,
     }
   })
   .handler(async ({ data }) => {
@@ -591,6 +594,7 @@ function BoardView() {
           onDelete={() => handleDeleteCard(selectedCard)}
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
+          categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
         />
       )}
 

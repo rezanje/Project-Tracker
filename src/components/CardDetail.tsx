@@ -20,9 +20,11 @@ interface CardDetailProps {
       description: string | null
       due_date: string | null
       assignee_id: string | null
+      category: string | null
     }>,
   ) => Promise<void>
   onSetLabels: (cardId: string, labelIds: string[]) => Promise<void>
+  categorySuggestions?: string[]
 }
 
 const fieldLabel =
@@ -44,11 +46,13 @@ export default function CardDetail({
   onDelete,
   onUpdateCard,
   onSetLabels,
+  categorySuggestions = [],
 }: CardDetailProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [dueDate, setDueDate] = useState(card.due_date ?? '')
   const [assigneeId, setAssigneeId] = useState(card.assignee_id ?? '')
+  const [category, setCategory] = useState(card.category ?? '')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(
     card.card_labels.map((cl) => cl.label_id),
   )
@@ -70,6 +74,7 @@ export default function CardDetail({
         description: description.trim() || null,
         due_date: dueDate || null,
         assignee_id: assigneeId || null,
+        category: category.trim() || null,
       })
       await onSetLabels(card.id, selectedLabelIds)
       onSaved()
@@ -232,6 +237,24 @@ export default function CardDetail({
               </p>
             )}
           </div>
+
+          {isOwner && (
+            <div className="mb-4">
+              <label className={fieldLabel}>Category</label>
+              <input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                list="card-categories"
+                placeholder="Design, Bug…"
+                className="field"
+              />
+              <datalist id="card-categories">
+                {categorySuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+          )}
 
           {isOwner && (
             <div className="mb-5 flex gap-2.5">
