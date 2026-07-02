@@ -17,7 +17,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { ChevronLeft } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
-import { loadBoard, distinctCategories, type ColumnRow } from '#/lib/board-data'
+import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, type BoardMetaUpdate } from '#/lib/boards'
@@ -304,6 +304,8 @@ function BoardView() {
   const [boardMeta, setBoardMeta] = useState<BoardMeta | null>(null)
   const [editing, setEditing] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
+  const [groupBy, setGroupBy] = useState<'phase' | 'category'>('phase')
+  const [filterCat, setFilterCat] = useState<string>('')
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
@@ -475,17 +477,36 @@ function BoardView() {
     })
   }
 
+  const allCards = board.columns.flatMap((c) => c.cards)
+  const categories = distinctCategories(allCards)
+  const keep = (card: CardRow) => !filterCat || card.category === filterCat
+  const phaseColumns: ColumnRow[] = board.columns.map((c) => ({
+    ...c,
+    cards: c.cards.filter(keep),
+  }))
+  const categoryColumns: ColumnRow[] = groupByCategory(allCards.filter(keep)).map((g) => ({
+    id: `cat:${g.category}`,
+    title: g.category,
+    position: 0,
+    cards: g.cards,
+  }))
+
   const columnsContent = (
     <div className="gt-scroll mx-auto flex max-w-[1400px] items-start gap-4 overflow-x-auto pb-3.5">
-      {board.columns.map((col) => (
-        <Column
-          key={col.id}
-          column={col}
-          isOwner={isOwner}
-          onAddCard={onAddCard}
-          onCardClick={openCardDetail}
-        />
-      ))}
+      {groupBy === 'phase'
+        ? phaseColumns.map((col) => (
+            <Column
+              key={col.id}
+              column={col}
+              isOwner={isOwner}
+              onAddCard={onAddCard}
+              onCardClick={openCardDetail}
+            />
+          ))
+        : categoryColumns.map((col) => (
+            // Read-only view: no owner tools / drag in category mode.
+            <Column key={col.id} column={col} isOwner={false} onCardClick={openCardDetail} />
+          ))}
     </div>
   )
 
@@ -597,6 +618,36 @@ function BoardView() {
             comment and upload files.
           </p>
         )}
+      </div>
+
+      <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
+        <span className="text-[13px] font-semibold text-[var(--ink3)]">Group by</span>
+        <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
+          {(['phase', 'category'] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGroupBy(g)}
+              className={`px-3 py-1.5 text-[13px] font-bold capitalize ${
+                groupBy === g ? 'bg-[var(--btn)] text-white' : 'text-[var(--ink2)]'
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+        <select
+          value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}
+          className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+        >
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
 
       {board.columns.length === 0 ? (
