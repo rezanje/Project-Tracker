@@ -573,6 +573,12 @@ function BoardView() {
               </span>
             )}
           </div>
+
+          {board.description && (
+            <p className="mt-2.5 max-w-[640px] text-[14px] leading-relaxed text-[var(--ink2)]">
+              {board.description}
+            </p>
+          )}
         </div>
 
         {isOwner ? (
