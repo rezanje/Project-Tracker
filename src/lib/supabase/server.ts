@@ -75,10 +75,10 @@ export function getServerSupabase(request: Request, responseHeaders: Headers) {
  * SERVER-ONLY. Never import this from browser code or expose its return value
  * to the client.
  *
- * NOTE (Cloudflare prod): process.env works in local dev via `nodejs_compat`
- * + the Vite plugin loading `.dev.vars`. In production the Worker `env`
- * bindings must be forwarded to process.env (or read directly from `env`) —
- * wire this up in the deploy/binding task.
+ * NOTE (Cloudflare prod): process.env is populated from Worker secrets/vars by
+ * the `nodejs_compat_populate_process_env` compatibility flag (see
+ * wrangler.jsonc). Locally it works via `nodejs_compat` + the Vite plugin
+ * loading `.dev.vars`. So the process.env reads below work in both.
  */
 export function getServiceSupabase() {
   return createClient(
