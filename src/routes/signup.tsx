@@ -41,11 +41,29 @@ function Signup() {
     navigate({ to: '/' })
   }
 
+  async function onGoogle() {
+    setError(null)
+    // ponytail: invite+Google not wired — the token is dropped on OAuth redirect.
+    // Owner sign-in (the current need) doesn't use invites; wire via redirectTo
+    // query + callback accept-invite if client OAuth onboarding is needed later.
+    const { error } = await getBrowserSupabase().auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) setError(error.message)
+  }
+
   return (
     <AuthShell
       heading="Create your account"
       subtitle="Start tracking projects in minutes."
     >
+      <button type="button" onClick={onGoogle} className="btn btn-ghost btn-square mb-4 w-full">
+        Continue with Google
+      </button>
+      <div className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+        <span className="h-px flex-1 bg-[var(--line)]" /> or <span className="h-px flex-1 bg-[var(--line)]" />
+      </div>
       <form onSubmit={onSubmit}>
         <label htmlFor="signup-name" className={fieldLabel}>
           Name

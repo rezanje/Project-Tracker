@@ -1,5 +1,5 @@
 /** Full-screen auth layout: meadow hills at the bottom, a centered card with the
- *  GenTrack mark, a heading and subtitle. Children are the form. Shared by
+ *  Rakit mark, a heading and subtitle. Children are the form. Shared by
  *  /login and /signup so the hill SVG lives in one place. */
 export default function AuthShell({
   heading,
@@ -32,17 +32,13 @@ export default function AuthShell({
         <div className="mb-6 flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--btn)]">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M5 12.5l4.5 4.5L19 7.5"
-                stroke="#7be0a6"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <rect x="4.5" y="4" width="5.5" height="16" rx="1.6" fill="#fff" />
+              <rect x="11" y="4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
+              <rect x="11" y="14.4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
             </svg>
           </span>
           <span className="display-title text-xl font-extrabold text-[var(--ink)]">
-            GenTrack
+            Rakit
           </span>
         </div>
         <h1 className="display-title mb-1.5 text-[28px] font-extrabold text-[var(--ink)]">

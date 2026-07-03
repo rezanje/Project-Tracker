@@ -8,7 +8,7 @@
   --font-display: "Bricolage Grotesque", "Hanken Grotesk", sans-serif;
 }
 
-/* GenTrack "meadow" design tokens — light + dark, CSS-variable driven so the
+/* Rakit "meadow" design tokens — light + dark, CSS-variable driven so the
    theme toggle keeps working. Light values come straight from the redesign
    comp; dark is an authored counterpart that holds AA contrast. */
 :root {

@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiAcceptInviteRouteImport } from './routes/api/accept-invite'
 
 const SignupRoute = SignupRouteImport.update({
@@ -35,6 +36,11 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   path: '/board/$boardId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAcceptInviteRoute = ApiAcceptInviteRouteImport.update({
   id: '/api/accept-invite',
   path: '/api/accept-invite',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRouteTypes {
@@ -70,15 +79,23 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/api/accept-invite'
+    | '/auth/callback'
     | '/board/$boardId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/api/accept-invite' | '/board/$boardId'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/api/accept-invite'
+    | '/auth/callback'
+    | '/board/$boardId'
   id:
     | '__root__'
     | '/'
     | '/login'
     | '/signup'
     | '/api/accept-invite'
+    | '/auth/callback'
     | '/board/$boardId'
   fileRoutesById: FileRoutesById
 }
@@ -87,6 +104,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
 }
 
@@ -120,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardBoardIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/accept-invite': {
       id: '/api/accept-invite'
       path: '/api/accept-invite'
@@ -135,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
 }
 export const routeTree = rootRouteImport

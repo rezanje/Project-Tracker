@@ -197,9 +197,17 @@ function Home() {
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [createErr, setCreateErr] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
+
+  // Archived projects stay loaded (0 extra query) but are hidden from the grid
+  // by default so finished work doesn't clutter active projects.
+  const archivedCount = projects.filter((p) => p.projectStatus === 'archived').length
+  const visible = showArchived
+    ? projects
+    : projects.filter((p) => p.projectStatus !== 'archived')
 
   const project =
-    projects.find((p) => p.id === selectedId) ?? projects[0] ?? null
+    visible.find((p) => p.id === selectedId) ?? visible[0] ?? null
 
   const derived = useMemo(() => {
     const tasks = project?.tasks ?? []
@@ -307,19 +315,39 @@ function Home() {
 
         {!project ? (
           <div className="card p-10 text-center">
-            <div className="display-title text-xl font-bold text-[var(--ink)]">
-              No projects yet
-            </div>
-            <p className="mt-2 text-sm text-[var(--ink2)]">
-              Create your first project to see it here.
-            </p>
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="btn btn-primary btn-square mt-5"
-            >
-              + New project
-            </button>
+            {projects.length === 0 ? (
+              <>
+                <div className="display-title text-xl font-bold text-[var(--ink)]">
+                  No projects yet
+                </div>
+                <p className="mt-2 text-sm text-[var(--ink2)]">
+                  Create your first project to see it here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="btn btn-primary btn-square mt-5"
+                >
+                  + New project
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="display-title text-xl font-bold text-[var(--ink)]">
+                  Semua project di-archive
+                </div>
+                <p className="mt-2 text-sm text-[var(--ink2)]">
+                  {archivedCount} project archived tersembunyi.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(true)}
+                  className="btn btn-primary btn-square mt-5"
+                >
+                  Tampilkan archived
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -337,7 +365,7 @@ function Home() {
                     onChange={(e) => setSelectedId(e.target.value)}
                     className="w-full cursor-pointer truncate bg-transparent text-[15px] font-bold text-[var(--ink)] focus:outline-none"
                   >
-                    {projects.map((p) => (
+                    {visible.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.title}
                       </option>
@@ -547,14 +575,25 @@ function Home() {
             <h2 className="display-title text-2xl font-bold text-[var(--ink)]">
               Your projects
             </h2>
-            <span className="text-[13px] font-semibold text-[var(--ink2)]">
-              {projects.length} project{projects.length === 1 ? '' : 's'}
-              {totalValue > 0 && ` · Rp ${totalValue.toLocaleString('id-ID')}`}
-            </span>
+            <div className="flex items-baseline gap-3">
+              {archivedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowArchived((v) => !v)}
+                  className="text-[13px] font-semibold text-[var(--accent)] hover:underline"
+                >
+                  {showArchived ? 'Sembunyikan' : 'Tampilkan'} archived ({archivedCount})
+                </button>
+              )}
+              <span className="text-[13px] font-semibold text-[var(--ink2)]">
+                {visible.length} project{visible.length === 1 ? '' : 's'}
+                {totalValue > 0 && ` · Rp ${totalValue.toLocaleString('id-ID')}`}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-            {projects.map((p) => {
+            {visible.map((p) => {
               const accent = accentFor(p.id)
               const total = p.tasks.length
               const done = p.tasks.filter((t) => t.done).length
@@ -563,7 +602,9 @@ function Home() {
                 <a
                   key={p.id}
                   href={`/board/${p.id}`}
-                  className="card card-hover flex flex-col gap-4 p-5 no-underline"
+                  className={`card card-hover flex flex-col gap-4 p-5 no-underline${
+                    p.projectStatus === 'archived' ? ' opacity-60' : ''
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-2">

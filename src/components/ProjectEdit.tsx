@@ -9,13 +9,14 @@ interface Props {
   onClose: () => void
   onSaved: () => void
   onSave: (fields: BoardMetaUpdate, valueIdr: number) => Promise<void>
+  onDelete: () => Promise<void>
 }
 
 const label = 'mb-1.5 text-xs font-bold uppercase tracking-[0.04em] text-[var(--ink3)]'
 const STATUSES = ['active', 'on_hold', 'done', 'archived'] as const
 const PRIORITIES = ['', 'low', 'medium', 'high'] as const
 
-export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, onSave }: Props) {
+export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, onSave, onDelete }: Props) {
   const [title, setTitle] = useState(board.title)
   const [description, setDescription] = useState(board.description ?? '')
   const [type, setType] = useState(board.type ?? '')
@@ -28,6 +29,8 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
   const [value, setValue] = useState(String(board.value_idr ?? 0))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function handleSave() {
     setSaving(true)
@@ -56,7 +59,20 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      await onDelete()
+      // Parent navigates away on success; component unmounts, so leave `deleting` set.
+    } catch {
+      setError('Gagal menghapus project. Coba lagi.')
+      setDeleting(false)
+    }
+  }
+
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -173,8 +189,55 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
               Cancel
             </button>
           </div>
+
+          <div className="mt-2 border-t border-[var(--line)] pt-4">
+            <div className={label} style={{ color: 'var(--danger)' }}>
+              Danger zone
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="btn btn-danger btn-square"
+            >
+              Hapus project
+            </button>
+            <p className="mt-1.5 text-[12px] text-[var(--ink3)]">
+              Permanen. Semua task, komentar &amp; file ikut terhapus.
+            </p>
+          </div>
         </div>
       </div>
     </div>
+
+    {confirming && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(16,28,22,0.42)] px-5 backdrop-blur-[3px] gt-back"
+        onClick={(e) => e.target === e.currentTarget && !deleting && setConfirming(false)}
+      >
+        <div className="w-full max-w-[420px] rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+          <h3 className="display-title text-xl font-extrabold text-[var(--ink)]">
+            Hapus “{board.title}”?
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--ink2)]">
+            Project ini beserta semua task, komentar, dan file di dalamnya akan dihapus permanen.
+            Tindakan ini tidak bisa dibatalkan.
+          </p>
+          {error && <p className="mt-2 text-[13px] text-[var(--danger)]">{error}</p>}
+          <div className="mt-5 flex gap-2.5">
+            <button onClick={handleDelete} disabled={deleting} className="btn btn-danger btn-square">
+              {deleting ? 'Menghapus…' : 'Ya, hapus'}
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              disabled={deleting}
+              className="btn btn-ghost btn-square"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

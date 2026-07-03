@@ -27,8 +27,23 @@ function Login() {
     navigate({ to: '/' })
   }
 
+  async function onGoogle() {
+    setError(null)
+    const { error } = await getBrowserSupabase().auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) setError(error.message)
+  }
+
   return (
     <AuthShell heading="Welcome back" subtitle="Track your work. Share the progress.">
+      <button type="button" onClick={onGoogle} className="btn btn-ghost btn-square mb-4 w-full">
+        Continue with Google
+      </button>
+      <div className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+        <span className="h-px flex-1 bg-[var(--line)]" /> or <span className="h-px flex-1 bg-[var(--line)]" />
+      </div>
       <form onSubmit={onSubmit}>
         <label htmlFor="login-email" className={fieldLabel}>
           Email

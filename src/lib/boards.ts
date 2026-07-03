@@ -66,3 +66,23 @@ export async function setBoardFinance(
     .upsert({ board_id: boardId, value_idr: valueIdr })
   if (error) throw error
 }
+
+/**
+ * Hard-delete a board and everything under it. All child tables (columns,
+ * cards, comments, attachments, labels, members, invites, finance) cascade via
+ * FK `on delete cascade`; Storage objects do NOT cascade, so we clear the
+ * board's files first. Every attachment path is `{boardId}/{cardId}/{file}`,
+ * collected via the attachment → card → column → board chain. RLS restricts
+ * this to the board owner.
+ */
+export async function deleteBoard(supabase: SupabaseClient, boardId: string): Promise<void> {
+  const { data: files } = await supabase
+    .from('attachments')
+    .select('path, cards!inner(columns!inner(board_id))')
+    .eq('cards.columns.board_id', boardId)
+  const paths = (files ?? []).map((f) => (f as { path: string }).path)
+  if (paths.length) await supabase.storage.from('card-files').remove(paths)
+
+  const { error } = await supabase.from('boards').delete().eq('id', boardId)
+  if (error) throw error
+}

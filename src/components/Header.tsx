@@ -15,14 +15,10 @@ function initials(email: string): string {
 function BrandMark() {
   return (
     <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[11px] bg-[var(--btn)]">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M5 12.5l4.5 4.5L19 7.5"
-          stroke="#7be0a6"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="4.5" y="4" width="5.5" height="16" rx="1.6" fill="#fff" />
+        <rect x="11" y="4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
+        <rect x="11" y="14.4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
       </svg>
     </span>
   )
@@ -56,7 +52,7 @@ export default function Header() {
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 py-3 backdrop-blur-md sm:px-6">
       <Link to="/" className="flex items-center gap-2.5 text-[var(--ink)] no-underline">
         <BrandMark />
-        <span className="display-title text-[19px] font-extrabold">GenTrack</span>
+        <span className="display-title text-[19px] font-extrabold">Rakit</span>
       </Link>
 
       <div className="flex items-center gap-2.5">
