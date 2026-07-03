@@ -14,7 +14,7 @@ interface Props {
 
 const label = 'mb-1.5 text-xs font-bold uppercase tracking-[0.04em] text-[var(--ink3)]'
 const STATUSES = ['active', 'on_hold', 'done', 'archived'] as const
-const PRIORITIES = ['', 'low', 'medium', 'high'] as const
+const PRIORITIES = ['', 'low', 'medium', 'high', 'urgent'] as const
 
 export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, onSave, onDelete }: Props) {
   const [title, setTitle] = useState(board.title)

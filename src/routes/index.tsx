@@ -21,7 +21,7 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
     await Promise.all([
       supabase.from('profiles').select('name').eq('id', user.id).single(),
       supabase.from('workspaces').select('id,name').order('created_at'),
-      supabase.from('boards').select('id,title,workspace_id,columns(title,cards(id,title,due_date))'),
+      supabase.from('boards').select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date))'),
       supabase.from('notes').select('id,body,created_at').order('created_at', { ascending: false }).limit(8),
       supabase
         .from('announcements')
@@ -36,16 +36,19 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
   let done = 0
   const todayTasks: AggTask[] = []
   const overdue: AggTask[] = []
+  const urgent: Array<{ id: string; title: string }> = []
 
   for (const b of (boards ?? []) as Array<{
     id: string
     title: string
+    priority: string | null
     workspace_id: string | null
     columns?: unknown[]
   }>) {
     const ws = b.workspace_id
     const s = ws ? stats.get(ws) ?? { total: 0, done: 0, projects: 0 } : null
     if (s) s.projects++
+    if (b.priority === 'urgent') urgent.push({ id: b.id, title: b.title })
     for (const col of (b.columns ?? []) as Array<{ title: string; cards?: unknown[] }>) {
       const isDone = isDoneColumn(col.title)
       for (const c of (col.cards ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
@@ -82,6 +85,7 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
     agg: { total, done, active: total - done, progress: total ? Math.round((done / total) * 100) : 0 },
     todayTasks: todayTasks.slice(0, 6),
     overdue: overdue.sort((a, b) => (a.due! < b.due! ? -1 : 1)).slice(0, 6),
+    urgent,
     notes: (notes ?? []).map((n) => ({ id: n.id as string, body: n.body as string })),
     announcements: (anns ?? []).map((a) => {
       const raw = (a as { profiles: unknown }).profiles
@@ -144,7 +148,7 @@ function fmtDue(due: string | null): string {
 
 function Workspaces() {
   const router = useRouter()
-  const { name, workspaces, agg, todayTasks, overdue, notes, announcements } =
+  const { name, workspaces, agg, todayTasks, overdue, notes, announcements, urgent } =
     Route.useLoaderData()
   const [creating, setCreating] = useState(false)
   const [wsName, setWsName] = useState('')
@@ -230,6 +234,26 @@ function Workspaces() {
 
         {workspaces.length > 0 && (
           <>
+            {urgent.length > 0 && (
+              <div className="mb-4 rounded-[var(--radius)] p-4" style={{ background: 'var(--danger)' }}>
+                <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white/80">
+                  Urgent projects · {urgent.length}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {urgent.map((u) => (
+                    <a
+                      key={u.id}
+                      href={`/board/${u.id}`}
+                      style={{ color: '#fff' }}
+                      className="rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold no-underline hover:bg-white/25"
+                    >
+                      {u.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mb-4 grid gap-4 lg:grid-cols-[280px_1fr_1fr]">
               <div className="flex flex-col gap-4">
                 <Clock />

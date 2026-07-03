@@ -580,8 +580,15 @@ function BoardView() {
               {board.status.replace('_', ' ')}
             </span>
             {board.priority && (
-              <span className="text-[12px] font-semibold capitalize text-[var(--ink3)]">
-                {board.priority} priority
+              <span
+                className="rounded-full px-2.5 py-1 text-[11px] font-bold capitalize"
+                style={
+                  board.priority === 'urgent'
+                    ? { background: 'var(--danger)', color: '#fff' }
+                    : { background: 'var(--col)', color: 'var(--ink2)' }
+                }
+              >
+                {board.priority}{board.priority === 'urgent' ? '' : ' priority'}
               </span>
             )}
             {board.client_name && (
