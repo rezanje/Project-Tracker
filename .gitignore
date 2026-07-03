@@ -9,3 +9,5 @@ dist
 .superpowers
 .cta.json
 .DS_Store
+.tanstack
+dist
