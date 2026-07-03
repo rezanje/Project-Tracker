@@ -54,6 +54,69 @@ export async function inviteWorkspaceMember(
   return { status: 'invited', token: inv.token }
 }
 
+export type TeamMember = {
+  user_id: string
+  name: string | null
+  email: string | null
+  avatar_url: string | null
+  role: string
+}
+
+/** List a workspace's members with profile + email. Needs a service client. */
+export async function listWorkspaceMembers(
+  svc: SupabaseClient,
+  workspaceId: string,
+): Promise<TeamMember[]> {
+  const { data: rows } = await svc
+    .from('workspace_members')
+    .select('user_id, role, profiles(name, avatar_url)')
+    .eq('workspace_id', workspaceId)
+  const { data: users } = await svc.auth.admin.listUsers()
+  const emailById = new Map(users.users.map((u) => [u.id, u.email ?? null]))
+  return (rows ?? []).map((r) => {
+    const raw = (r as { profiles: unknown }).profiles
+    const p = (Array.isArray(raw) ? raw[0] : raw) as
+      | { name: string | null; avatar_url: string | null }
+      | null
+    return {
+      user_id: r.user_id as string,
+      name: p?.name ?? null,
+      email: emailById.get(r.user_id as string) ?? null,
+      avatar_url: p?.avatar_url ?? null,
+      role: r.role as string,
+    }
+  })
+}
+
+/** Change a member's workspace role. RLS restricts to the workspace owner. */
+export async function setWorkspaceMemberRole(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+  role: 'owner' | 'member',
+): Promise<void> {
+  const { error } = await supabase
+    .from('workspace_members')
+    .update({ role })
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
+/** Remove a member from a workspace. RLS restricts to the workspace owner. */
+export async function removeWorkspaceMember(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('workspace_members')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 /** Convert a pending workspace invite into a member row. */
 export async function acceptWorkspaceInvite(
   svc: SupabaseClient,

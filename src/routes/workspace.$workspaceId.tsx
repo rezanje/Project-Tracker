@@ -14,7 +14,14 @@ import {
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { createBoard } from '#/lib/boards'
-import { inviteWorkspaceMember } from '#/lib/workspaces'
+import {
+  inviteWorkspaceMember,
+  listWorkspaceMembers,
+  setWorkspaceMemberRole,
+  removeWorkspaceMember,
+  type TeamMember,
+} from '#/lib/workspaces'
+import TeamPanel from '#/components/TeamPanel'
 import { isDoneColumn } from '#/lib/home'
 
 // Supabase may rotate the session cookie on any call; flush those Set-Cookie
@@ -58,6 +65,59 @@ const inviteTeamFn = createServerFn({ method: 'POST' })
     const res = await inviteWorkspaceMember(getServiceSupabase(), data.workspaceId, data.email)
     flush(headers)
     return res
+  })
+
+const fetchTeamFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { workspaceId?: unknown })?.workspaceId
+    if (typeof id !== 'string') throw new Error('workspaceId required')
+    return { workspaceId: id }
+  })
+  .handler(async ({ data }): Promise<{ members: TeamMember[] }> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { data: wm } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', data.workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (wm?.role !== 'owner') throw new Error('forbidden')
+    const members = await listWorkspaceMembers(getServiceSupabase(), data.workspaceId)
+    flush(headers)
+    return { members }
+  })
+
+const setRoleFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, userId, role } = (d ?? {}) as {
+      workspaceId?: unknown
+      userId?: unknown
+      role?: unknown
+    }
+    if (typeof workspaceId !== 'string' || typeof userId !== 'string')
+      throw new Error('workspaceId and userId required')
+    return { workspaceId, userId, role: role === 'owner' ? ('owner' as const) : ('member' as const) }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await setWorkspaceMemberRole(supabase, data.workspaceId, data.userId, data.role)
+    flush(headers)
+  })
+
+const removeMemberFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, userId } = (d ?? {}) as { workspaceId?: unknown; userId?: unknown }
+    if (typeof workspaceId !== 'string' || typeof userId !== 'string')
+      throw new Error('workspaceId and userId required')
+    return { workspaceId, userId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await removeWorkspaceMember(supabase, data.workspaceId, data.userId)
+    flush(headers)
   })
 
 type Member = { name: string | null; avatar_url: string | null }
@@ -178,6 +238,7 @@ const fetchHome = createServerFn({ method: 'GET' })
     workspaceId: data.workspaceId,
     workspaceName: ws?.name ?? 'Workspace',
     wsRole: (wm?.role as string | null) ?? null,
+    meId: user.id,
   }
 })
 
@@ -237,9 +298,45 @@ function fmtDue(due: string | null): string {
 
 function Home() {
   const router = useRouter()
-  const { name, projects, totalValue, workspaceId, workspaceName, wsRole } =
+  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId } =
     Route.useLoaderData()
   const isWsOwner = wsRole === 'owner'
+  const [teamOpen, setTeamOpen] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [teamBusy, setTeamBusy] = useState(false)
+
+  async function openTeam() {
+    setTeamBusy(true)
+    setTeamOpen(true)
+    try {
+      const { members } = await fetchTeamFn({ data: { workspaceId } })
+      setTeamMembers(members)
+    } finally {
+      setTeamBusy(false)
+    }
+  }
+  async function refreshTeam() {
+    const { members } = await fetchTeamFn({ data: { workspaceId } })
+    setTeamMembers(members)
+  }
+  async function onSetRole(userId: string, role: 'owner' | 'member') {
+    setTeamBusy(true)
+    try {
+      await setRoleFn({ data: { workspaceId, userId, role } })
+      await refreshTeam()
+    } finally {
+      setTeamBusy(false)
+    }
+  }
+  async function onRemoveMember(userId: string) {
+    setTeamBusy(true)
+    try {
+      await removeMemberFn({ data: { workspaceId, userId } })
+      await refreshTeam()
+    } finally {
+      setTeamBusy(false)
+    }
+  }
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -342,6 +439,15 @@ function Home() {
                 ))}
               </div>
             )}
+            {isWsOwner && (
+              <button
+                type="button"
+                onClick={openTeam}
+                className="btn btn-ghost px-4 py-3 text-sm"
+              >
+                Team
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setCreating((c) => !c)}
@@ -352,6 +458,17 @@ function Home() {
             </button>
           </div>
         </div>
+
+        {teamOpen && (
+          <TeamPanel
+            members={teamMembers}
+            meId={meId}
+            busy={teamBusy}
+            onSetRole={onSetRole}
+            onRemove={onRemoveMember}
+            onClose={() => setTeamOpen(false)}
+          />
+        )}
 
         {isWsOwner && (
           <div className="mb-8 flex flex-col items-start gap-2">
