@@ -20,7 +20,7 @@ import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
-import { updateBoard, setBoardFinance, type BoardMetaUpdate } from '#/lib/boards'
+import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import ProjectEdit from '#/components/ProjectEdit'
@@ -60,10 +60,14 @@ const fetchBoard = createServerFn({ method: 'GET' })
 
 const inviteFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const { boardId, email } = (d ?? {}) as { boardId?: unknown; email?: unknown }
+    const { boardId, email, role } = (d ?? {}) as { boardId?: unknown; email?: unknown; role?: unknown }
     if (typeof boardId !== 'string' || typeof email !== 'string' || !email.trim())
       throw new Error('boardId and email required')
-    return { boardId, email: email.trim() }
+    return {
+      boardId,
+      email: email.trim(),
+      role: role === 'member' ? ('member' as const) : ('client' as const),
+    }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
@@ -75,7 +79,7 @@ const inviteFn = createServerFn({ method: 'POST' })
       .eq('user_id', user.id)
       .single()
     if (m?.role !== 'owner') throw new Error('forbidden')
-    const res = await inviteClient(getServiceSupabase(), data.boardId, data.email)
+    const res = await inviteClient(getServiceSupabase(), data.boardId, data.email, data.role)
     flush(headers)
     return res
   })
@@ -283,6 +287,19 @@ const setFinanceFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const deleteBoardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const boardId = (d as { boardId?: unknown })?.boardId
+    if (typeof boardId !== 'string') throw new Error('boardId required')
+    return { boardId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await deleteBoard(supabase, data.boardId)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
@@ -292,8 +309,11 @@ function BoardView() {
   const initialBoard = Route.useLoaderData()
   const router = useRouter()
   const isOwner = initialBoard.role === 'owner'
+  const canEdit = initialBoard.role === 'owner' || initialBoard.role === 'member'
   const [email, setEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'member' | 'client'>('member')
   const [result, setResult] = useState<string | null>(null)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
   // The column a card started in, captured at drag-start (handleDragOver moves
@@ -368,9 +388,15 @@ function BoardView() {
     e.preventDefault()
     if (!email.trim()) return
     setResult(null)
+    setInviteLink(null)
     try {
-      const r = await inviteFn({ data: { boardId: board.id, email } })
-      setResult(r.status === 'added' ? 'Added existing user as client.' : 'Invite sent.')
+      const r = await inviteFn({ data: { boardId: board.id, email, role: inviteRole } })
+      if (r.status === 'added') {
+        setResult(`Added existing user as ${inviteRole}.`)
+      } else {
+        setResult(`Invite created (${inviteRole}). Share the link below.`)
+        setInviteLink(`${window.location.origin}/signup?invite=${r.token}`)
+      }
       setEmail('')
     } catch {
       setResult('Failed to invite.')
@@ -498,7 +524,7 @@ function BoardView() {
             <Column
               key={col.id}
               column={col}
-              isOwner={isOwner}
+              isOwner={canEdit}
               onAddCard={onAddCard}
               onCardClick={openCardDetail}
             />
@@ -581,7 +607,7 @@ function BoardView() {
           )}
         </div>
 
-        {isOwner ? (
+        {canEdit ? (
           <div className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
               <button
@@ -591,30 +617,59 @@ function BoardView() {
               >
                 + Add task
               </button>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="btn btn-ghost shrink-0"
-              >
-                Edit project
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="btn btn-ghost shrink-0"
+                >
+                  Edit project
+                </button>
+              )}
             </div>
-            <form onSubmit={onInvite} className="flex w-full gap-2 sm:w-auto">
-              <input
-                type="email"
-                placeholder="Invite client by email…"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="field flex-1 rounded-full px-4 py-2.5 text-[13px] sm:w-[230px]"
-              />
-              <button type="submit" className="btn btn-primary shrink-0">
-                Invite
-              </button>
-            </form>
-            {result && (
-              <span className="text-xs font-semibold text-[var(--accent-ink)]">
-                {result}
-              </span>
+            {isOwner && (
+              <>
+                <form onSubmit={onInvite} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
+                  <input
+                    type="email"
+                    placeholder="Invite by email…"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="field flex-1 rounded-full px-4 py-2.5 text-[13px] sm:w-[190px]"
+                  />
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'client')}
+                    className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
+                  >
+                    <option value="member">Member</option>
+                    <option value="client">Client</option>
+                  </select>
+                  <button type="submit" className="btn btn-primary shrink-0">
+                    Invite
+                  </button>
+                </form>
+                {result && (
+                  <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
+                )}
+                {inviteLink && (
+                  <div className="flex w-full items-center gap-2 sm:w-[360px]">
+                    <input
+                      readOnly
+                      value={inviteLink}
+                      onFocus={(e) => e.target.select()}
+                      className="field flex-1 rounded-full px-3 py-2 text-[12px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(inviteLink)}
+                      className="btn btn-ghost shrink-0 px-3 py-2 text-xs"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -680,7 +735,7 @@ function BoardView() {
           card={selectedCard}
           boardId={board.id}
           meta={boardMeta ?? { members: [], labels: [] }}
-          isOwner={isOwner}
+          isOwner={canEdit}
           onClose={closeCardDetail}
           onSaved={() => {
             router.invalidate()
@@ -719,6 +774,10 @@ function BoardView() {
           onSave={async (fields, valueIdr) => {
             await updateBoardFn({ data: { boardId: board.id, fields } })
             await setFinanceFn({ data: { boardId: board.id, valueIdr } })
+          }}
+          onDelete={async () => {
+            await deleteBoardFn({ data: { boardId: board.id } })
+            router.navigate({ to: '/' })
           }}
         />
       )}

@@ -7,10 +7,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * it; Task 13 emails the link). Needs a service-role client for the cross-user
  * email lookup.
  */
+export type InviteRole = 'member' | 'client'
+
 export async function inviteClient(
   svc: SupabaseClient,
   boardId: string,
   email: string,
+  role: InviteRole = 'client',
 ): Promise<
   { status: 'added' } | { status: 'invited'; token: string }
 > {
@@ -22,20 +25,20 @@ export async function inviteClient(
   if (existing) {
     await svc
       .from('board_members')
-      .insert({ board_id: boardId, user_id: existing.id, role: 'client' })
+      .insert({ board_id: boardId, user_id: existing.id, role })
     return { status: 'added' }
   }
 
   const { data: inv, error } = await svc
     .from('pending_invites')
-    .insert({ board_id: boardId, email })
+    .insert({ board_id: boardId, email, role })
     .select('token')
     .single()
   if (error) throw error
   return { status: 'invited', token: inv.token }
 }
 
-/** Convert a pending invite into a client board_members row. */
+/** Convert a pending invite into a board_members row with its stored role. */
 export async function acceptInvite(
   svc: SupabaseClient,
   token: string,
@@ -43,12 +46,12 @@ export async function acceptInvite(
 ): Promise<void> {
   const { data: inv } = await svc
     .from('pending_invites')
-    .select('board_id')
+    .select('board_id, role')
     .eq('token', token)
     .single()
   if (!inv) throw new Error('invalid invite')
   await svc
     .from('board_members')
-    .insert({ board_id: inv.board_id, user_id: userId, role: 'client' })
+    .insert({ board_id: inv.board_id, user_id: userId, role: inv.role ?? 'client' })
   await svc.from('pending_invites').delete().eq('token', token)
 }
