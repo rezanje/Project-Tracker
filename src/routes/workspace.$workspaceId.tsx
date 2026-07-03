@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -296,6 +296,32 @@ function fmtDue(due: string | null): string {
   return new Date(due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function Clock() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="card flex items-center justify-between p-5">
+      <div>
+        <div className="display-title text-3xl font-extrabold tabular-nums text-[var(--ink)]" suppressHydrationWarning>
+          {now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+        </div>
+        <div className="mt-1 text-[13px] font-semibold text-[var(--ink3)]" suppressHydrationWarning>
+          {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+        </div>
+      </div>
+      <span
+        className="text-3xl font-extrabold tabular-nums text-[var(--ink3)]"
+        suppressHydrationWarning
+      >
+        {now.toLocaleTimeString(undefined, { second: '2-digit' }).replace(/\D/g, '')}
+      </span>
+    </div>
+  )
+}
+
 function Home() {
   const router = useRouter()
   const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId } =
@@ -391,6 +417,14 @@ function Home() {
   }, [project])
 
   const members = project?.members ?? []
+
+  // Overdue across every project in this workspace (past due, not done).
+  const today = new Date().toISOString().slice(0, 10)
+  const overdue = projects
+    .flatMap((p) => p.tasks.map((t) => ({ ...t, projectId: p.id, projectTitle: p.title })))
+    .filter((t) => t.due && t.due < today && !t.done)
+    .sort((a, b) => (a.due! < b.due! ? -1 : 1))
+    .slice(0, 6)
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -532,6 +566,42 @@ function Home() {
             )}
           </form>
         )}
+
+        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+          <Clock />
+          <div className="card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">Overdue</h3>
+              <span className="text-[13px] font-semibold text-[var(--ink2)]">{overdue.length}</span>
+            </div>
+            {overdue.length === 0 ? (
+              <p className="py-3 text-sm text-[var(--ink3)]">Nothing overdue — nice.</p>
+            ) : (
+              <ul className="divide-y divide-[var(--line)]">
+                {overdue.map((t) => (
+                  <li key={t.id}>
+                    <a
+                      href={`/board/${t.projectId}`}
+                      className="flex items-center justify-between gap-3 py-2.5 no-underline"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[var(--ink)]">
+                          {t.title}
+                        </span>
+                        <span className="block truncate text-[12px] text-[var(--ink3)]">
+                          {t.projectTitle} · due {fmtDue(t.due)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--danger)]">
+                        overdue
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {!project ? (
           <div className="card p-10 text-center">
