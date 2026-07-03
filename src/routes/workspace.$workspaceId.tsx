@@ -120,6 +120,50 @@ const removeMemberFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const postAnnouncementFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, body } = (d ?? {}) as { workspaceId?: unknown; body?: unknown }
+    if (typeof workspaceId !== 'string' || typeof body !== 'string' || !body.trim())
+      throw new Error('workspaceId and body required')
+    return { workspaceId, body: body.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase
+      .from('announcements')
+      .insert({ workspace_id: data.workspaceId, author_id: user.id, body: data.body })
+    if (error) throw error
+    flush(headers)
+  })
+
+const addNoteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const body = (d as { body?: unknown })?.body
+    if (typeof body !== 'string' || !body.trim()) throw new Error('body required')
+    return { body: body.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('notes').insert({ user_id: user.id, body: data.body })
+    if (error) throw error
+    flush(headers)
+  })
+
+const deleteNoteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string') throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from('notes').delete().eq('id', data.id)
+    flush(headers)
+  })
+
 type Member = { name: string | null; avatar_url: string | null }
 type Task = {
   id: string
@@ -153,8 +197,15 @@ const fetchHome = createServerFn({ method: 'GET' })
   const headers = new Headers()
   const { user, supabase } = await requireUser(getRequest(), headers)
 
-  const [{ data: me }, { data: ws }, { data: wm }, { data: boardRows }, { data: finance }] =
-    await Promise.all([
+  const [
+    { data: me },
+    { data: ws },
+    { data: wm },
+    { data: announcements },
+    { data: notes },
+    { data: boardRows },
+    { data: finance },
+  ] = await Promise.all([
       supabase.from('profiles').select('name').eq('id', user.id).single(),
       supabase.from('workspaces').select('name').eq('id', data.workspaceId).maybeSingle(),
       supabase
@@ -163,6 +214,17 @@ const fetchHome = createServerFn({ method: 'GET' })
         .eq('workspace_id', data.workspaceId)
         .eq('user_id', user.id)
         .maybeSingle(),
+      supabase
+        .from('announcements')
+        .select('id,body,created_at,profiles:author_id(name)')
+        .eq('workspace_id', data.workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('notes')
+        .select('id,body,created_at')
+        .order('created_at', { ascending: false })
+        .limit(8),
       supabase
         .from('boards')
         .select(
@@ -239,6 +301,21 @@ const fetchHome = createServerFn({ method: 'GET' })
     workspaceName: ws?.name ?? 'Workspace',
     wsRole: (wm?.role as string | null) ?? null,
     meId: user.id,
+    announcements: (announcements ?? []).map((a) => {
+      const raw = (a as { profiles: unknown }).profiles
+      const p = (Array.isArray(raw) ? raw[0] : raw) as { name: string | null } | null
+      return {
+        id: a.id as string,
+        body: a.body as string,
+        created_at: a.created_at as string,
+        author: p?.name ?? null,
+      }
+    }),
+    notes: (notes ?? []).map((n) => ({
+      id: n.id as string,
+      body: n.body as string,
+      created_at: n.created_at as string,
+    })),
   }
 })
 
@@ -324,9 +401,30 @@ function Clock() {
 
 function Home() {
   const router = useRouter()
-  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId } =
+  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId, announcements, notes } =
     Route.useLoaderData()
   const isWsOwner = wsRole === 'owner'
+  const [annBody, setAnnBody] = useState('')
+  const [noteBody, setNoteBody] = useState('')
+
+  async function onPostAnn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!annBody.trim()) return
+    await postAnnouncementFn({ data: { workspaceId, body: annBody } })
+    setAnnBody('')
+    router.invalidate()
+  }
+  async function onAddNote(e: React.FormEvent) {
+    e.preventDefault()
+    if (!noteBody.trim()) return
+    await addNoteFn({ data: { body: noteBody } })
+    setNoteBody('')
+    router.invalidate()
+  }
+  async function onDelNote(id: string) {
+    await deleteNoteFn({ data: { id } })
+    router.invalidate()
+  }
   const [teamOpen, setTeamOpen] = useState(false)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [teamBusy, setTeamBusy] = useState(false)
@@ -596,6 +694,77 @@ function Home() {
                         overdue
                       </span>
                     </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="card p-5">
+            <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">
+              Announcements
+            </h3>
+            {isWsOwner && (
+              <form onSubmit={onPostAnn} className="mb-3 flex gap-2">
+                <input
+                  value={annBody}
+                  onChange={(e) => setAnnBody(e.target.value)}
+                  placeholder="Post to the team…"
+                  className="field flex-1 text-[13px]"
+                />
+                <button type="submit" className="btn btn-primary btn-square px-3 text-xs">
+                  Post
+                </button>
+              </form>
+            )}
+            {announcements.length === 0 ? (
+              <p className="py-2 text-sm text-[var(--ink3)]">No announcements yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {announcements.map((a) => (
+                  <li key={a.id} className="border-l-2 border-[var(--accent)] pl-3">
+                    <p className="text-sm leading-snug text-[var(--ink)]">{a.body}</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink3)]">
+                      {a.author ?? 'Owner'} ·{' '}
+                      {new Date(a.created_at).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="card p-5">
+            <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My notes</h3>
+            <form onSubmit={onAddNote} className="mb-3 flex gap-2">
+              <input
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+                placeholder="Quick note…"
+                className="field flex-1 text-[13px]"
+              />
+              <button type="submit" className="btn btn-primary btn-square px-3 text-xs">
+                Add
+              </button>
+            </form>
+            {notes.length === 0 ? (
+              <p className="py-2 text-sm text-[var(--ink3)]">No notes.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-[var(--line)]">
+                {notes.map((n) => (
+                  <li key={n.id} className="flex items-start justify-between gap-2 py-2">
+                    <span className="text-sm leading-snug text-[var(--ink)]">{n.body}</span>
+                    <button
+                      type="button"
+                      onClick={() => onDelNote(n.id)}
+                      aria-label="Delete note"
+                      className="shrink-0 text-lg leading-none text-[var(--ink3)] hover:text-[var(--danger)]"
+                    >
+                      ×
+                    </button>
                   </li>
                 ))}
               </ul>
