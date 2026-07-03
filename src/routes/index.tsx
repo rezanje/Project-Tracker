@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -12,28 +12,57 @@ function flush(headers: Headers) {
 }
 
 type WsCard = { id: string; name: string; projects: number; progress: number }
+type AggTask = { id: string; title: string; due: string | null; boardId: string; boardTitle: string }
 
 const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
   const headers = new Headers()
   const { user, supabase } = await requireUser(getRequest(), headers)
-  const [{ data: me }, { data: workspaces }, { data: boards }] = await Promise.all([
-    supabase.from('profiles').select('name').eq('id', user.id).single(),
-    supabase.from('workspaces').select('id,name').order('created_at'),
-    supabase.from('boards').select('id,workspace_id,columns(title,cards(id))'),
-  ])
+  const [{ data: me }, { data: workspaces }, { data: boards }, { data: notes }, { data: anns }] =
+    await Promise.all([
+      supabase.from('profiles').select('name').eq('id', user.id).single(),
+      supabase.from('workspaces').select('id,name').order('created_at'),
+      supabase.from('boards').select('id,title,workspace_id,columns(title,cards(id,title,due_date))'),
+      supabase.from('notes').select('id,body,created_at').order('created_at', { ascending: false }).limit(8),
+      supabase
+        .from('announcements')
+        .select('id,body,created_at,profiles:author_id(name)')
+        .order('created_at', { ascending: false })
+        .limit(6),
+    ])
 
+  const today = new Date().toISOString().slice(0, 10)
   const stats = new Map<string, { total: number; done: number; projects: number }>()
-  for (const b of (boards ?? []) as Array<{ workspace_id: string | null; columns?: unknown[] }>) {
+  let total = 0
+  let done = 0
+  const todayTasks: AggTask[] = []
+  const overdue: AggTask[] = []
+
+  for (const b of (boards ?? []) as Array<{
+    id: string
+    title: string
+    workspace_id: string | null
+    columns?: unknown[]
+  }>) {
     const ws = b.workspace_id
-    if (!ws) continue
-    const s = stats.get(ws) ?? { total: 0, done: 0, projects: 0 }
-    s.projects++
+    const s = ws ? stats.get(ws) ?? { total: 0, done: 0, projects: 0 } : null
+    if (s) s.projects++
     for (const col of (b.columns ?? []) as Array<{ title: string; cards?: unknown[] }>) {
-      const n = (col.cards ?? []).length
-      s.total += n
-      if (isDoneColumn(col.title)) s.done += n
+      const isDone = isDoneColumn(col.title)
+      for (const c of (col.cards ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
+        total++
+        if (isDone) done++
+        if (s) {
+          s.total++
+          if (isDone) s.done++
+        }
+        const t: AggTask = { id: c.id, title: c.title, due: c.due_date ?? null, boardId: b.id, boardTitle: b.title }
+        if (!isDone && c.due_date) {
+          if (c.due_date < today) overdue.push(t)
+          else if (c.due_date === today) todayTasks.push(t)
+        }
+      }
     }
-    stats.set(ws, s)
+    if (ws && s) stats.set(ws, s)
   }
 
   const list: WsCard[] = (workspaces ?? []).map((w) => {
@@ -47,7 +76,19 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
   })
 
   flush(headers)
-  return { name: me?.name ?? null, workspaces: list }
+  return {
+    name: me?.name ?? null,
+    workspaces: list,
+    agg: { total, done, active: total - done, progress: total ? Math.round((done / total) * 100) : 0 },
+    todayTasks: todayTasks.slice(0, 6),
+    overdue: overdue.sort((a, b) => (a.due! < b.due! ? -1 : 1)).slice(0, 6),
+    notes: (notes ?? []).map((n) => ({ id: n.id as string, body: n.body as string })),
+    announcements: (anns ?? []).map((a) => {
+      const raw = (a as { profiles: unknown }).profiles
+      const p = (Array.isArray(raw) ? raw[0] : raw) as { name: string | null } | null
+      return { id: a.id as string, body: a.body as string, author: p?.name ?? null }
+    }),
+  }
 })
 
 const newWorkspace = createServerFn({ method: 'POST' })
@@ -76,9 +117,35 @@ function accentFor(id: string): string {
   return ACCENTS[h % ACCENTS.length]
 }
 
+function Clock() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="card flex items-center justify-between p-5">
+      <div>
+        <div className="display-title text-3xl font-extrabold tabular-nums text-[var(--ink)]" suppressHydrationWarning>
+          {now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+        </div>
+        <div className="mt-1 text-[13px] font-semibold text-[var(--ink3)]" suppressHydrationWarning>
+          {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function fmtDue(due: string | null): string {
+  if (!due) return '—'
+  return new Date(due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 function Workspaces() {
   const router = useRouter()
-  const { name, workspaces } = Route.useLoaderData()
+  const { name, workspaces, agg, todayTasks, overdue, notes, announcements } =
+    Route.useLoaderData()
   const [creating, setCreating] = useState(false)
   const [wsName, setWsName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -159,6 +226,117 @@ function Workspaces() {
             </button>
             {err && <p className="w-full text-[13px] font-semibold text-[var(--danger)]">{err}</p>}
           </form>
+        )}
+
+        {workspaces.length > 0 && (
+          <>
+            <div className="mb-4 grid gap-4 lg:grid-cols-[280px_1fr_1fr]">
+              <div className="flex flex-col gap-4">
+                <Clock />
+                <div className="card p-5">
+                  <div className="display-title text-5xl font-extrabold leading-none text-[var(--ink)]">
+                    {agg.progress}%
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-[var(--ink2)]">Overall progress</div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--line)]">
+                    <div className="h-full rounded-full" style={{ width: `${agg.progress}%`, background: 'var(--accent)' }} />
+                  </div>
+                  <div className="mt-4 flex gap-6">
+                    {[['Tasks', agg.total], ['Active', agg.active], ['Done', agg.done]].map(([l, v]) => (
+                      <div key={l}>
+                        <div className="display-title text-2xl font-bold text-[var(--ink)]">{v}</div>
+                        <div className="text-[12px] font-semibold text-[var(--ink3)]">{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">Overdue</h3>
+                  <span className="text-[13px] font-semibold text-[var(--ink2)]">{overdue.length}</span>
+                </div>
+                {overdue.length === 0 ? (
+                  <p className="py-2 text-sm text-[var(--ink3)]">Nothing overdue.</p>
+                ) : (
+                  <ul className="divide-y divide-[var(--line)]">
+                    {overdue.map((t) => (
+                      <li key={t.id}>
+                        <a href={`/board/${t.boardId}`} className="flex items-center justify-between gap-3 py-2.5 no-underline">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-[var(--ink)]">{t.title}</span>
+                            <span className="block truncate text-[12px] text-[var(--ink3)]">{t.boardTitle} · due {fmtDue(t.due)}</span>
+                          </span>
+                          <span className="shrink-0 text-[11px] font-bold text-[var(--danger)]">overdue</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="card p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">Today</h3>
+                  <span className="text-[13px] font-semibold text-[var(--ink2)]">{todayTasks.length}</span>
+                </div>
+                {todayTasks.length === 0 ? (
+                  <p className="py-2 text-sm text-[var(--ink3)]">Nothing due today.</p>
+                ) : (
+                  <ul className="divide-y divide-[var(--line)]">
+                    {todayTasks.map((t) => (
+                      <li key={t.id}>
+                        <a href={`/board/${t.boardId}`} className="flex items-center justify-between gap-3 py-2.5 no-underline">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-[var(--ink)]">{t.title}</span>
+                            <span className="block truncate text-[12px] text-[var(--ink3)]">{t.boardTitle}</span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-8 grid gap-4 lg:grid-cols-2">
+              <div className="card p-5">
+                <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">Announcements</h3>
+                {announcements.length === 0 ? (
+                  <p className="py-2 text-sm text-[var(--ink3)]">No announcements.</p>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {announcements.map((a) => (
+                      <li key={a.id} className="border-l-2 border-[var(--accent)] pl-3">
+                        <p className="text-sm leading-snug text-[var(--ink)]">{a.body}</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--ink3)]">{a.author ?? 'Owner'}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="card p-5">
+                <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My notes</h3>
+                {notes.length === 0 ? (
+                  <p className="py-2 text-sm text-[var(--ink3)]">No notes.</p>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-[var(--line)]">
+                    {notes.map((n) => (
+                      <li key={n.id} className="py-2 text-sm text-[var(--ink)]">{n.body}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4 flex items-baseline justify-between px-0.5">
+              <h2 className="display-title text-2xl font-bold text-[var(--ink)]">Your workspaces</h2>
+              <span className="text-[13px] font-semibold text-[var(--ink2)]">
+                {workspaces.length} workspace{workspaces.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          </>
         )}
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
