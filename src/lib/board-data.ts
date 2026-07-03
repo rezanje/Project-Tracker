@@ -47,7 +47,7 @@ export async function loadBoard(
   const { data: board, error } = await supabase
     .from('boards')
     .select(
-      'id,title,description,type,pic,status,client_name,start_date,deadline,priority',
+      'id,title,description,type,pic,status,client_name,start_date,deadline,priority,workspace_id',
     )
     .eq('id', boardId)
     .single()
@@ -71,7 +71,21 @@ export async function loadBoard(
     .select('role')
     .eq('board_id', boardId)
     .eq('user_id', user?.id ?? '')
-    .single()
+    .maybeSingle()
+
+  // No direct board membership → the caller reaches this board through the
+  // workspace; map their workspace role (owner/member) onto the board.
+  let wsRole: string | null = null
+  const workspaceId = (board as { workspace_id?: string | null }).workspace_id ?? null
+  if (!membership && workspaceId) {
+    const { data: wm } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user?.id ?? '')
+      .maybeSingle()
+    wsRole = wm?.role ?? null
+  }
 
   const cols: ColumnRow[] = (columns ?? []).map((c) => ({
     ...(c as ColumnRow),
@@ -80,7 +94,7 @@ export async function loadBoard(
     ),
   }))
 
-  const role = membership?.role ?? 'client'
+  const role = membership?.role ?? wsRole ?? 'client'
 
   // Financials are owner-only; RLS also blocks the row for clients, so this
   // query simply returns nothing for them — the guard just avoids the round-trip.

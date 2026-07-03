@@ -82,7 +82,7 @@ function Login() {
         New here?{' '}
         <Link
           to="/signup"
-          search={{ invite: undefined }}
+          search={{ invite: undefined, winvite: undefined }}
           className="font-bold text-[var(--accent-ink)] no-underline"
         >
           Create an account

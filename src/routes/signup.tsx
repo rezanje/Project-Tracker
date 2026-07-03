@@ -6,6 +6,7 @@ import AuthShell from '#/components/AuthShell'
 export const Route = createFileRoute('/signup')({
   validateSearch: (s: Record<string, unknown>) => ({
     invite: typeof s.invite === 'string' ? s.invite : undefined,
+    winvite: typeof s.winvite === 'string' ? s.winvite : undefined,
   }),
   component: Signup,
 })
@@ -14,7 +15,7 @@ const fieldLabel = 'mb-1.5 block text-xs font-bold text-[var(--ink2)]'
 
 function Signup() {
   const navigate = useNavigate()
-  const { invite } = Route.useSearch()
+  const { invite, winvite } = Route.useSearch()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,11 +33,11 @@ function Signup() {
     })
     setLoading(false)
     if (error) return setError(error.message)
-    // ponytail: invite acceptance wired in Task 7 (POST /api/accept-invite with `invite`)
-    if (invite) await fetch('/api/accept-invite', {
+    // Accept a pending board (invite) and/or workspace (winvite) invite.
+    if (invite || winvite) await fetch('/api/accept-invite', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: invite }),
+      body: JSON.stringify({ token: invite, wtoken: winvite }),
     }).catch(() => {})
     navigate({ to: '/' })
   }

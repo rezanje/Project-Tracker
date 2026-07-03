@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+button,input,textarea,select{font-family:inherit}
+::placeholder{color:#98a49b}
+@keyframes gtfade{from{transform:translateY(8px)}to{transform:none}}
+@keyframes gtpop{from{transform:translateY(14px) scale(.98)}to{transform:none}}
+@keyframes gtback{from{opacity:0}to{opacity:1}}
+@keyframes gteq{0%,100%{height:28%}50%{height:100%}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh;background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;--bg:#eef4ef;--card:#ffffff;--col:#e7efe8;--ink:#14241c;--ink2:#586a60;--ink3:#8a978f;--line:#dfe8e1;--accent:#1f9d55;--accent-ink:#137a3f;--accent-soft:#dcf3e5;--pop:#f5c451;--pop-soft:#fdf0cf;--pop-ink:#7a5600;--btn:#16211b;--btn-ink:#ffffff;--ring:rgba(31,157,85,.3);--radius:20px;--pad:16px;--gap:14px">
+
+<sc-if value="{{ isBoards }}"><div style="position:fixed;inset:0;z-index:0;pointer-events:none;background:url('assets/meadow.png') center bottom / cover no-repeat,linear-gradient(180deg,#c7e0f4 0%,#dfeef9 40%,#edf5fb 60%,#e9f3ec 100%)"></div></sc-if>
+<sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+<header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 26px;background:rgba(255,255,255,.72);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:34px;height:34px;border-radius:11px;background:var(--btn);display:flex;align-items:center;justify-content:center">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#7be0a6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </div>
+    <span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;letter-spacing:-.02em">GenTrack</span>
+  </div>
+  <sc-if value="{{ isBoard }}">
+    <div style="display:flex;align-items:center;gap:3px;background:var(--col);border:1px solid var(--line);border-radius:999px;padding:4px">
+      <button onClick="{{ setOwner }}" aria-label="View as owner" style="border:none;cursor:pointer;border-radius:999px;padding:7px 17px;font:600 13px 'Hanken Grotesk';background:{{ ownerBg }};color:{{ ownerInk }}">Owner</button>
+      <button onClick="{{ setClient }}" aria-label="View as client" style="border:none;cursor:pointer;border-radius:999px;padding:7px 17px;font:600 13px 'Hanken Grotesk';background:{{ clientBg }};color:{{ clientInk }}">Client</button>
+    </div>
+  </sc-if>
+  <div style="display:flex;align-items:center;gap:11px">
+    <button aria-label="Notifications" style="position:relative;width:38px;height:38px;border-radius:50%;background:var(--card);border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+      <span style="position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--card)"></span>
+    </button>
+    <div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 5px 4px 13px">
+      <span style="font-size:13px;font-weight:600;color:var(--ink2)">demo@gmail.com</span>
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font:700 12px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center">RZ</div>
+    </div>
+    <button onClick="{{ logout }}" style="background:transparent;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font:600 13px 'Hanken Grotesk';color:var(--ink2);cursor:pointer" style-hover="background:var(--card);color:var(--ink)">Log out</button>
+  </div>
+</header>
+</sc-if>
+
+<sc-if value="{{ isBoards }}" hint-placeholder-val="{{ true }}">
+<main data-screen-label="Boards Home" style="max-width:1240px;margin:0 auto;padding:34px 26px 190px;position:relative;z-index:1;animation:gtfade .4s ease both">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:26px">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:7px">{{ greetDate }}</div>
+      <h1 style="margin:0;font-family:'Bricolage Grotesque';font-weight:800;font-size:44px;line-height:1;letter-spacing:-.03em">Hi, {{ user.name }}</h1>
+      <p style="margin:11px 0 0;color:var(--ink2);font-size:15px">Here's where your projects stand today.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="display:flex;align-items:center">
+        <sc-for list="{{ teamAvatars }}" as="m" hint-placeholder-count="4">
+          <div title="{{ m.name }}" style="width:34px;height:34px;border-radius:50%;background:{{ m.color }};color:#fff;font:700 12px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2.5px solid var(--bg);margin-left:-9px">{{ m.initials }}</div>
+        </sc-for>
+      </div>
+      <button onClick="{{ focusNew }}" style="display:inline-flex;align-items:center;gap:7px;background:var(--btn);color:var(--btn-ink);border:none;border-radius:999px;padding:12px 19px;font:600 14px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9"><span style="font-size:17px;line-height:1">+</span>New project</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:290px minmax(0,1fr) 322px;gap:18px;align-items:start;margin-bottom:34px">
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="position:relative">
+        <button onClick="{{ onToggleProjMenu }}" style="width:100%;text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px" style-hover="border-color:var(--accent)">
+          <span style="width:38px;height:38px;border-radius:11px;background:var(--col);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="width:14px;height:14px;border-radius:5px;background:{{ leftProject.accent }}"></span></span>
+          <span style="flex:1;min-width:0"><span style="display:block;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ leftProject.title }}</span><span style="display:block;font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ leftProject.subtitle }}</span></span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--ink3);flex:0 0 auto"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </button>
+        <sc-if value="{{ projMenuOpen }}">
+          <div style="position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:16;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 44px -18px rgba(20,40,30,.4);padding:6px">
+            <sc-for list="{{ projMenu }}" as="p" hint-placeholder-count="4">
+              <button onClick="{{ p.onSelect }}" style="width:100%;text-align:left;cursor:pointer;background:{{ p.bg }};border:none;border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:9px" style-hover="background:var(--col)"><span style="width:8px;height:8px;border-radius:50%;background:{{ p.accent }};flex:0 0 auto"></span><span style="font-size:13px;font-weight:600;color:var(--ink)">{{ p.title }}</span></button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="padding:6px 2px 0">
+        <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:74px;line-height:.8;letter-spacing:-.03em">{{ leftProject.pct }}%</div>
+        <div style="font-size:14px;color:var(--ink2);margin-top:12px">Project progress</div>
+        <div style="height:7px;border-radius:999px;background:var(--col);overflow:hidden;margin-top:14px"><div style="height:100%;border-radius:999px;width:{{ leftProject.pct }}%;background:var(--accent)"></div></div>
+      </div>
+      <sc-if value="{{ playful }}">
+      <div style="background:var(--pop);border-radius:var(--radius);padding:18px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <span style="font-weight:800;font-size:14px;color:#3a2c00;font-family:'Bricolage Grotesque'">Project activity</span>
+          <span style="background:rgba(0,0,0,.09);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:700;color:#3a2c00">Stats</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div style="flex:1"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;color:#2a2000;line-height:1">{{ leftProject.total }}</div><div style="font-size:12px;font-weight:600;color:#6b5200;margin-top:4px">Tasks</div></div>
+          <div style="flex:1"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;color:#2a2000;line-height:1">{{ leftProject.doing }}</div><div style="font-size:12px;font-weight:600;color:#6b5200;margin-top:4px">Active</div></div>
+          <div style="flex:1"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;color:#2a2000;line-height:1">{{ leftProject.done }}</div><div style="font-size:12px;font-weight:600;color:#6b5200;margin-top:4px">Done</div></div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;padding:2px 2px 0">
+        <h2 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:20px;margin:0;letter-spacing:-.02em">Today's tasks</h2>
+        <span style="color:var(--ink2);font-size:13px;font-weight:600">{{ feedCount }} up next</span>
+      </div>
+      <sc-for list="{{ homeFeed }}" as="t" hint-placeholder-count="3">
+        <div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 2px rgba(20,40,30,.04),0 12px 30px -22px rgba(20,40,30,.14)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <span style="width:38px;height:38px;border-radius:11px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:{{ t.iconBg }};color:{{ t.iconInk }}">
+              <sc-if value="{{ t.isMeeting }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 012-2h2l1.5 4L8 9.5a12 12 0 006.5 6.5L16 14l4 1.5V18a2 2 0 01-2 2A14 14 0 014 6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg></sc-if>
+              <sc-if value="{{ t.isReview }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"></circle></svg></sc-if>
+              <sc-if value="{{ t.isTask }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="1.7"></rect><path d="M8.5 12l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+            </span>
+            <div style="min-width:0;flex:1">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px">
+                <sc-for list="{{ t.badges }}" as="bd" hint-placeholder-count="1"><span style="border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;background:{{ bd.soft }};color:{{ bd.ink }}">{{ bd.name }}</span></sc-for>
+              </div>
+              <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:17px;letter-spacing:-.01em;line-height:1.25">{{ t.title }}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:26px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line)">
+            <sc-for list="{{ t.meta }}" as="mt" hint-placeholder-count="3"><div><div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">{{ mt.k }}</div><div style="font-size:13.5px;font-weight:600;color:var(--ink)">{{ mt.v }}</div></div></sc-for>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:1px solid var(--line)">
+            <div style="display:flex;align-items:center">
+              <sc-for list="{{ t.avatars }}" as="m" hint-placeholder-count="3"><div title="{{ m.name }}" style="width:28px;height:28px;border-radius:50%;background:{{ m.color }};color:#fff;font:700 10px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px">{{ m.initials }}</div></sc-for>
+            </div>
+            <button onClick="{{ t.onOpen }}" style="background:var(--btn);color:var(--btn-ink);border:none;border-radius:999px;padding:9px 16px;font:600 13px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9">{{ t.action }}</button>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:7px;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg></span><span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px">Quick requests</span></div>
+          <button onClick="{{ setTaskAction }}" style="background:none;border:none;cursor:pointer;color:var(--accent-ink);font:700 12px 'Hanken Grotesk'">+ Set task</button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ quickRequests }}" as="q" hint-placeholder-count="3">
+            <button onClick="{{ q.onOpen }}" style="text-align:left;cursor:pointer;background:none;border:none;border-top:1px solid var(--line);padding:13px 0;display:flex;align-items:center;justify-content:space-between;gap:10px" style-hover="opacity:.6"><span style="font-size:13.5px;line-height:1.4;color:var(--ink);font-weight:500">{{ q.text }}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--ink3);flex:0 0 auto"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:var(--btn);border-radius:var(--radius);padding:20px">
+        <sc-if value="{{ spotifyConnected }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:14px;color:#fff">Now playing</span>
+            <span style="display:flex;align-items:flex-end;gap:2.5px;height:16px"><span style="width:3px;background:#1DB954;border-radius:2px;height:60%;animation:gteq .9s ease-in-out infinite;animation-play-state:{{ eqPlay }}"></span><span style="width:3px;background:#1DB954;border-radius:2px;height:100%;animation:gteq .9s ease-in-out .15s infinite;animation-play-state:{{ eqPlay }}"></span><span style="width:3px;background:#1DB954;border-radius:2px;height:45%;animation:gteq .9s ease-in-out .3s infinite;animation-play-state:{{ eqPlay }}"></span><span style="width:3px;background:#1DB954;border-radius:2px;height:80%;animation:gteq .9s ease-in-out .45s infinite;animation-play-state:{{ eqPlay }}"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px">
+            <div style="width:54px;height:54px;border-radius:12px;flex:0 0 auto;background:repeating-linear-gradient(135deg,#1DB954,#1DB954 6px,#169943 6px,#169943 12px)"></div>
+            <div style="min-width:0"><div style="font-size:14px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ spotifyTrack }}</div><div style="font-size:12px;color:rgba(255,255,255,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ spotifyArtist }}</div></div>
+          </div>
+          <div style="height:4px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;margin:16px 0 14px"><div style="height:100%;border-radius:999px;width:{{ spotifyProgress }};background:#1DB954"></div></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:22px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,.7)"><path d="M18 6L9 12l9 6V6zM7 6H5v12h2V6z"></path></svg>
+            <button onClick="{{ toggleSpotify }}" aria-label="Play or pause" style="width:44px;height:44px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="transform:scale(1.05)"><sc-if value="{{ spotifyPlaying }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="#16211b"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></sc-if><sc-if value="{{ spotifyPaused }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="#16211b"><path d="M7 5l12 7-12 7V5z"></path></svg></sc-if></button>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,.7)"><path d="M6 6l9 6-9 6V6zM17 6h2v12h-2V6z"></path></svg>
+          </div>
+          <div style="text-align:center;margin-top:14px;font-size:11px;color:rgba(255,255,255,.4)">Demo — connect your real Spotify later</div>
+        </sc-if>
+        <sc-if value="{{ spotifyDisconnected }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:14px;color:#fff">Focus mode</span>
+            <span style="display:flex;align-items:flex-end;gap:2.5px;height:15px"><span style="width:3px;height:40%;background:rgba(255,255,255,.3);border-radius:2px"></span><span style="width:3px;height:75%;background:rgba(255,255,255,.3);border-radius:2px"></span><span style="width:3px;height:55%;background:rgba(255,255,255,.3);border-radius:2px"></span><span style="width:3px;height:90%;background:rgba(255,255,255,.3);border-radius:2px"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px">
+            <div style="width:52px;height:52px;border-radius:14px;flex:0 0 auto;background:#1DB954;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="17" r="3" stroke="#04220f" stroke-width="1.9"></circle><circle cx="18" cy="15" r="3" stroke="#04220f" stroke-width="1.9"></circle><path d="M11 17V6l10-2v11" stroke="#04220f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+            <div style="min-width:0"><div style="font-size:14px;font-weight:600;color:#fff">Play focus music</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Lo-fi & instrumental while you work</div></div>
+          </div>
+          <button onClick="{{ connectSpotify }}" style="width:100%;margin-top:16px;background:#1DB954;color:#04220f;border:none;border-radius:999px;padding:12px;font:700 13.5px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.92">Connect Spotify</button>
+        </sc-if>
+      </div>
+    </div>
+
+  </div>
+  <sc-if value="{{ projMenuOpen }}"><div onClick="{{ closeProjMenu }}" style="position:fixed;inset:0;z-index:14"></div></sc-if>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:30px 0 15px">
+    <h2 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:20px;margin:0;letter-spacing:-.02em">Your projects</h2>
+    <span style="color:var(--ink2);font-size:13px;font-weight:600">{{ boardsCount }} projects</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+    <sc-for list="{{ boards }}" as="b" hint-placeholder-count="4">
+      <button onClick="{{ b.onOpen }}" style="text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:15px;box-shadow:0 1px 2px rgba(20,40,30,.04),0 12px 30px -22px rgba(20,40,30,.16);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease" style-hover="transform:translateY(-3px);border-color:var(--accent);box-shadow:0 1px 2px rgba(20,40,30,.05),0 20px 40px -22px rgba(20,40,30,.28)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="width:9px;height:9px;border-radius:50%;background:{{ b.accent }};flex:0 0 auto"></span>
+            <span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.subtitle }}</span>
+          </div>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="color:var(--ink3);flex:0 0 auto"><path d="M7 17L17 7M17 7H9M17 7v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:21px;letter-spacing:-.02em;line-height:1.1">{{ b.title }}</div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:7px"><span>{{ b.done }}/{{ b.total }} tasks</span><span>{{ b.pct }}%</span></div>
+          <div style="height:7px;border-radius:999px;background:var(--col);overflow:hidden"><div style="height:100%;border-radius:999px;width:{{ b.pct }}%;background:{{ b.accent }}"></div></div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <sc-for list="{{ b.avatars }}" as="m" hint-placeholder-count="3">
+            <div title="{{ m.name }}" style="width:28px;height:28px;border-radius:50%;background:{{ m.color }};color:#fff;font:700 10px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px">{{ m.initials }}</div>
+          </sc-for>
+          <sc-if value="{{ b.extraShow }}"><div style="width:28px;height:28px;border-radius:50%;background:var(--col);color:var(--ink2);font:700 10px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px">{{ b.extraText }}</div></sc-if>
+        </div>
+      </button>
+    </sc-for>
+    <div style="border:2px dashed var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;justify-content:center;gap:11px">
+      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:16px;color:var(--ink2)">Start a new project</div>
+      <input ref="{{ newBoardRef }}" value="{{ newBoardTitle }}" onChange="{{ onNewBoard }}" onKeyDown="{{ onNewBoardKey }}" placeholder="Project name…" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+      <button onClick="{{ createBoard }}" style="background:var(--btn);color:var(--btn-ink);border:none;border-radius:999px;padding:11px;font:600 14px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9">Create project</button>
+    </div>
+  </div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isBoard }}">
+<main data-screen-label="Board view" style="padding:26px 26px 44px;animation:gtfade .35s ease both">
+  <div style="max-width:1400px;margin:0 auto 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
+    <div>
+      <button onClick="{{ backToBoards }}" style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;cursor:pointer;color:var(--ink2);font:600 13px 'Hanken Grotesk';padding:0;margin-bottom:11px" style-hover="color:var(--ink)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>Projects</button>
+      <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap">
+        <span style="width:13px;height:13px;border-radius:50%;background:{{ board.accent }}"></span>
+        <h1 style="margin:0;font-family:'Bricolage Grotesque';font-weight:800;font-size:32px;letter-spacing:-.03em">{{ board.title }}</h1>
+        <span style="border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;background:{{ roleChipBg }};color:{{ roleChipInk }}">{{ roleLabel }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:13px;margin-top:13px">
+        <div style="display:flex;align-items:center">
+          <sc-for list="{{ boardAvatars }}" as="m" hint-placeholder-count="4">
+            <div title="{{ m.name }}" style="width:30px;height:30px;border-radius:50%;background:{{ m.color }};color:#fff;font:700 11px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);margin-left:-8px">{{ m.initials }}</div>
+          </sc-for>
+          <sc-if value="{{ boardExtraShow }}"><div style="width:30px;height:30px;border-radius:50%;background:var(--col);color:var(--ink2);font:700 11px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);margin-left:-8px">{{ boardExtraText }}</div></sc-if>
+        </div>
+        <span style="font-size:13px;color:var(--ink2);font-weight:600">{{ bDone }}/{{ bTotal }} done · {{ bPct }}%</span>
+      </div>
+    </div>
+    <sc-if value="{{ isOwner }}">
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+      <div style="display:flex;gap:8px">
+        <input value="{{ inviteEmail }}" onChange="{{ onInvite }}" onKeyDown="{{ onInviteKey }}" placeholder="Invite client by email…" style="width:230px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 15px;font:500 13px 'Hanken Grotesk';color:var(--ink);outline:none" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+        <button onClick="{{ invite }}" style="background:var(--btn);color:var(--btn-ink);border:none;border-radius:999px;padding:10px 17px;font:600 13px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9">Invite</button>
+      </div>
+      <sc-if value="{{ inviteResult }}"><span style="font-size:12px;color:var(--accent-ink);font-weight:600">{{ inviteResult }}</span></sc-if>
+    </div>
+    </sc-if>
+    <sc-if value="{{ roleClient }}">
+      <div style="max-width:290px;font-size:13px;color:var(--ink2);line-height:1.45;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 15px">You're viewing as a <b style="color:var(--ink)">client</b> — read-only. You can still comment and upload files.</div>
+    </sc-if>
+  </div>
+
+  <div class="gt-scroll" style="max-width:1400px;margin:0 auto;display:flex;gap:16px;overflow-x:auto;padding-bottom:14px;align-items:flex-start">
+    <sc-for list="{{ columns }}" as="col" hint-placeholder-count="5">
+      <section onDragOver="{{ col.onDragOver }}" onDrop="{{ col.onDrop }}" style="flex:0 0 300px;width:300px;background:{{ col.laneBg }};border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad);display:flex;flex-direction:column;gap:var(--gap);transition:background .15s ease">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px">{{ col.title }}</span>
+            <span style="background:var(--card);border:1px solid var(--line);border-radius:999px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink2)">{{ col.count }}</span>
+          </div>
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ col.dot }}"></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--gap);min-height:6px">
+          <sc-for list="{{ col.cards }}" as="card" hint-placeholder-count="2">
+            <article draggable="{{ card.draggable }}" onClick="{{ card.onOpen }}" onDragStart="{{ card.onDragStart }}" onDragEnd="{{ card.onDragEnd }}" onDragOver="{{ card.onDragOver }}" onDrop="{{ card.onDrop }}" style="cursor:pointer;background:var(--card);border:1px solid {{ card.borderColor }};border-radius:16px;padding:14px;opacity:{{ card.opacity }};box-shadow:{{ card.shadow }};transition:border-color .15s ease,transform .15s ease" style-hover="border-color:var(--accent);transform:translateY(-2px)">
+              <sc-if value="{{ card.hasLabels }}"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px"><sc-for list="{{ card.labels }}" as="lb" hint-placeholder-count="1"><span style="border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;background:{{ lb.soft }};color:{{ lb.ink }}">{{ lb.name }}</span></sc-for></div></sc-if>
+              <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:var(--ink)">{{ card.title }}</div>
+              <sc-if value="{{ card.hasDesc }}"><div style="font-size:12.5px;color:var(--ink2);margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ card.desc }}</div></sc-if>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <sc-if value="{{ card.hasDue }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:{{ card.dueInk }};background:{{ card.dueBg }};border-radius:8px;padding:3px 8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"></rect><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>{{ card.dueText }}</span></sc-if>
+                  <sc-if value="{{ card.hasComments }}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--ink2);font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 12a8 8 0 01-11.5 7.2L4 20l1-4.3A8 8 0 1121 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>{{ card.commentCount }}</span></sc-if>
+                  <sc-if value="{{ card.hasAttach }}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--ink2);font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 8l-7.5 7.5a3 3 0 01-4.2-4.2l8-8a2 2 0 112.8 2.8l-7.8 7.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{ card.attachCount }}</span></sc-if>
+                </div>
+                <sc-if value="{{ card.hasAssignee }}"><div title="{{ card.assignee.name }}" style="width:26px;height:26px;border-radius:50%;background:{{ card.assignee.color }};color:#fff;font:700 10px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center">{{ card.assignee.initials }}</div></sc-if>
+              </div>
+            </article>
+          </sc-for>
+          <sc-if value="{{ col.empty }}"><div style="border:1.5px dashed var(--line);border-radius:12px;padding:15px;text-align:center;font-size:12px;color:var(--ink3);font-weight:600">Drop cards here</div></sc-if>
+        </div>
+        <sc-if value="{{ isOwner }}">
+          <div style="display:flex;gap:7px">
+            <input value="{{ col.draft }}" onChange="{{ col.onDraft }}" onKeyDown="{{ col.onAddKey }}" placeholder="Add a card…" style="flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:500 13px 'Hanken Grotesk';color:var(--ink);outline:none" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+            <button onClick="{{ col.onAdd }}" aria-label="Add card" style="width:36px;flex:0 0 36px;border:none;border-radius:10px;background:var(--btn);color:#fff;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="opacity:.9">+</button>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+  </div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isLogin }}">
+<main data-screen-label="Login" style="min-height:100vh;position:relative;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden">
+  <svg viewBox="0 0 1440 320" preserveAspectRatio="none" style="position:absolute;left:0;right:0;bottom:0;width:100%;height:46vh;z-index:0"><path d="M0,190 C280,130 520,225 760,185 C1000,145 1240,215 1440,165 L1440,320 L0,320 Z" fill="#d8efdf"></path><path d="M0,235 C320,185 560,262 880,222 C1120,192 1320,252 1440,222 L1440,320 L0,320 Z" fill="#bfe6cc"></path></svg>
+  <div style="position:relative;z-index:1;width:100%;max-width:404px;background:var(--card);border:1px solid var(--line);border-radius:28px;box-shadow:0 30px 70px -30px rgba(16,28,22,.35);padding:34px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:26px">
+      <div style="width:36px;height:36px;border-radius:12px;background:var(--btn);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#7be0a6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+      <span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;letter-spacing:-.02em">GenTrack</span>
+    </div>
+    <h1 style="margin:0 0 6px;font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;letter-spacing:-.02em">Welcome back</h1>
+    <p style="margin:0 0 24px;color:var(--ink2);font-size:14px">Track your work. Share the progress.</p>
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Email</label>
+    <input value="{{ loginEmail }}" onChange="{{ onLoginEmail }}" type="email" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;margin-bottom:15px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Password</label>
+    <input value="{{ loginPassword }}" onChange="{{ onLoginPass }}" type="password" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;margin-bottom:10px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+    <sc-if value="{{ authError }}"><div style="color:#c0392b;font-size:13px;font-weight:600;margin-bottom:8px">{{ authError }}</div></sc-if>
+    <button onClick="{{ doLogin }}" style="width:100%;background:var(--btn);color:var(--btn-ink);border:none;border-radius:12px;padding:13px;font:700 14px 'Hanken Grotesk';cursor:pointer;margin-top:8px" style-hover="opacity:.9">{{ loginLabel }}</button>
+    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--ink2)">New here? <button onClick="{{ goSignup }}" style="background:none;border:none;color:var(--accent-ink);font-weight:700;cursor:pointer;font-size:13px;padding:0">Create an account</button></div>
+    <div style="margin-top:18px;padding:11px 12px;background:var(--col);border-radius:12px;font-size:12px;color:var(--ink2);text-align:center">Demo is pre-filled — just press <b style="color:var(--ink)">Log in</b>.</div>
+  </div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isSignup }}">
+<main data-screen-label="Sign up" style="min-height:100vh;position:relative;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden">
+  <svg viewBox="0 0 1440 320" preserveAspectRatio="none" style="position:absolute;left:0;right:0;bottom:0;width:100%;height:46vh;z-index:0"><path d="M0,190 C280,130 520,225 760,185 C1000,145 1240,215 1440,165 L1440,320 L0,320 Z" fill="#d8efdf"></path><path d="M0,235 C320,185 560,262 880,222 C1120,192 1320,252 1440,222 L1440,320 L0,320 Z" fill="#bfe6cc"></path></svg>
+  <div style="position:relative;z-index:1;width:100%;max-width:404px;background:var(--card);border:1px solid var(--line);border-radius:28px;box-shadow:0 30px 70px -30px rgba(16,28,22,.35);padding:34px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:26px">
+      <div style="width:36px;height:36px;border-radius:12px;background:var(--btn);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#7be0a6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+      <span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;letter-spacing:-.02em">GenTrack</span>
+    </div>
+    <h1 style="margin:0 0 6px;font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;letter-spacing:-.02em">Create your account</h1>
+    <p style="margin:0 0 24px;color:var(--ink2);font-size:14px">Start tracking projects in minutes.</p>
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Name</label>
+    <input value="{{ signupName }}" onChange="{{ onSignupName }}" placeholder="Your name" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;margin-bottom:15px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Email</label>
+    <input value="{{ signupEmail }}" onChange="{{ onSignupEmail }}" type="email" placeholder="you@email.com" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;margin-bottom:15px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px">Password</label>
+    <input value="{{ signupPassword }}" onChange="{{ onSignupPass }}" type="password" placeholder="At least 6 characters" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;margin-bottom:10px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+    <button onClick="{{ doSignup }}" style="width:100%;background:var(--btn);color:var(--btn-ink);border:none;border-radius:12px;padding:13px;font:700 14px 'Hanken Grotesk';cursor:pointer;margin-top:8px" style-hover="opacity:.9">{{ signupLabel }}</button>
+    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--ink2)">Already have an account? <button onClick="{{ goLogin }}" style="background:none;border:none;color:var(--accent-ink);font-weight:700;cursor:pointer;font-size:13px;padding:0">Log in</button></div>
+  </div>
+</main>
+</sc-if>
+
+<sc-if value="{{ hasModal }}">
+<div onClick="{{ modal.onClose }}" style="position:fixed;inset:0;z-index:50;background:rgba(16,28,22,.42);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:gtback .2s ease both">
+  <div onClick="{{ stop }}" data-screen-label="Card detail" style="width:100%;max-width:640px;background:var(--card);border-radius:24px;box-shadow:0 30px 80px -20px rgba(16,28,22,.5);animation:gtpop .24s cubic-bezier(.2,.8,.25,1) both;overflow:hidden">
+    <div style="padding:24px 24px 0;position:relative">
+      <button onClick="{{ modal.onClose }}" aria-label="Close" style="position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;background:var(--col);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2)" style-hover="background:var(--line);color:var(--ink)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></button>
+      <div style="font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">{{ modal.colTitle }}</div>
+      <sc-if value="{{ isOwner }}">
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px">
+          <sc-for list="{{ modal.allLabels }}" as="lb" hint-placeholder-count="3">
+            <button onClick="{{ lb.onToggle }}" style="cursor:pointer;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;border:1px solid {{ lb.borderCol }};background:{{ lb.bg }};color:{{ lb.fg }}">{{ lb.name }}</button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ modal.clientLabels }}">
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px"><sc-for list="{{ modal.activeLabels }}" as="lb" hint-placeholder-count="1"><span style="border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;background:{{ lb.soft }};color:{{ lb.ink }}">{{ lb.name }}</span></sc-for></div>
+      </sc-if>
+      <sc-if value="{{ isOwner }}">
+        <input value="{{ modal.title }}" onChange="{{ modal.onTitle }}" style="width:100%;border:none;outline:none;font-family:'Bricolage Grotesque';font-weight:800;font-size:25px;letter-spacing:-.02em;color:var(--ink);background:transparent;padding:0">
+      </sc-if>
+      <sc-if value="{{ roleClient }}">
+        <h2 style="margin:0;font-family:'Bricolage Grotesque';font-weight:800;font-size:25px;letter-spacing:-.02em">{{ modal.title }}</h2>
+      </sc-if>
+    </div>
+    <div style="padding:16px 24px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0 20px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Due date</div>
+          <sc-if value="{{ isOwner }}"><input type="date" value="{{ modal.due }}" onChange="{{ modal.onDue }}" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font:500 13.5px 'Hanken Grotesk';color:var(--ink);outline:none" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)"></sc-if>
+          <sc-if value="{{ roleClient }}"><div style="font-size:14px;font-weight:600;color:var(--ink);padding-top:2px">{{ modal.dueDisplay }}</div></sc-if>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Assignee</div>
+          <sc-if value="{{ isOwner }}"><select value="{{ modal.assigneeId }}" onChange="{{ modal.onAssignee }}" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font:500 13.5px 'Hanken Grotesk';color:var(--ink);outline:none;cursor:pointer" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)"><option value="">Unassigned</option><sc-for list="{{ modal.members }}" as="m"><option value="{{ m.id }}">{{ m.name }}</option></sc-for></select></sc-if>
+          <sc-if value="{{ roleClient }}"><div style="display:flex;align-items:center;gap:8px;padding-top:2px"><sc-if value="{{ modal.hasAssignee }}"><div style="width:26px;height:26px;border-radius:50%;background:{{ modal.assignee.color }};color:#fff;font:700 10px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center">{{ modal.assignee.initials }}</div></sc-if><span style="font-size:14px;font-weight:600;color:var(--ink)">{{ modal.assigneeName }}</span></div></sc-if>
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Description</div>
+        <sc-if value="{{ isOwner }}"><textarea value="{{ modal.description }}" onChange="{{ modal.onDesc }}" placeholder="Add a description…" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px;font:500 14px 'Hanken Grotesk';color:var(--ink);outline:none;min-height:88px;resize:vertical;line-height:1.5" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)"></textarea></sc-if>
+        <sc-if value="{{ roleClient }}"><div style="font-size:14px;color:var(--ink2);line-height:1.55">{{ modal.descDisplay }}</div></sc-if>
+      </div>
+      <sc-if value="{{ isOwner }}">
+        <div style="display:flex;gap:10px;margin-bottom:22px">
+          <button onClick="{{ modal.onSave }}" style="background:var(--btn);color:var(--btn-ink);border:none;border-radius:11px;padding:11px 20px;font:700 14px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9">{{ saveLabel }}</button>
+          <button onClick="{{ modal.onClose }}" style="background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:11px 20px;font:600 14px 'Hanken Grotesk';cursor:pointer" style-hover="background:var(--col)">Cancel</button>
+        </div>
+      </sc-if>
+      <div style="height:1px;background:var(--line);margin:2px 0 20px"></div>
+      <div style="margin-bottom:22px">
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;margin-bottom:13px">Comments</div>
+        <div style="display:flex;flex-direction:column;gap:13px;margin-bottom:14px">
+          <sc-for list="{{ modal.comments }}" as="cm" hint-placeholder-count="2">
+            <div style="display:flex;gap:10px">
+              <div style="width:30px;height:30px;flex:0 0 auto;border-radius:50%;background:{{ cm.author.color }};color:#fff;font:700 11px 'Hanken Grotesk';display:flex;align-items:center;justify-content:center">{{ cm.author.initials }}</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:13px">{{ cm.author.name }}</span><span style="font-size:11px;color:var(--ink3)">{{ cm.time }}</span></div>
+                <div style="font-size:13.5px;color:var(--ink);line-height:1.5;margin-top:3px">{{ cm.body }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ modal.noComments }}"><div style="font-size:13px;color:var(--ink3)">No comments yet. Start the conversation.</div></sc-if>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input value="{{ commentDraft }}" onChange="{{ onComment }}" onKeyDown="{{ onCommentKey }}" placeholder="Write a comment…" style="flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 13px;font:500 13.5px 'Hanken Grotesk';color:var(--ink);outline:none" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)">
+          <button onClick="{{ postComment }}" style="background:var(--btn);color:var(--btn-ink);border:none;border-radius:11px;padding:10px 18px;font:600 13.5px 'Hanken Grotesk';cursor:pointer" style-hover="opacity:.9">Post</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;margin-bottom:13px">Attachments</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+          <sc-for list="{{ modal.attachments }}" as="at" hint-placeholder-count="1">
+            <div style="display:flex;align-items:center;gap:11px;background:var(--col);border-radius:12px;padding:10px 13px">
+              <div style="width:32px;height:32px;flex:0 0 auto;border-radius:9px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--accent-ink)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg></div>
+              <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--accent-ink);text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ at.name }}</div><div style="font-size:11px;color:var(--ink3)">{{ at.size }} · {{ at.date }}</div></div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ modal.noAttachments }}"><div style="font-size:13px;color:var(--ink3)">No files attached.</div></sc-if>
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:9px 15px;font:600 13px 'Hanken Grotesk';color:var(--ink);cursor:pointer" style-hover="border-color:var(--accent)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>Choose file<input type="file" onChange="{{ onChooseFile }}" style="display:none"></label>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#1f9d55&quot;,&quot;options&quot;:[&quot;#1f9d55&quot;,&quot;#2563eb&quot;,&quot;#d97706&quot;,&quot;#7c3aed&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;playful&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Cozy&quot;,&quot;options&quot;:[&quot;Cozy&quot;,&quot;Compact&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.TODAY = '2026-07-01';
+    this.MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    this.MEMBERS = {
+      reza:  { id:'reza',  name:'Reza',      color:'#1f9d55', initials:'RZ' },
+      sarah: { id:'sarah', name:'Sarah Lim', color:'#2563eb', initials:'SL' },
+      diki:  { id:'diki',  name:'Diki P.',   color:'#d97706', initials:'DP' },
+      mei:   { id:'mei',   name:'Mei Tan',   color:'#db2777', initials:'MT' },
+      marco: { id:'marco', name:'Marco',     color:'#7c3aed', initials:'MC' }
+    };
+    this.LABELS = [
+      { id:'design',  name:'Design',        soft:'#dcf3e5', ink:'#137a3f' },
+      { id:'dev',     name:'Dev',           soft:'#dbeafe', ink:'#1d4ed8' },
+      { id:'content', name:'Content',       soft:'#fbe6cf', ink:'#b45309' },
+      { id:'hp',      name:'High Priority', soft:'#fde2e0', ink:'#c0392b' },
+      { id:'meeting', name:'Meeting',       soft:'#ede9fe', ink:'#6d28d9' }
+    ];
+    this.QUICK = [
+      { boardId:'vintex', cardId:'v3',  text:'Review the homepage hero direction' },
+      { boardId:'acme',   cardId:'ac4', text:'Approve the color system proposal' },
+      { boardId:'vintex', cardId:'v6',  text:'Add a 2xl radius token to the system' }
+    ];
+    this.rootRef = React.createRef();
+    this.newBoardRef = React.createRef();
+    this.onKey = this.onKey.bind(this);
+    this.state = {
+      screen:'boards', role:'owner', activeBoardId:'vintex', openCardId:null,
+      selectedProjectId:'vintex', projMenuOpen:false, spotifyConnected:false, spotifyPlaying:false,
+      boards: this.seedBoards(),
+      newBoardTitle:'', inviteEmail:'', inviteResult:'',
+      drafts:{}, commentDraft:'', edit:null, saving:false,
+      dragCardId:null, dragFromCol:null, dragOverCol:null, dragOverCardId:null,
+      loginEmail:'demo@gmail.com', loginPassword:'demo1234', authError:'', authLoading:false,
+      signupName:'', signupEmail:'', signupPassword:''
+    };
+  }
+  componentDidMount(){ this.applyTheme(); document.addEventListener('keydown', this.onKey); }
+  componentDidUpdate(){ this.applyTheme(); }
+  componentWillUnmount(){ document.removeEventListener('keydown', this.onKey); }
+  onKey(e){ if(e.key==='Escape' && this.state.openCardId){ this.closeCard(); } }
+
+  applyTheme(){
+    const el = this.rootRef.current; if(!el) return;
+    const MAP = {
+      '#1f9d55':{ink:'#137a3f',soft:'#dcf3e5',ring:'rgba(31,157,85,.3)'},
+      '#2563eb':{ink:'#1d4ed8',soft:'#dbeafe',ring:'rgba(37,99,235,.3)'},
+      '#d97706':{ink:'#b45309',soft:'#fbe6cf',ring:'rgba(217,119,6,.3)'},
+      '#7c3aed':{ink:'#6d28d9',soft:'#ede9fe',ring:'rgba(124,58,237,.3)'}
+    };
+    const a = this.props.accent;
+    if(a){ const m = MAP[a] || {ink:a,soft:'#eef2f0',ring:'rgba(20,40,30,.25)'};
+      el.style.setProperty('--accent',a); el.style.setProperty('--accent-ink',m.ink);
+      el.style.setProperty('--accent-soft',m.soft); el.style.setProperty('--ring',m.ring); }
+    if(this.props.density==='Compact'){ el.style.setProperty('--pad','12px'); el.style.setProperty('--gap','10px'); el.style.setProperty('--radius','16px'); }
+    else { el.style.setProperty('--pad','16px'); el.style.setProperty('--gap','14px'); el.style.setProperty('--radius','20px'); }
+  }
+
+  mkCard(id,title,opts){ return Object.assign({ id, title, description:'', due_date:null, assignee_id:null, labelIds:[], comments:[], attachments:[] }, opts||{}); }
+
+  seedBoards(){
+    const c = this.mkCard.bind(this);
+    return [
+      { id:'vintex', title:'VinteX Website', subtitle:'Design & Development', accent:'#1f9d55', memberIds:['reza','sarah','diki','marco'], columns:[
+        { id:'vintex-backlog', title:'Backlog', cards:[
+          c('v1','Competitor & market audit',{assignee_id:'sarah',labelIds:['content']}),
+          c('v2','Collect brand assets from client',{assignee_id:'reza',labelIds:['design']})
+        ]},
+        { id:'vintex-todo', title:'To Do', cards:[
+          c('v3','Homepage hero redesign',{due_date:'2026-07-08',assignee_id:'reza',labelIds:['design','hp'],description:'New hero with product shot, headline and primary CTA. Match the calm reference direction.'}),
+          c('v4','Set up analytics & events',{due_date:'2026-07-10',assignee_id:'diki',labelIds:['dev']}),
+          c('v5','Write case-study copy',{assignee_id:'sarah',labelIds:['content']})
+        ]},
+        { id:'vintex-doing', title:'In Progress', cards:[
+          c('v6','Design system & components',{due_date:'2026-07-05',assignee_id:'reza',labelIds:['design'],description:'Tokens, buttons, cards, inputs. Keep it inline-friendly and calm.',
+            comments:[{id:'cm1',authorId:'sarah',body:'Spacing scale looks great. Can we add a 2xl radius token?',time:'2h ago'},{id:'cm2',authorId:'reza',body:'Added it — pushing tokens now.',time:'1h ago'}],
+            attachments:[{id:'a1',name:'tokens-v3.fig',date:'Jun 30',size:'2.4 MB'}]}),
+          c('v7','Responsive nav + mobile menu',{assignee_id:'diki',labelIds:['dev']})
+        ]},
+        { id:'vintex-review', title:'Review', cards:[
+          c('v8','Weekly strategy sync notes',{assignee_id:'reza',labelIds:['meeting']}),
+          c('v9','Design review — main page',{due_date:'2026-07-02',assignee_id:'sarah',labelIds:['design','hp'],
+            comments:[{id:'cm3',authorId:'marco',body:'Love the direction — the hero feels calm and premium.',time:'20m ago'}]})
+        ]},
+        { id:'vintex-done', title:'Done', cards:[
+          c('v10','Project kickoff & goals',{assignee_id:'reza',labelIds:['meeting']}),
+          c('v11','Wireframes v1',{assignee_id:'reza',labelIds:['design']}),
+          c('v12','Domain + hosting setup',{assignee_id:'diki',labelIds:['dev']})
+        ]}
+      ]},
+      { id:'acme', title:'Acme Rebrand', subtitle:'Branding · Client', accent:'#d97706', memberIds:['reza','mei','marco'], columns:[
+        { id:'acme-todo', title:'To Do', cards:[ c('ac1','Moodboard round 2',{assignee_id:'mei',labelIds:['design']}), c('ac2','Logo lockup variations',{due_date:'2026-07-12',assignee_id:'reza',labelIds:['design','hp']}) ]},
+        { id:'acme-doing', title:'In Progress', cards:[ c('ac3','Brand guidelines doc',{assignee_id:'reza',labelIds:['content']}) ]},
+        { id:'acme-review', title:'Review', cards:[ c('ac4','Color system proposal',{assignee_id:'mei',labelIds:['design']}) ]},
+        { id:'acme-done', title:'Done', cards:[ c('ac5','Discovery workshop',{assignee_id:'reza',labelIds:['meeting']}), c('ac6','Stakeholder interviews',{assignee_id:'mei',labelIds:['content']}) ]}
+      ]},
+      { id:'portfolio', title:'Portfolio v3', subtitle:'Personal', accent:'#2563eb', memberIds:['reza'], columns:[
+        { id:'portfolio-todo', title:'To Do', cards:[ c('pf1','Pick 6 case studies',{labelIds:['content']}), c('pf2','Shoot workspace photos',{assignee_id:'reza',labelIds:['design']}) ]},
+        { id:'portfolio-doing', title:'In Progress', cards:[ c('pf3','Rebuild grid in code',{assignee_id:'reza',labelIds:['dev']}) ]},
+        { id:'portfolio-done', title:'Done', cards:[ c('pf4','Buy domain',{assignee_id:'reza',labelIds:['dev']}) ]}
+      ]},
+      { id:'fitly', title:'Fitly App', subtitle:'Product · iOS', accent:'#db2777', memberIds:['reza','sarah'], columns:[
+        { id:'fitly-todo', title:'To Do', cards:[ c('ft1','Onboarding flow v2',{due_date:'2026-07-15',assignee_id:'sarah',labelIds:['design']}), c('ft2','Streaks logic spec',{assignee_id:'reza',labelIds:['content']}) ]},
+        { id:'fitly-doing', title:'In Progress', cards:[ c('ft3','Home dashboard UI',{assignee_id:'sarah',labelIds:['design','hp']}) ]},
+        { id:'fitly-review', title:'Review', cards:[ c('ft4','Push notification copy',{assignee_id:'reza',labelIds:['content']}) ]},
+        { id:'fitly-done', title:'Done', cards:[ c('ft5','Design audit',{assignee_id:'sarah',labelIds:['design']}), c('ft6','Tech spike: HealthKit',{assignee_id:'reza',labelIds:['dev']}) ]}
+      ]}
+    ];
+  }
+
+  fmtDate(iso){ if(!iso) return ''; const p=iso.split('-'); return this.MONTHS[(+p[1])-1]+' '+(+p[2]); }
+  isOverdue(iso){ return !!iso && iso < this.TODAY; }
+  fmtSize(n){ if(n==null) return ''; if(n<1024) return n+' B'; if(n<1048576) return Math.round(n/1024)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+
+  go(screen){ this.setState({screen}); }
+  openBoard(id){ this.setState({screen:'board', activeBoardId:id, openCardId:null, inviteResult:''}); }
+  backToBoards(){ this.setState({screen:'boards', openCardId:null}); }
+  logout(){ this.setState({screen:'login', openCardId:null}); }
+  setRole(r){ this.setState({role:r}); }
+  focusNewBoard(){ const el=this.newBoardRef.current; if(el) el.focus(); }
+  selectProject(id){ this.setState({selectedProjectId:id, projMenuOpen:false}); }
+  toggleProjMenu(){ this.setState(s=>({projMenuOpen:!s.projMenuOpen})); }
+  openFrom(boardId,cardId){ const b=this.state.boards.find(x=>x.id===boardId); let card=null; if(b) b.columns.forEach(c=>c.cards.forEach(k=>{ if(k.id===cardId) card=k; })); this.setState({ screen:'board', activeBoardId:boardId, openCardId:cardId, inviteResult:'', commentDraft:'', edit: card?{title:card.title,description:card.description||'',due_date:card.due_date||'',assignee_id:card.assignee_id||'',labelIds:[...(card.labelIds||[])]}:null }); }
+  connectSpotify(){ this.setState({spotifyConnected:true, spotifyPlaying:true}); }
+  toggleSpotify(){ this.setState(s=>({spotifyPlaying:!s.spotifyPlaying})); }
+
+  doLogin(){ this.setState({authLoading:true,authError:''}); setTimeout(()=>{ if(this.state.loginEmail && this.state.loginPassword){ this.setState({authLoading:false,screen:'boards'}); } else { this.setState({authLoading:false,authError:'Enter your email and password.'}); } },550); }
+  doSignup(){ this.setState({authLoading:true,authError:''}); setTimeout(()=>{ this.setState({authLoading:false,screen:'boards'}); },650); }
+
+  createBoard(){ const t=(this.state.newBoardTitle||'').trim(); if(!t) return; const id='b'+Date.now(); const accents=['#1f9d55','#2563eb','#d97706','#db2777','#7c3aed']; const accent=accents[this.state.boards.length%accents.length]; const board={ id, title:t, subtitle:'Personal', accent, memberIds:['reza'], columns:[ {id:id+'-todo',title:'To Do',cards:[]},{id:id+'-doing',title:'In Progress',cards:[]},{id:id+'-review',title:'Review',cards:[]},{id:id+'-done',title:'Done',cards:[]} ] }; this.setState(s=>({ boards:[board,...s.boards], newBoardTitle:'' })); }
+
+  setDraft(colId,v){ this.setState(s=>({ drafts:{...s.drafts,[colId]:v} })); }
+  addCard(colId){ const t=((this.state.drafts||{})[colId]||'').trim(); if(!t) return; const card=this.mkCard('k'+Date.now(),t,{assignee_id:'reza'}); this.setState(s=>({ boards:s.boards.map(b=> b.id!==s.activeBoardId? b : {...b, columns:b.columns.map(col=> col.id!==colId? col : {...col, cards:[...col.cards, card]})}), drafts:{...s.drafts,[colId]:''} })); }
+
+  invite(){ const e=(this.state.inviteEmail||'').trim(); if(!e) return; this.setState({ inviteResult:'Invited '+e+' — a view link was sent.', inviteEmail:'' }); }
+
+  openCard(card){ this.setState({ openCardId:card.id, commentDraft:'', edit:{ title:card.title, description:card.description||'', due_date:card.due_date||'', assignee_id:card.assignee_id||'', labelIds:[...(card.labelIds||[])] } }); }
+  closeCard(){ this.setState({ openCardId:null, edit:null, commentDraft:'', saving:false }); }
+  editField(f,v){ this.setState(s=>({ edit:{...(s.edit||{}),[f]:v} })); }
+  toggleEditLabel(id){ this.setState(s=>{ const cur=(s.edit&&s.edit.labelIds)||[]; const has=cur.includes(id); return { edit:{...(s.edit||{}), labelIds: has? cur.filter(x=>x!==id):[...cur,id]} }; }); }
+  saveCard(){ if(!this.state.edit) return; this.setState({saving:true}); setTimeout(()=>{ this.setState(s=>{ const e=s.edit||{}; const id=s.openCardId; return { saving:false, openCardId:null, edit:null, boards:s.boards.map(b=> b.id!==s.activeBoardId? b : {...b, columns:b.columns.map(col=>({...col, cards:col.cards.map(k=> k.id!==id? k : {...k, title:e.title, description:e.description, due_date:e.due_date||null, assignee_id:e.assignee_id||null, labelIds:e.labelIds||[]})}))}) }; }); },500); }
+
+  postComment(){ const body=(this.state.commentDraft||'').trim(); if(!body) return; const authorId=this.state.role==='client'?'marco':'reza'; const cm={id:'cm'+Date.now(),authorId,body,time:'just now'}; const id=this.state.openCardId; this.setState(s=>({ commentDraft:'', boards:s.boards.map(b=> b.id!==s.activeBoardId? b : {...b, columns:b.columns.map(col=>({...col, cards:col.cards.map(k=> k.id!==id? k : {...k, comments:[...(k.comments||[]), cm]})}))}) })); }
+
+  chooseFile(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const att={id:'at'+Date.now(),name:f.name,date:'Jul 1',size:this.fmtSize(f.size)}; const id=this.state.openCardId; this.setState(s=>({ boards:s.boards.map(b=> b.id!==s.activeBoardId? b : {...b, columns:b.columns.map(col=>({...col, cards:col.cards.map(k=> k.id!==id? k : {...k, attachments:[...(k.attachments||[]), att]})}))}) })); try{ e.target.value=''; }catch(_){} }
+
+  startDrag(e,cardId,colId){ this.setState({dragCardId:cardId,dragFromCol:colId}); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',cardId); }catch(_){} }
+  endDrag(){ this.setState({dragCardId:null,dragFromCol:null,dragOverCol:null,dragOverCardId:null}); }
+  moveCard(cardId,toColId,beforeCardId){ this.setState(s=>{ let moved=null; const boards=s.boards.map(b=>{ if(b.id!==s.activeBoardId) return b; const cols=b.columns.map(col=>{ const i=col.cards.findIndex(k=>k.id===cardId); if(i>=0){ moved=col.cards[i]; return {...col, cards:col.cards.filter(k=>k.id!==cardId)}; } return col; }); if(!moved) return b; const cols2=cols.map(col=>{ if(col.id!==toColId) return col; const arr=[...col.cards]; if(beforeCardId){ const bi=arr.findIndex(k=>k.id===beforeCardId); if(bi>=0) arr.splice(bi,0,moved); else arr.push(moved); } else { arr.push(moved); } return {...col, cards:arr}; }); return {...b, columns:cols2}; }); return { boards, dragOverCol:null, dragOverCardId:null }; }); }
+
+  renderVals(){
+    const s=this.state, M=this.MEMBERS, L=this.LABELS;
+    const isOwner = s.role==='owner';
+    const roleClient = s.role==='client';
+    const labelById = id => L.find(l=>l.id===id);
+    const colType = id => id.endsWith('done')?'done': id.includes('doing')?'doing': id.includes('review')?'review': id.includes('todo')?'todo':'backlog';
+    const colDot = t => t==='done'?'var(--accent)': t==='doing'?'var(--pop)': t==='review'?'#7c3aed': t==='todo'?'#2563eb':'var(--ink3)';
+
+    const boardsView = s.boards.map(b=>{
+      const total=b.columns.reduce((n,c)=>n+c.cards.length,0);
+      const doneCol=b.columns.find(c=>c.id.endsWith('done'));
+      const done=doneCol?doneCol.cards.length:0;
+      const pct=total?Math.round(done/total*100):0;
+      const avs=b.memberIds.slice(0,4).map(id=>M[id]).filter(Boolean);
+      const extra=Math.max(0,b.memberIds.length-4);
+      return { id:b.id, title:b.title, subtitle:b.subtitle, accent:b.accent, total, done, pct, avatars:avs, extraShow:extra>0, extraText:'+'+extra, onOpen:()=>this.openBoard(b.id) };
+    });
+    const allTotal=boardsView.reduce((n,b)=>n+b.total,0);
+    const allDone=boardsView.reduce((n,b)=>n+b.done,0);
+    const overallPct=allTotal?Math.round(allDone/allTotal*100):0;
+    const countType = t => s.boards.reduce((n,b)=>n+b.columns.filter(c=>colType(c.id)===t).reduce((m,c)=>m+c.cards.length,0),0);
+    const inProgress=countType('doing');
+    const inReview=countType('review');
+
+    const activeBoard = s.boards.find(b=>b.id===s.activeBoardId) || s.boards[0];
+    const boardMembers = activeBoard.memberIds.map(id=>M[id]).filter(Boolean);
+    const bTotal=activeBoard.columns.reduce((n,c)=>n+c.cards.length,0);
+    const bDoneCol=activeBoard.columns.find(c=>c.id.endsWith('done'));
+    const bDone=bDoneCol?bDoneCol.cards.length:0;
+    const bPct=bTotal?Math.round(bDone/bTotal*100):0;
+
+    const columnsView = activeBoard.columns.map(col=>{
+      const t=colType(col.id);
+      return {
+        id:col.id, title:col.title, count:col.cards.length, empty:col.cards.length===0,
+        dot:colDot(t), laneBg: (s.dragOverCol===col.id && !s.dragOverCardId) ? 'var(--accent-soft)' : 'var(--col)',
+        draft:(s.drafts||{})[col.id]||'',
+        onDraft:(e)=>this.setDraft(col.id,e.target.value),
+        onAdd:()=>this.addCard(col.id),
+        onAddKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.addCard(col.id); } },
+        onDragOver:(e)=>{ if(isOwner&&s.dragCardId){ e.preventDefault(); if(s.dragOverCol!==col.id||s.dragOverCardId){ this.setState({dragOverCol:col.id,dragOverCardId:null}); } } },
+        onDrop:(e)=>{ if(isOwner&&s.dragCardId){ e.preventDefault(); this.moveCard(s.dragCardId,col.id,null); this.endDrag(); } },
+        cards: col.cards.map(card=>{
+          const overdue=this.isOverdue(card.due_date) && t!=='done';
+          const dragging=s.dragCardId===card.id;
+          const indicator=s.dragOverCardId===card.id;
+          return {
+            id:card.id, title:card.title, desc:card.description, hasDesc:!!card.description,
+            hasDue:!!card.due_date, dueText:this.fmtDate(card.due_date), dueInk:overdue?'#c0392b':'var(--ink2)', dueBg:overdue?'#fde2e0':'var(--col)',
+            assignee:card.assignee_id?M[card.assignee_id]:null, hasAssignee:!!card.assignee_id,
+            labels:(card.labelIds||[]).map(labelById).filter(Boolean), hasLabels:(card.labelIds||[]).length>0,
+            commentCount:(card.comments||[]).length, hasComments:(card.comments||[]).length>0,
+            attachCount:(card.attachments||[]).length, hasAttach:(card.attachments||[]).length>0,
+            draggable:isOwner, opacity:dragging?0.4:1,
+            borderColor:indicator?'var(--accent)':'var(--line)',
+            shadow:indicator?'inset 0 3px 0 0 var(--accent),0 8px 20px -14px rgba(20,40,30,.2)':'0 1px 2px rgba(20,40,30,.05),0 8px 20px -14px rgba(20,40,30,.2)',
+            onOpen:()=>this.openCard(card),
+            onDragStart:(e)=>this.startDrag(e,card.id,col.id),
+            onDragEnd:()=>this.endDrag(),
+            onDragOver:(e)=>{ if(isOwner&&s.dragCardId&&s.dragCardId!==card.id){ e.preventDefault(); e.stopPropagation(); if(s.dragOverCardId!==card.id||s.dragOverCol!==col.id){ this.setState({dragOverCardId:card.id,dragOverCol:col.id}); } } },
+            onDrop:(e)=>{ if(isOwner&&s.dragCardId){ e.preventDefault(); e.stopPropagation(); this.moveCard(s.dragCardId,col.id,card.id); this.endDrag(); } }
+          };
+        })
+      };
+    });
+
+    const selProj = s.boards.find(b=>b.id===s.selectedProjectId) || activeBoard;
+    const spTotal = selProj.columns.reduce((n,c)=>n+c.cards.length,0);
+    const spDoneCol = selProj.columns.find(c=>c.id.endsWith('done'));
+    const spDone = spDoneCol?spDoneCol.cards.length:0;
+    const spDoingCol = selProj.columns.find(c=>colType(c.id)==='doing');
+    const spDoing = spDoingCol?spDoingCol.cards.length:0;
+    const spPct = spTotal?Math.round(spDone/spTotal*100):0;
+    const leftProject = { id:selProj.id, title:selProj.title, subtitle:selProj.subtitle, accent:selProj.accent, pct:spPct, total:spTotal, doing:spDoing, done:spDone };
+    const projMenu = s.boards.map(b=>({ title:b.title, accent:b.accent, bg:b.id===selProj.id?'var(--col)':'transparent', onSelect:()=>this.selectProject(b.id) }));
+    const feedItems = [];
+    selProj.columns.forEach(col=>{ const tt=colType(col.id); col.cards.forEach(card=>{ const hp=(card.labelIds||[]).includes('hp'); const mt=(card.labelIds||[]).includes('meeting'); let score=0; if(mt)score+=4; if(hp)score+=3; if(card.due_date)score+=2; if(tt==='review')score+=2; if(tt==='doing')score+=1; feedItems.push({card,col,tt,mt,hp,score}); }); });
+    feedItems.sort((a,b)=>b.score-a.score);
+    const homeFeed = feedItems.slice(0,3).map(it=>{ const card=it.card, col=it.col; const type=it.mt?'meeting':(it.tt==='review')?'review':'task'; const asg=card.assignee_id?M[card.assignee_id]:null; const badges=[]; if(it.mt) badges.push({name:'Meeting',soft:'#dcf3e5',ink:'#137a3f'}); if(it.hp) badges.push({name:'High priority',soft:'#fde2e0',ink:'#c0392b'}); if(!it.mt&&!it.hp) badges.push({name:col.title,soft:'var(--col)',ink:'var(--ink2)'}); return { title:card.title, isMeeting:type==='meeting', isReview:type==='review', isTask:type==='task', iconBg:type==='meeting'?'#dcf3e5':type==='review'?'#ede9fe':'#fbe6cf', iconInk:type==='meeting'?'#137a3f':type==='review'?'#6d28d9':'#b45309', badges, meta:[{k:'Status',v:col.title},{k:'Due',v:card.due_date?this.fmtDate(card.due_date):'—'},{k:'Owner',v:asg?asg.name:'Unassigned'}], avatars:selProj.memberIds.slice(0,3).map(id=>M[id]).filter(Boolean), action:type==='meeting'?'View sync':'Open card', onOpen:()=>this.openFrom(selProj.id,card.id) }; });
+    const quickRequests = this.QUICK.map(q=>({ text:q.text, onOpen:()=>this.openFrom(q.boardId,q.cardId) }));
+
+    let modal=null;
+    if(s.openCardId){
+      let found=null, foundCol=null;
+      activeBoard.columns.forEach(c=>c.cards.forEach(k=>{ if(k.id===s.openCardId){ found=k; foundCol=c; } }));
+      if(found){
+        const editing = isOwner && s.edit;
+        const curLabels = editing ? (s.edit.labelIds||[]) : (found.labelIds||[]);
+        const activeLabels = curLabels.map(labelById).filter(Boolean);
+        const assignee = found.assignee_id?M[found.assignee_id]:null;
+        modal = {
+          colTitle:foundCol.title,
+          title: editing? s.edit.title : found.title,
+          description: editing? s.edit.description : (found.description||''),
+          descDisplay: found.description || 'No description yet.',
+          due: editing? (s.edit.due_date||'') : (found.due_date||''),
+          dueDisplay: this.fmtDate(found.due_date) || 'No due date',
+          assigneeId: editing? (s.edit.assignee_id||'') : (found.assignee_id||''),
+          assignee, hasAssignee:!!assignee, assigneeName: assignee? assignee.name : 'Unassigned',
+          members: boardMembers,
+          activeLabels, clientLabels: roleClient && activeLabels.length>0,
+          allLabels: L.map(l=>{ const active=curLabels.includes(l.id); return { name:l.name, bg:active?l.soft:'transparent', fg:active?l.ink:'var(--ink2)', borderCol:active?'transparent':'var(--line)', onToggle:()=>this.toggleEditLabel(l.id) }; }),
+          comments:(found.comments||[]).map(cm=>({ author:M[cm.authorId]||M.reza, body:cm.body, time:cm.time })),
+          noComments:(found.comments||[]).length===0,
+          attachments:(found.attachments||[]),
+          noAttachments:(found.attachments||[]).length===0,
+          onTitle:(e)=>this.editField('title',e.target.value),
+          onDesc:(e)=>this.editField('description',e.target.value),
+          onDue:(e)=>this.editField('due_date',e.target.value),
+          onAssignee:(e)=>this.editField('assignee_id',e.target.value),
+          onSave:()=>this.saveCard(),
+          onClose:()=>this.closeCard()
+        };
+      }
+    }
+
+    return {
+      rootRef:this.rootRef, newBoardRef:this.newBoardRef,
+      isLogin:s.screen==='login', isSignup:s.screen==='signup', isBoards:s.screen==='boards', isBoard:s.screen==='board',
+      showChrome: s.screen==='boards'||s.screen==='board',
+      isOwner, roleClient, user:M.reza, playful: this.props.playful!==false,
+      greetDate:'Wednesday, Jul 1',
+      teamAvatars:[M.sarah,M.diki,M.mei,M.marco],
+      ownerBg:isOwner?'var(--btn)':'transparent', ownerInk:isOwner?'#fff':'var(--ink2)',
+      clientBg:roleClient?'var(--btn)':'transparent', clientInk:roleClient?'#fff':'var(--ink2)',
+      setOwner:()=>this.setRole('owner'), setClient:()=>this.setRole('client'),
+      logout:()=>this.logout(), goSignup:()=>this.go('signup'), goLogin:()=>this.go('login'),
+      boards:boardsView, boardsCount:boardsView.length, overallPct, allDone, allTotal, inProgress, inReview,
+      leftProject, projMenuOpen:s.projMenuOpen, onToggleProjMenu:()=>this.toggleProjMenu(), closeProjMenu:()=>this.setState({projMenuOpen:false}), projMenu, homeFeed, feedCount:homeFeed.length, quickRequests, setTaskAction:()=>this.openBoard(selProj.id),
+      spotifyConnected:s.spotifyConnected, spotifyDisconnected:!s.spotifyConnected, spotifyPlaying:s.spotifyPlaying, spotifyPaused:s.spotifyConnected&&!s.spotifyPlaying, eqPlay:s.spotifyPlaying?'running':'paused', spotifyTrack:'Deep Focus', spotifyArtist:'Instrumental · Lo-fi', spotifyProgress:'42%', connectSpotify:()=>this.connectSpotify(), toggleSpotify:()=>this.toggleSpotify(),
+      newBoardTitle:s.newBoardTitle, onNewBoard:(e)=>this.setState({newBoardTitle:e.target.value}),
+      onNewBoardKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.createBoard(); } },
+      createBoard:()=>this.createBoard(), focusNew:()=>this.focusNewBoard(),
+      board:activeBoard, columns:columnsView, backToBoards:()=>this.backToBoards(),
+      boardAvatars:boardMembers.slice(0,4), boardExtraShow:boardMembers.length>4, boardExtraText:'+'+Math.max(0,boardMembers.length-4),
+      bDone, bTotal, bPct,
+      roleLabel:isOwner?'Owner':'Client', roleChipBg:isOwner?'var(--accent-soft)':'#ede9fe', roleChipInk:isOwner?'var(--accent-ink)':'#6d28d9',
+      inviteEmail:s.inviteEmail, onInvite:(e)=>this.setState({inviteEmail:e.target.value}),
+      onInviteKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.invite(); } }, invite:()=>this.invite(), inviteResult:s.inviteResult,
+      hasModal:!!modal, modal, stop:(e)=>e.stopPropagation(), saveLabel:s.saving?'Saving…':'Save changes',
+      commentDraft:s.commentDraft, onComment:(e)=>this.setState({commentDraft:e.target.value}),
+      onCommentKey:(e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); this.postComment(); } }, postComment:()=>this.postComment(), onChooseFile:(e)=>this.chooseFile(e),
+      loginEmail:s.loginEmail, loginPassword:s.loginPassword, authError:s.authError, loginLabel:s.authLoading?'Logging in…':'Log in',
+      onLoginEmail:(e)=>this.setState({loginEmail:e.target.value}), onLoginPass:(e)=>this.setState({loginPassword:e.target.value}), doLogin:()=>this.doLogin(),
+      signupName:s.signupName, signupEmail:s.signupEmail, signupPassword:s.signupPassword, signupLabel:s.authLoading?'Creating…':'Create account',
+      onSignupName:(e)=>this.setState({signupName:e.target.value}), onSignupEmail:(e)=>this.setState({signupEmail:e.target.value}), onSignupPass:(e)=>this.setState({signupPassword:e.target.value}), doSignup:()=>this.doSignup()
+    };
+  }
+}
+</script>
+</body>
+</html>

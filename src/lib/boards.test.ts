@@ -28,8 +28,15 @@ test('createBoard creates board + owner membership', async () => {
   if (uErr) throw uErr
   const uid = u.user.id
   let boardId: string | undefined
+  let wsId: string | undefined
   try {
-    const board = await createBoard(admin, uid, 'Test Board')
+    const { data: ws } = await admin
+      .from('workspaces')
+      .insert({ owner_id: uid, name: 'WS' })
+      .select('id')
+      .single()
+    wsId = ws!.id
+    const board = await createBoard(admin, uid, 'Test Board', wsId!)
     boardId = board.id
     expect(board.id).toBeTruthy()
 
@@ -42,6 +49,7 @@ test('createBoard creates board + owner membership', async () => {
     expect(m?.role).toBe('owner')
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
     await admin.auth.admin.deleteUser(uid)
   }
 }, 20000)
@@ -55,8 +63,15 @@ test('deleteBoard removes the board, cascades children, and clears storage files
   })
   if (uErr) throw uErr
   const uid = u.user.id
+  let wsId: string | undefined
   try {
-    const { id: boardId } = await createBoard(admin, uid, 'Delete Me')
+    const { data: ws } = await admin
+      .from('workspaces')
+      .insert({ owner_id: uid, name: 'WS' })
+      .select('id')
+      .single()
+    wsId = ws!.id
+    const { id: boardId } = await createBoard(admin, uid, 'Delete Me', wsId!)
 
     const { data: col } = await admin
       .from('columns')
@@ -87,6 +102,7 @@ test('deleteBoard removes the board, cascades children, and clears storage files
     const after = await admin.storage.from('card-files').list(`${boardId}/${card!.id}`)
     expect(after.data?.length ?? 0).toBe(0) // storage cleared
   } finally {
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
     await admin.auth.admin.deleteUser(uid)
   }
 }, 30000)

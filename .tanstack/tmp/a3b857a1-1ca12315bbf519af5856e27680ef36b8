@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WorkspaceWorkspaceIdRouteImport } from './routes/workspace.$workspaceId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiAcceptInviteRouteImport } from './routes/api/accept-invite'
@@ -30,11 +29,6 @@ const LoginRoute = LoginRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WorkspaceWorkspaceIdRoute = WorkspaceWorkspaceIdRouteImport.update({
-  id: '/workspace/$workspaceId',
-  path: '/workspace/$workspaceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
@@ -60,7 +54,6 @@ export interface FileRoutesByFullPath {
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
-  '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,7 +62,6 @@ export interface FileRoutesByTo {
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
-  '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,7 +71,6 @@ export interface FileRoutesById {
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
-  '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,7 +81,6 @@ export interface FileRouteTypes {
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
-    | '/workspace/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -99,7 +89,6 @@ export interface FileRouteTypes {
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
-    | '/workspace/$workspaceId'
   id:
     | '__root__'
     | '/'
@@ -108,7 +97,6 @@ export interface FileRouteTypes {
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
-    | '/workspace/$workspaceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,7 +106,6 @@ export interface RootRouteChildren {
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
-  WorkspaceWorkspaceIdRoute: typeof WorkspaceWorkspaceIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -142,13 +129,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/workspace/$workspaceId': {
-      id: '/workspace/$workspaceId'
-      path: '/workspace/$workspaceId'
-      fullPath: '/workspace/$workspaceId'
-      preLoaderRoute: typeof WorkspaceWorkspaceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/board/$boardId': {
@@ -182,7 +162,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
-  WorkspaceWorkspaceIdRoute: WorkspaceWorkspaceIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
