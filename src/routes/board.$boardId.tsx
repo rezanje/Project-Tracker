@@ -189,7 +189,11 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.category === 'string' || f.category === null
           ? { category: f.category as string | null }
           : {}),
-      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null }>,
+        ...(typeof f.contact === 'string' || f.contact === null ? { contact: f.contact as string | null } : {}),
+        ...(typeof f.phone === 'string' || f.phone === null ? { phone: f.phone as string | null } : {}),
+        ...(typeof f.source === 'string' || f.source === null ? { source: f.source as string | null } : {}),
+        ...(typeof f.deal_value === 'number' || f.deal_value === null ? { deal_value: f.deal_value as number | null } : {}),
+      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null }>,
     }
   })
   .handler(async ({ data }) => {
@@ -752,6 +756,7 @@ function BoardView() {
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
           categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
+          isLeads={board.kind === 'leads'}
         />
       )}
 

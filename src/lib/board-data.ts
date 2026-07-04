@@ -7,6 +7,10 @@ export type CardRow = {
   due_date: string | null
   assignee_id: string | null
   category: string | null
+  contact: string | null
+  phone: string | null
+  source: string | null
+  deal_value: number | null
   position: number
   card_labels: { label_id: string }[]
 }
@@ -32,6 +36,7 @@ export type BoardWithColumns = ProjectMeta & {
   id: string
   title: string
   role: string
+  kind: string
   columns: ColumnRow[]
 }
 
@@ -47,7 +52,7 @@ export async function loadBoard(
   const { data: board, error } = await supabase
     .from('boards')
     .select(
-      'id,title,description,type,pic,status,client_name,start_date,deadline,priority,workspace_id',
+      'id,title,kind,description,type,pic,status,client_name,start_date,deadline,priority,workspace_id',
     )
     .eq('id', boardId)
     .single()
@@ -56,7 +61,7 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,description,due_date,assignee_id,category,position,card_labels(label_id))',
+      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,position,card_labels(label_id))',
     )
     .eq('board_id', boardId)
     .order('position')
@@ -113,6 +118,7 @@ export async function loadBoard(
     id: board.id,
     title: board.title,
     role,
+    kind: (b.kind as string) ?? 'tasks',
     description: (b.description as string | null) ?? null,
     type: (b.type as string | null) ?? null,
     pic: (b.pic as string | null) ?? null,

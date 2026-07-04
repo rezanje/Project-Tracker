@@ -21,10 +21,15 @@ interface CardDetailProps {
       due_date: string | null
       assignee_id: string | null
       category: string | null
+      contact: string | null
+      phone: string | null
+      source: string | null
+      deal_value: number | null
     }>,
   ) => Promise<void>
   onSetLabels: (cardId: string, labelIds: string[]) => Promise<void>
   categorySuggestions?: string[]
+  isLeads?: boolean
 }
 
 const fieldLabel =
@@ -47,12 +52,17 @@ export default function CardDetail({
   onUpdateCard,
   onSetLabels,
   categorySuggestions = [],
+  isLeads = false,
 }: CardDetailProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [dueDate, setDueDate] = useState(card.due_date ?? '')
   const [assigneeId, setAssigneeId] = useState(card.assignee_id ?? '')
   const [category, setCategory] = useState(card.category ?? '')
+  const [contact, setContact] = useState(card.contact ?? '')
+  const [phone, setPhone] = useState(card.phone ?? '')
+  const [source, setSource] = useState(card.source ?? '')
+  const [dealValue, setDealValue] = useState(card.deal_value != null ? String(card.deal_value) : '')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(
     card.card_labels.map((cl) => cl.label_id),
   )
@@ -75,6 +85,14 @@ export default function CardDetail({
         due_date: dueDate || null,
         assignee_id: assigneeId || null,
         category: category.trim() || null,
+        ...(isLeads
+          ? {
+              contact: contact.trim() || null,
+              phone: phone.trim() || null,
+              source: source.trim() || null,
+              deal_value: dealValue ? Math.max(0, Math.floor(Number(dealValue) || 0)) : null,
+            }
+          : {}),
       })
       await onSetLabels(card.id, selectedLabelIds)
       onSaved()
@@ -237,6 +255,33 @@ export default function CardDetail({
               </p>
             )}
           </div>
+
+          {isOwner && isLeads && (
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className={fieldLabel}>Contact</label>
+                <input value={contact} onChange={(e) => setContact(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel}>Phone</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel}>Source</label>
+                <input value={source} onChange={(e) => setSource(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel}>Deal value (Rp)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={dealValue}
+                  onChange={(e) => setDealValue(e.target.value)}
+                  className="field"
+                />
+              </div>
+            </div>
+          )}
 
           {isOwner && (
             <div className="mb-4">

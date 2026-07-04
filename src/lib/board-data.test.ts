@@ -13,7 +13,8 @@ test('distinctCategories returns sorted unique non-null categories', () => {
 test('groupByCategory buckets by category with an Uncategorised bucket', () => {
   const mk = (id: string, category: string | null) => ({
     id, title: id, description: null, due_date: null, assignee_id: null,
-    category, position: 0, card_labels: [],
+    category, contact: null, phone: null, source: null, deal_value: null,
+    position: 0, card_labels: [],
   })
   const groups = groupByCategory([mk('a', 'Design'), mk('b', null), mk('c', 'Design')])
   expect(groups.find((g) => g.category === 'Design')!.cards.map((c) => c.id)).toEqual(['a', 'c'])

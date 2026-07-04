@@ -17,6 +17,7 @@ export async function createBoard(
   userId: string,
   title: string,
   workspaceId: string,
+  kind: 'tasks' | 'leads' = 'tasks',
 ): Promise<{ id: string }> {
   // Generate the id client-side and skip RETURNING. The boards SELECT policy
   // (is_board_member, which is `stable`) can't see the owner membership row the
@@ -25,7 +26,7 @@ export async function createBoard(
   const id = crypto.randomUUID()
   const { error } = await supabase
     .from('boards')
-    .insert({ id, title, owner_id: userId, workspace_id: workspaceId })
+    .insert({ id, title, owner_id: userId, workspace_id: workspaceId, kind })
   if (error) throw error
   return { id }
 }

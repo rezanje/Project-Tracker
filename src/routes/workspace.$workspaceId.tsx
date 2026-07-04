@@ -32,15 +32,19 @@ function flush(headers: Headers) {
 
 const newBoard = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const { title, workspaceId } = (d ?? {}) as { title?: unknown; workspaceId?: unknown }
+    const { title, workspaceId, kind } = (d ?? {}) as {
+      title?: unknown
+      workspaceId?: unknown
+      kind?: unknown
+    }
     if (typeof title !== 'string' || !title.trim()) throw new Error('Title required')
     if (typeof workspaceId !== 'string') throw new Error('workspaceId required')
-    return { title: title.trim(), workspaceId }
+    return { title: title.trim(), workspaceId, kind: kind === 'leads' ? ('leads' as const) : ('tasks' as const) }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    const board = await createBoard(supabase, user.id, data.title, data.workspaceId)
+    const board = await createBoard(supabase, user.id, data.title, data.workspaceId, data.kind)
     flush(headers)
     return board
   })
@@ -463,6 +467,7 @@ function Home() {
   }
   const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
   const [creating, setCreating] = useState(false)
+  const [kind, setKind] = useState<'tasks' | 'leads'>('tasks')
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [createErr, setCreateErr] = useState<string | null>(null)
@@ -530,7 +535,7 @@ function Home() {
     setBusy(true)
     setCreateErr(null)
     try {
-      const board = await newBoard({ data: { title, workspaceId } })
+      const board = await newBoard({ data: { title, workspaceId, kind } })
       setTitle('')
       setCreating(false)
       setSelectedId(board.id)
@@ -649,6 +654,14 @@ function Home() {
               onChange={(e) => setTitle(e.target.value)}
               className="field min-w-[220px] flex-1"
             />
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as 'tasks' | 'leads')}
+              className="field w-auto"
+            >
+              <option value="tasks">Task board</option>
+              <option value="leads">Leads pipeline</option>
+            </select>
             <button type="submit" disabled={busy} className="btn btn-primary btn-square">
               {busy ? 'Creating…' : 'Create'}
             </button>
