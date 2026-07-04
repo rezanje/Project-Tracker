@@ -22,6 +22,7 @@ import {
   type TeamMember,
 } from '#/lib/workspaces'
 import TeamPanel from '#/components/TeamPanel'
+import Goals from '#/components/Goals'
 import { isDoneColumn } from '#/lib/home'
 
 // Supabase may rotate the session cookie on any call; flush those Set-Cookie
@@ -168,6 +169,108 @@ const deleteNoteFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const kpiSaveFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    if (typeof f.workspaceId !== 'string') throw new Error('workspaceId required')
+    return {
+      id: typeof f.id === 'string' ? f.id : null,
+      workspaceId: f.workspaceId,
+      name: typeof f.name === 'string' ? f.name.trim() : '',
+      target: Number(f.target) || 0,
+      current: Number(f.current) || 0,
+      unit: typeof f.unit === 'string' && f.unit.trim() ? f.unit.trim() : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    if (data.id) {
+      await supabase.from('kpis').update({ name: data.name, target: data.target, current: data.current, unit: data.unit }).eq('id', data.id)
+    } else {
+      const { error } = await supabase.from('kpis').insert({ workspace_id: data.workspaceId, name: data.name || 'KPI', target: data.target, current: data.current, unit: data.unit })
+      if (error) throw error
+    }
+    flush(headers)
+  })
+
+const kpiDeleteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string') throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from('kpis').delete().eq('id', data.id)
+    flush(headers)
+  })
+
+const objAddFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, title } = (d ?? {}) as { workspaceId?: unknown; title?: unknown }
+    if (typeof workspaceId !== 'string' || typeof title !== 'string' || !title.trim())
+      throw new Error('workspaceId and title required')
+    return { workspaceId, title: title.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('objectives').insert({ workspace_id: data.workspaceId, title: data.title })
+    if (error) throw error
+    flush(headers)
+  })
+
+const objDeleteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string') throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from('objectives').delete().eq('id', data.id)
+    flush(headers)
+  })
+
+const krSaveFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    return {
+      id: typeof f.id === 'string' ? f.id : null,
+      objectiveId: typeof f.objectiveId === 'string' ? f.objectiveId : null,
+      title: typeof f.title === 'string' ? f.title.trim() : '',
+      target: Number(f.target) || 0,
+      current: Number(f.current) || 0,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    if (data.id) {
+      await supabase.from('key_results').update({ title: data.title, target: data.target, current: data.current }).eq('id', data.id)
+    } else if (data.objectiveId) {
+      const { error } = await supabase.from('key_results').insert({ objective_id: data.objectiveId, title: data.title || 'Key result', target: data.target || 100, current: data.current })
+      if (error) throw error
+    }
+    flush(headers)
+  })
+
+const krDeleteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string') throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from('key_results').delete().eq('id', data.id)
+    flush(headers)
+  })
+
 type Member = { name: string | null; avatar_url: string | null }
 type Task = {
   id: string
@@ -207,6 +310,8 @@ const fetchHome = createServerFn({ method: 'GET' })
     { data: wm },
     { data: announcements },
     { data: notes },
+    { data: kpis },
+    { data: objectives },
     { data: boardRows },
     { data: finance },
   ] = await Promise.all([
@@ -229,6 +334,16 @@ const fetchHome = createServerFn({ method: 'GET' })
         .select('id,body,created_at')
         .order('created_at', { ascending: false })
         .limit(8),
+      supabase
+        .from('kpis')
+        .select('id,name,target,current,unit')
+        .eq('workspace_id', data.workspaceId)
+        .order('created_at'),
+      supabase
+        .from('objectives')
+        .select('id,title,key_results(id,title,target,current)')
+        .eq('workspace_id', data.workspaceId)
+        .order('created_at'),
       supabase
         .from('boards')
         .select(
@@ -320,6 +435,36 @@ const fetchHome = createServerFn({ method: 'GET' })
       body: n.body as string,
       created_at: n.created_at as string,
     })),
+    kpis: (kpis ?? []).map((k) => ({
+      id: k.id as string,
+      name: k.name as string,
+      target: Number(k.target) || 0,
+      current: Number(k.current) || 0,
+      unit: (k.unit as string | null) ?? null,
+    })),
+    okrs: (objectives ?? []).map((o) => {
+      const krsRaw = (o as { key_results: unknown }).key_results
+      const krs = (Array.isArray(krsRaw) ? krsRaw : []) as Array<{
+        id: string
+        title: string
+        target: number
+        current: number
+      }>
+      const krList = krs.map((k) => ({
+        id: k.id,
+        title: k.title,
+        target: Number(k.target) || 0,
+        current: Number(k.current) || 0,
+      }))
+      const progress = krList.length
+        ? Math.round(
+            (krList.reduce((a, k) => a + (k.target ? Math.min(1, k.current / k.target) : 0), 0) /
+              krList.length) *
+              100,
+          )
+        : 0
+      return { id: o.id as string, title: o.title as string, krs: krList, progress }
+    }),
   }
 })
 
@@ -405,9 +550,21 @@ function Clock() {
 
 function Home() {
   const router = useRouter()
-  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId, announcements, notes } =
+  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId, announcements, notes, kpis, okrs } =
     Route.useLoaderData()
   const isWsOwner = wsRole === 'owner'
+
+  const inv = () => router.invalidate()
+  const goalHandlers = {
+    onKpiSave: (k: { id?: string; name: string; target: number; current: number; unit: string }) =>
+      kpiSaveFn({ data: { ...k, workspaceId } }).then(inv),
+    onKpiDelete: (id: string) => kpiDeleteFn({ data: { id } }).then(inv),
+    onObjAdd: (title: string) => objAddFn({ data: { workspaceId, title } }).then(inv),
+    onObjDelete: (id: string) => objDeleteFn({ data: { id } }).then(inv),
+    onKrSave: (k: { id?: string; objectiveId?: string; title: string; target: number; current: number }) =>
+      krSaveFn({ data: k }).then(inv),
+    onKrDelete: (id: string) => krDeleteFn({ data: { id } }).then(inv),
+  }
   const [annBody, setAnnBody] = useState('')
   const [noteBody, setNoteBody] = useState('')
 
@@ -784,6 +941,8 @@ function Home() {
             )}
           </div>
         </div>
+
+        <Goals kpis={kpis} okrs={okrs} isOwner={isWsOwner} {...goalHandlers} />
 
         {!project ? (
           <div className="card p-10 text-center">
