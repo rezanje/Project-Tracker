@@ -19,7 +19,7 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
   const { user, supabase } = await requireUser(getRequest(), headers)
   const [{ data: me }, { data: workspaces }, { data: boards }, { data: notes }, { data: anns }] =
     await Promise.all([
-      supabase.from('profiles').select('name').eq('id', user.id).single(),
+      supabase.from('profiles').select('name, is_super_admin').eq('id', user.id).single(),
       supabase.from('workspaces').select('id,name').order('created_at'),
       supabase.from('boards').select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date))'),
       supabase.from('notes').select('id,body,created_at').order('created_at', { ascending: false }).limit(8),
@@ -29,6 +29,11 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
         .order('created_at', { ascending: false })
         .limit(6),
     ])
+
+  const isSuperAdmin = me?.is_super_admin === true
+  const pendingCount = isSuperAdmin
+    ? ((await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending')).count ?? 0)
+    : 0
 
   const today = new Date().toISOString().slice(0, 10)
   const stats = new Map<string, { total: number; done: number; projects: number }>()
@@ -81,6 +86,8 @@ const fetchWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
   flush(headers)
   return {
     name: me?.name ?? null,
+    isSuperAdmin,
+    pendingCount,
     workspaces: list,
     agg: { total, done, active: total - done, progress: total ? Math.round((done / total) * 100) : 0 },
     todayTasks: todayTasks.slice(0, 6),
@@ -148,7 +155,7 @@ function fmtDue(due: string | null): string {
 
 function Workspaces() {
   const router = useRouter()
-  const { name, workspaces, agg, todayTasks, overdue, notes, announcements, urgent } =
+  const { name, workspaces, agg, todayTasks, overdue, notes, announcements, urgent, isSuperAdmin, pendingCount } =
     Route.useLoaderData()
   const [creating, setCreating] = useState(false)
   const [wsName, setWsName] = useState('')
@@ -196,6 +203,11 @@ function Workspaces() {
               Your workspaces — pick an office to dive in.
             </p>
           </div>
+          {isSuperAdmin && (
+            <Link to="/admin/approvals" className="btn btn-ghost px-4 py-3 text-sm no-underline">
+              Approvals{pendingCount > 0 ? ` (${pendingCount})` : ''}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {
