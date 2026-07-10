@@ -20,8 +20,12 @@ begin
   update profiles set status = 'approved', is_super_admin = true where id = admin_id;
 end $$;
 
-create function is_super_admin() returns boolean language sql security definer stable as $$
-  select coalesce((select is_super_admin from profiles where id = auth.uid()), false);
+-- security definer + pinned search_path: supabase_auth_admin and other roles
+-- invoking this have no `public` in their path (same trap as 0003), so
+-- schema-qualify and pin to keep the unqualified table lookups resolving.
+create function is_super_admin() returns boolean
+language sql security definer stable set search_path = public as $$
+  select coalesce((select is_super_admin from public.profiles where id = auth.uid()), false);
 $$;
 
 -- Super admin can flip any profile's status/is_super_admin; the existing
