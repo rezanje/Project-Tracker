@@ -17,6 +17,7 @@ import { Route as WorkspaceWorkspaceIdRouteImport } from './routes/workspace.$wo
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiAcceptInviteRouteImport } from './routes/api/accept-invite'
+import { Route as AdminApprovalsRouteImport } from './routes/admin/approvals'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -58,12 +59,18 @@ const ApiAcceptInviteRoute = ApiAcceptInviteRouteImport.update({
   path: '/api/accept-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/admin/approvals',
+  path: '/admin/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending'
     | '/signup'
+    | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending'
     | '/signup'
+    | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending'
     | '/signup'
+    | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
     | '/board/$boardId'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PendingRoute: typeof PendingRoute
   SignupRoute: typeof SignupRoute
+  AdminApprovalsRoute: typeof AdminApprovalsRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAcceptInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/approvals': {
+      id: '/admin/approvals'
+      path: '/admin/approvals'
+      fullPath: '/admin/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PendingRoute: PendingRoute,
   SignupRoute: SignupRoute,
+  AdminApprovalsRoute: AdminApprovalsRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
