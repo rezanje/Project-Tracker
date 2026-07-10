@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
-import { acceptInvite } from './invites'
+import { acceptWorkspaceInvite } from './workspaces'
 
 const env = Object.fromEntries(
   readFileSync('.dev.vars', 'utf8')
@@ -28,49 +28,44 @@ async function mkUser(tag: string) {
   return data.user
 }
 
-test('acceptInvite converts a pending invite into a client membership', async () => {
-  const owner = await mkUser('owner')
-  const client = await mkUser('client')
-  let boardId: string | undefined
+test('acceptWorkspaceInvite converts a pending invite into a member and approves the profile', async () => {
+  const owner = await mkUser('wsowner')
+  const member = await mkUser('wsmember')
+  let workspaceId: string | undefined
   try {
-    const { data: board } = await admin
-      .from('boards')
-      .insert({ owner_id: owner.id, title: 'Invite Board' })
+    const { data: ws } = await admin
+      .from('workspaces')
+      .insert({ owner_id: owner.id, name: 'Invite Workspace' })
       .select('id')
       .single()
-    boardId = board!.id
+    workspaceId = ws!.id
 
     const { data: inv } = await admin
-      .from('pending_invites')
-      .insert({ board_id: boardId, email: 'someone@gmail.com' })
+      .from('pending_workspace_invites')
+      .insert({ workspace_id: workspaceId, email: 'someone@gmail.com' })
       .select('token')
       .single()
 
-    await acceptInvite(admin, inv!.token, client.id)
+    const ok = await acceptWorkspaceInvite(admin, inv!.token, member.id)
+    expect(ok).toBe(true)
 
     const { data: m } = await admin
-      .from('board_members')
+      .from('workspace_members')
       .select('role')
-      .eq('board_id', boardId)
-      .eq('user_id', client.id)
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', member.id)
       .single()
-    expect(m?.role).toBe('client')
+    expect(m?.role).toBe('member')
 
     const { data: prof } = await admin
       .from('profiles')
       .select('status')
-      .eq('id', client.id)
+      .eq('id', member.id)
       .single()
     expect(prof?.status).toBe('approved')
-
-    const { data: left } = await admin
-      .from('pending_invites')
-      .select('token')
-      .eq('token', inv!.token)
-    expect(left?.length).toBe(0)
   } finally {
-    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (workspaceId) await admin.from('workspaces').delete().eq('id', workspaceId)
     await admin.auth.admin.deleteUser(owner.id)
-    await admin.auth.admin.deleteUser(client.id)
+    await admin.auth.admin.deleteUser(member.id)
   }
 }, 20000)

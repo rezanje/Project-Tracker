@@ -54,4 +54,6 @@ export async function acceptInvite(
     .from('board_members')
     .insert({ board_id: inv.board_id, user_id: userId, role: inv.role ?? 'client' })
   await svc.from('pending_invites').delete().eq('token', token)
+  // Invited-by-owner accounts are pre-vetted — skip the approval gate.
+  await svc.from('profiles').update({ status: 'approved' }).eq('id', userId)
 }
