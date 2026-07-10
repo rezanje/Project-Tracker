@@ -13,15 +13,7 @@ function initials(email: string): string {
 }
 
 function BrandMark() {
-  return (
-    <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[11px] bg-[var(--btn)]">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="4.5" y="4" width="5.5" height="16" rx="1.6" fill="#fff" />
-        <rect x="11" y="4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
-        <rect x="11" y="14.4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
-      </svg>
-    </span>
-  )
+  return <img src="/logo192.png" alt="" width={34} height={34} className="rounded-[11px]" />
 }
 
 export default function Header() {

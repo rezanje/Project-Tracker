@@ -30,13 +30,7 @@ export default function AuthShell({
 
       <div className="relative z-10 w-full max-w-[404px] rounded-[28px] border border-[var(--line)] bg-[var(--card)] p-[34px] shadow-[0_30px_70px_-30px_rgba(16,28,22,0.35)] gt-fade">
         <div className="mb-6 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--btn)]">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="4.5" y="4" width="5.5" height="16" rx="1.6" fill="#fff" />
-              <rect x="11" y="4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
-              <rect x="11" y="14.4" width="8.5" height="5.6" rx="1.6" fill="#fff" />
-            </svg>
-          </span>
+          <img src="/logo192.png" alt="" width={36} height={36} className="rounded-[12px]" />
           <span className="display-title text-xl font-extrabold text-[var(--ink)]">
             Rakit
           </span>
