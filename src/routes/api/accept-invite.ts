@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireUser } from '#/lib/auth'
+import { getSessionUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { acceptInvite } from '#/lib/invites'
 import { acceptWorkspaceInvite } from '#/lib/workspaces'
@@ -9,7 +9,7 @@ export const Route = createFileRoute('/api/accept-invite')({
     handlers: {
       POST: async ({ request }) => {
         const headers = new Headers()
-        const { user } = await requireUser(request, headers)
+        const { user } = await getSessionUser(request, headers)
         const { token, wtoken } = (await request.json()) as {
           token?: string
           wtoken?: string

@@ -133,5 +133,7 @@ export async function acceptWorkspaceInvite(
     .from('workspace_members')
     .insert({ workspace_id: inv.workspace_id, user_id: userId, role: 'member' })
   await svc.from('pending_workspace_invites').delete().eq('token', token)
+  // Invited-by-owner accounts are pre-vetted — skip the approval gate.
+  await svc.from('profiles').update({ status: 'approved' }).eq('id', userId)
   return true
 }
