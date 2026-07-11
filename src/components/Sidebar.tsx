@@ -4,12 +4,16 @@ import {
   BarChart3,
   Calendar,
   CheckSquare,
+  ChevronDown,
   Home,
   Inbox,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
+  Settings,
+  Star,
 } from 'lucide-react'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
@@ -32,12 +36,17 @@ function initials(email: string): string {
   return chars.toUpperCase() || '?'
 }
 
-const MAIN_NAV = [
-  { label: 'Home', icon: Home, to: '/' as const },
-  { label: 'Inbox', icon: Inbox, to: '/coming-soon' as const },
-  { label: 'Tasks', icon: CheckSquare, to: '/coming-soon' as const },
-  { label: 'Calendar', icon: Calendar, to: '/coming-soon' as const },
-  { label: 'Reports', icon: BarChart3, to: '/coming-soon' as const },
+const MAIN_NAV: Array<{
+  label: string
+  icon: typeof Home
+  to: '/' | '/coming-soon'
+  badge?: number
+}> = [
+  { label: 'Command Center', icon: Home, to: '/' },
+  { label: 'Inbox', icon: Inbox, to: '/coming-soon', badge: 8 },
+  { label: 'My Tasks', icon: CheckSquare, to: '/coming-soon', badge: 18 },
+  { label: 'Calendar', icon: Calendar, to: '/coming-soon' },
+  { label: 'Reports', icon: BarChart3, to: '/coming-soon' },
 ]
 
 export default function Sidebar() {
@@ -46,6 +55,7 @@ export default function Sidebar() {
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
   const [boards, setBoards] = useState<NavBoard[]>([])
   const [collapsed, setCollapsed] = useState(false)
+  const [favOpen, setFavOpen] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -114,7 +124,7 @@ export default function Sidebar() {
         )}
       </button>
       <nav className="mb-2 flex flex-col gap-0.5">
-        {MAIN_NAV.map(({ label, icon: Icon, to }) => {
+        {MAIN_NAV.map(({ label, icon: Icon, to, badge }) => {
           const active = pathname === to
           return (
             <Link
@@ -126,7 +136,12 @@ export default function Sidebar() {
               } ${active ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'}`}
             >
               <Icon size={16} className="shrink-0" aria-hidden="true" />
-              {!collapsed && <span className="truncate">{label}</span>}
+              {!collapsed && <span className="flex-1 truncate">{label}</span>}
+              {!collapsed && badge != null && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                  {badge}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -180,10 +195,57 @@ export default function Sidebar() {
         )
       })}
 
+      {/* add workspace */}
+      <Link
+        to="/coming-soon"
+        title="Add workspace"
+        className={`flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-semibold text-[var(--ink3)] no-underline hover:bg-[var(--col)] hover:text-[var(--ink2)] ${
+          collapsed ? 'justify-center px-0' : 'px-2.5'
+        }`}
+      >
+        <Plus size={16} className="shrink-0" aria-hidden="true" />
+        {!collapsed && <span className="truncate">Add workspace</span>}
+      </Link>
+
+      {/* favorites */}
+      <button
+        type="button"
+        onClick={() => setFavOpen((v) => !v)}
+        title="Favorites"
+        className={`mt-1 flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-bold text-[var(--ink2)] hover:bg-[var(--col)] ${
+          collapsed ? 'justify-center px-0' : 'px-2.5'
+        }`}
+      >
+        <Star size={16} className="shrink-0" aria-hidden="true" />
+        {!collapsed && <span className="flex-1 truncate text-left">Favorites</span>}
+        {!collapsed && (
+          <ChevronDown
+            size={14}
+            className={`shrink-0 transition-transform ${favOpen ? '' : '-rotate-90'}`}
+            aria-hidden="true"
+          />
+        )}
+      </button>
+      {!collapsed && favOpen && (
+        <p className="px-2.5 py-1 text-[12px] text-[var(--ink3)]">No favorites yet</p>
+      )}
+
+      {/* settings */}
+      <Link
+        to="/coming-soon"
+        title="Settings"
+        className={`flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)] ${
+          collapsed ? 'justify-center px-0' : 'px-2.5'
+        }`}
+      >
+        <Settings size={16} className="shrink-0" aria-hidden="true" />
+        {!collapsed && <span className="truncate">Settings</span>}
+      </Link>
+
       <div className="mt-auto flex flex-col gap-2">
         {!collapsed && (
           <div
-            className="h-24 rounded-[10px] border-2 border-[var(--ink)] bg-cover bg-bottom"
+            className="-mx-3 h-36 bg-cover bg-bottom"
             style={{ backgroundImage: "url('/meadow.png')" }}
             aria-hidden="true"
           />
