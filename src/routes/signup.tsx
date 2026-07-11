@@ -21,18 +21,21 @@ function Signup() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [confirmSent, setConfirmSent] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await getBrowserSupabase().auth.signUp({
+    const { data, error } = await getBrowserSupabase().auth.signUp({
       email,
       password,
       options: { data: { name } },
     })
     setLoading(false)
     if (error) return setError(error.message)
+    // No session back means email confirmation is required before login works.
+    if (!data.session) return setConfirmSent(true)
     // Accept a pending board (invite) and/or workspace (winvite) invite.
     if (invite || winvite) await fetch('/api/accept-invite', {
       method: 'POST',
@@ -52,6 +55,20 @@ function Signup() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
     if (error) setError(error.message)
+  }
+
+  if (confirmSent) {
+    return (
+      <AuthShell heading="Check your email" subtitle={`We sent a confirmation link to ${email}.`}>
+        <p className="text-center text-[13px] text-[var(--ink2)]">
+          Click the link in that email to activate your account, then come back and log in.
+          Don&apos;t see it? Check your spam folder.
+        </p>
+        <Link to="/login" className="btn btn-primary btn-square mt-4 block w-full text-center no-underline">
+          Back to log in
+        </Link>
+      </AuthShell>
+    )
   }
 
   return (
