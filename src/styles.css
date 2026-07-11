@@ -99,26 +99,19 @@ a {
 
 /* ---- Product component classes ---- */
 
-/* White card = the protagonist. Subtle two-layer shadow, lift + accent border
-   on hover. */
 .card {
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
   background: var(--card);
-  box-shadow:
-    0 1px 2px rgba(20, 40, 30, 0.04),
-    0 12px 30px -22px rgba(20, 40, 30, 0.16);
+  box-shadow: var(--shadow-pixel);
 }
 .card-hover {
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end);
   cursor: pointer;
 }
 .card-hover:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent);
-  box-shadow:
-    0 1px 2px rgba(20, 40, 30, 0.05),
-    0 20px 40px -22px rgba(20, 40, 30, 0.28);
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-pixel-sm);
 }
 
 .field {
@@ -139,31 +132,26 @@ a {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* Buttons default to the calm pill used across chrome and the board. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   border-radius: 999px;
-  padding: 0.6rem 1rem;
+  padding: 0.55rem 1rem;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease, color 150ms ease;
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-pixel-sm);
+  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end), opacity 150ms ease;
 }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
-/* Dark quiet primary (a light button in dark mode). */
+.btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 .btn-primary { background: var(--btn); color: var(--btn-ink); }
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-.btn-ghost {
-  background: var(--card);
-  border-color: var(--line);
-  color: var(--ink2);
-}
-.btn-ghost:hover:not(:disabled) { color: var(--ink); border-color: var(--accent); }
+.btn-ghost { background: var(--card); color: var(--ink2); }
+.btn-ghost:hover:not(:disabled) { color: var(--ink); }
 .btn-danger {
   background: transparent;
   border-color: color-mix(in oklab, var(--danger) 40%, transparent);
@@ -176,8 +164,9 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  border: 1.5px solid var(--ink);
   border-radius: 999px;
-  padding: 0.25rem 0.7rem;
+  padding: 0.2rem 0.6rem;
   font-size: 0.72rem;
   font-weight: 700;
   background: var(--accent-soft);
@@ -225,3 +214,28 @@ a {
 .gt-fade { animation: gtfade 0.4s ease backwards; }
 .gt-pop { animation: gtpop 0.24s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 .gt-back { animation: gtback 0.2s ease both; }
+
+/* Segmented pixel progress bar. Render `blocks` children with .progress-seg-block;
+   filled ones also get .is-on. Fill count from segFill(). */
+.progress-seg { display: inline-flex; gap: 3px; }
+.progress-seg-block {
+  width: 10px;
+  height: 12px;
+  border: 1.5px solid var(--ink);
+  background: var(--col);
+}
+.progress-seg-block.is-on { background: var(--accent); }
+
+/* KPI / summary cell. */
+.stat-tile {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-pixel-sm);
+  padding: var(--pad);
+}
+
+/* Overlapping avatars. Direct children are the circles; they tuck left. */
+.avatar-stack { display: inline-flex; }
+.avatar-stack > * { margin-left: -8px; border: 2px solid var(--card); border-radius: 999px; }
+.avatar-stack > *:first-child { margin-left: 0; }
