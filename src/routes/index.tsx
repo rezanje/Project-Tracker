@@ -16,70 +16,58 @@ import {
   TrendingUp,
   Truck,
 } from 'lucide-react'
+import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 
-// ponytail: Command Center is UI-first. Data below is the mockup's exact values,
-// hardcoded so the layout matches the comp pixel-for-pixel. Real aggregation
-// already exists in git history (the old fetchWorkspaces server fn in this file)
-// and gets wired back in the feature-combing phase — structure is kept swap-ready.
+// ponytail: Command Center wires the data the schema can back (stats, workspace
+// health, priority radar, project radar, portfolio). Timeline (event times),
+// approvals list, weekly-progress history and the workload heatmap stay static —
+// no source yet. AI Summary is a Coming Soon shell.
 
 export const Route = createFileRoute('/')({
+  loader: async () => await fetchDashboard(),
   component: CommandCenter,
 })
 
-// ---- static mockup data ----
+const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+function accentFor(id: string): string {
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return ACCENTS[h % ACCENTS.length]
+}
 
-const STATS = [
-  { icon: Building2, n: 7, label: 'Workspaces', tint: 'var(--accent)' },
-  { icon: FolderKanban, n: 31, label: 'Projects', tint: '#7c3aed' },
-  { icon: ListChecks, n: 428, label: 'Total tasks', tint: '#2563eb' },
-  { icon: Clock, n: 18, label: 'Due today', tint: '#d97706' },
-  { icon: Flame, n: 6, label: 'Need attention', tint: 'var(--danger)' },
-  { icon: TrendingUp, n: 72, label: 'Completed this week', tint: 'var(--accent)' },
-]
+const STAT_META = [
+  { key: 'workspaces', icon: Building2, label: 'Workspaces', tint: 'var(--accent)' },
+  { key: 'projects', icon: FolderKanban, label: 'Projects', tint: '#7c3aed' },
+  { key: 'totalTasks', icon: ListChecks, label: 'Total tasks', tint: '#2563eb' },
+  { key: 'dueToday', icon: Clock, label: 'Due today', tint: '#d97706' },
+  { key: 'overdue', icon: Flame, label: 'Need attention', tint: 'var(--danger)' },
+  { key: 'completed', icon: TrendingUp, label: 'Completed', tint: 'var(--accent)' },
+] as const
 
-type Health = 'Healthy' | 'Need attention' | 'Behind schedule' | 'On track'
-const HEALTH_COLORS: Record<Health, string> = {
+const HEALTH_COLORS: Record<string, string> = {
   Healthy: 'var(--accent)',
   'Need attention': '#d9a406',
   'Behind schedule': 'var(--danger)',
-  'On track': 'var(--accent)',
 }
-const WORKSPACES: Array<{
-  key: string
-  name: string
-  star: boolean
-  pct: number
-  status: Health
-  projects: number
-  tasks: number
-}> = [
-  { key: 'G', name: 'Gentanala', star: true, pct: 91, status: 'Healthy', projects: 12, tasks: 186 },
-  { key: 'D', name: 'Disma Fresh', star: true, pct: 64, status: 'Need attention', projects: 8, tasks: 102 },
-  { key: 'K', name: 'Konsultan', star: false, pct: 34, status: 'Behind schedule', projects: 5, tasks: 67 },
-  { key: 'P', name: 'Personal', star: true, pct: 100, status: 'On track', projects: 6, tasks: 73 },
-]
+const DUE_COLORS: Record<string, string> = {
+  Overdue: 'var(--danger)',
+  'Due today': '#d97706',
+  'Due tomorrow': '#2563eb',
+  'Due soon': 'var(--ink3)',
+}
+function progressColor(pct: number): string {
+  if (pct >= 80) return 'var(--accent)'
+  if (pct >= 45) return '#d9a406'
+  return 'var(--danger)'
+}
 
+// ---- static panels (no data source yet) ----
 const AI_ITEMS = [
   { icon: AlertTriangle, tint: 'var(--danger)', title: 'Produksi Gentanala terlambat 2 hari', sub: '3 task overdue' },
   { icon: Lightbulb, tint: '#d9a406', title: 'Konten minggu depan masih kosong', sub: '2 konten belum dijadwalkan' },
   { icon: TrendingUp, tint: 'var(--accent)', title: 'Revenue Disma Fresh naik 14% minggu ini', sub: 'Rp 4.2M (+14%)' },
   { icon: Truck, tint: '#2563eb', title: 'Supplier packaging belum approve', sub: 'Menunggu dari PT. Kayu Abadi' },
 ]
-
-const DUE_COLORS: Record<string, string> = {
-  Overdue: 'var(--danger)',
-  'Due today': '#d97706',
-  'Due tomorrow': '#2563eb',
-  'Due in 2 days': 'var(--ink3)',
-}
-const PRIORITY = [
-  { bar: 'var(--danger)', title: 'Packaging Box Resin', sub: 'Produksi Test • Gentanala', due: 'Overdue' },
-  { bar: '#d97706', title: 'Invoice Vendor June', sub: 'Operasional • Disma Fresh', due: 'Due today' },
-  { bar: '#2563eb', title: 'Website Launch', sub: 'Marketing • Gentanala', due: 'Due tomorrow' },
-  { bar: '#2563eb', title: 'Review Design Client A', sub: 'Client Project • Konsultan', due: 'Due tomorrow' },
-  { bar: 'var(--ink3)', title: 'Follow Up Konten IG', sub: 'Branding • Gentanala', due: 'Due in 2 days' },
-]
-
 const TYPE_COLORS: Record<string, string> = {
   Meeting: '#7c3aed',
   Approval: '#2563eb',
@@ -94,28 +82,11 @@ const TIMELINE = [
   { time: '15:00', title: 'Review Design Sistem', sub: 'Gentanala • Website', type: 'Review', people: 1 },
   { time: '17:00', title: 'Upload Konten IG', sub: 'Gentanala • Marketing', type: 'Content', people: 1 },
 ]
-
 const APPROVALS = [
   { icon: Banknote, title: 'Budget Production Q3', sub: 'Gentanala', meta: 'Rp 2.300.000', action: 'Review' },
   { icon: FileText, title: 'Cuti Karyawan - Dimas', sub: 'Disma Fresh', meta: '12 - 14 July', action: 'Approve' },
   { icon: ImageIcon, title: 'Konten Campaign Juli', sub: 'Gentanala • Marketing', meta: '8 Konten', action: 'Review' },
 ]
-
-const PROJECTS = [
-  { name: 'Produksi Test', ws: 'Gentanala', dot: 'var(--accent)', pct: 41 },
-  { name: 'Website Revamp', ws: 'Gentanala', dot: '#d9a406', pct: 61 },
-  { name: 'Konten Calendar', ws: 'Gentanala', dot: 'var(--accent)', pct: 92 },
-  { name: 'Operasional Gudang', ws: 'Disma Fresh', dot: 'var(--danger)', pct: 35 },
-  { name: 'Finance & Report', ws: 'Disma Fresh', dot: 'var(--accent)', pct: 88 },
-]
-
-const PORTFOLIO = [
-  { key: 'G', name: 'Gentanala', projects: 12, amount: 'Rp 12.500.000', trend: 'var(--accent)', data: [4, 6, 5, 8, 7, 9, 11] },
-  { key: 'D', name: 'Disma Fresh', projects: 8, amount: 'Rp 4.200.000', trend: '#d97706', data: [6, 5, 7, 6, 8, 7, 8] },
-  { key: 'K', name: 'Konsultan', projects: 5, amount: 'Rp 3.100.000', trend: 'var(--danger)', data: [8, 7, 6, 5, 5, 4, 3] },
-  { key: 'P', name: 'Personal', projects: 6, amount: 'Rp 1.250.000', trend: 'var(--accent)', data: [3, 4, 4, 5, 6, 6, 7] },
-]
-
 const WEEK = [
   { d: 'Mon', v: 55 },
   { d: 'Tue', v: 48 },
@@ -125,21 +96,7 @@ const WEEK = [
   { d: 'Sat', v: 30 },
   { d: 'Sun', v: 22 },
 ]
-const WEEK_STATS = [
-  { label: 'Completed', n: 72, delta: '+18%', up: true },
-  { label: 'On Progress', n: 186, delta: '+8%', up: true },
-  { label: 'Overdue', n: 6, delta: '-25%', up: false },
-  { label: 'Not Started', n: 164, delta: '-5%', up: false },
-]
-
-const ACCENTS: Record<string, string> = {
-  G: 'var(--accent)',
-  D: '#2563eb',
-  K: '#0891b2',
-  P: '#d97706',
-}
-
-// ---- small building blocks ----
+const SPARK = [4, 6, 5, 8, 7, 9, 11]
 
 function CardHead({ title, action }: { title: string; action?: string }) {
   return (
@@ -180,9 +137,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data)
   const min = Math.min(...data)
   const span = max - min || 1
-  const pts = data
-    .map((v, i) => `${(i / (data.length - 1)) * 72},${20 - ((v - min) / span) * 18}`)
-    .join(' ')
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 72},${20 - ((v - min) / span) * 18}`).join(' ')
   return (
     <svg width="72" height="22" viewBox="0 0 72 22" className="shrink-0">
       <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -198,15 +153,15 @@ function Meter({ pct, color }: { pct: number; color: string }) {
   )
 }
 
-// ---- page ----
-
 function CommandCenter() {
+  const d = Route.useLoaderData() as DashboardData
+
   return (
     <main className="min-w-0 flex-1 p-4 sm:p-6">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
         {/* stats */}
         <div className="card flex flex-wrap items-stretch p-0">
-          {STATS.map(({ icon: Icon, n, label, tint }, i) => (
+          {STAT_META.map(({ icon: Icon, key, label, tint }, i) => (
             <div
               key={label}
               className={`flex min-w-[140px] flex-1 items-center gap-3 px-4 py-4 ${
@@ -220,7 +175,9 @@ function CommandCenter() {
                 <Icon size={18} />
               </span>
               <div className="min-w-0">
-                <p className="display-title text-xl font-extrabold leading-none text-[var(--ink)]">{n}</p>
+                <p className="display-title text-xl font-extrabold leading-none text-[var(--ink)]">
+                  {d.stats[key]}
+                </p>
                 <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--ink2)]">{label}</p>
               </div>
             </div>
@@ -238,59 +195,62 @@ function CommandCenter() {
                 View all workspaces →
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-              {WORKSPACES.map((w) => (
-                <div key={w.key} className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span
-                      className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                      style={{ background: ACCENTS[w.key] }}
-                    >
-                      {w.key}
-                    </span>
-                    <Star
-                      size={14}
-                      className={w.star ? 'fill-[#f5c451] text-[#f5c451]' : 'text-[var(--ink3)]'}
-                    />
-                  </div>
-                  <p className="truncate text-[13px] font-bold text-[var(--ink)]">{w.name}</p>
-                  {/* ponytail: pixel building sprite goes here once the asset lands */}
-                  <div className="my-2 flex h-14 items-end justify-center gap-1" aria-hidden="true">
-                    {[8, 12, 6, 14, 10].map((h, i) => (
+            {d.workspaces.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[var(--ink3)]">No workspaces yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                {d.workspaces.slice(0, 4).map((w) => (
+                  <div key={w.id} className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] p-3">
+                    <div className="mb-2 flex items-center justify-between">
                       <span
-                        key={i}
-                        className="w-2 rounded-t-sm border border-[var(--ink)]"
-                        style={{ height: `${h * 3}px`, background: 'color-mix(in oklab, var(--ink) 12%, var(--card))' }}
+                        className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
+                        style={{ background: accentFor(w.id) }}
+                      >
+                        {w.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <Star
+                        size={14}
+                        className={w.progress >= 80 ? 'fill-[#f5c451] text-[#f5c451]' : 'text-[var(--ink3)]'}
                       />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <Meter pct={w.pct} color={HEALTH_COLORS[w.status]} />
+                    </div>
+                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{w.name}</p>
+                    <div className="my-2 flex h-14 items-end justify-center gap-1" aria-hidden="true">
+                      {[8, 12, 6, 14, 10].map((h, i) => (
+                        <span
+                          key={i}
+                          className="w-2 rounded-t-sm border border-[var(--ink)]"
+                          style={{ height: `${h * 3}px`, background: 'color-mix(in oklab, var(--ink) 12%, var(--card))' }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Meter pct={w.progress} color={HEALTH_COLORS[w.status]} />
+                      </div>
+                      <span
+                        className="shrink-0 whitespace-nowrap text-[12px] font-extrabold"
+                        style={{ color: HEALTH_COLORS[w.status] }}
+                      >
+                        {w.progress}%
+                      </span>
                     </div>
                     <span
-                      className="shrink-0 whitespace-nowrap text-[12px] font-extrabold"
-                      style={{ color: HEALTH_COLORS[w.status] }}
+                      className="chip mt-2"
+                      style={{
+                        background: `color-mix(in oklab, ${HEALTH_COLORS[w.status]} 16%, transparent)`,
+                        color: HEALTH_COLORS[w.status],
+                        borderColor: HEALTH_COLORS[w.status],
+                      }}
                     >
-                      {w.pct}%
+                      {w.status}
                     </span>
+                    <p className="mt-2 text-[11px] font-semibold text-[var(--ink3)]">
+                      {w.projects} Projects · {w.tasks} Tasks
+                    </p>
                   </div>
-                  <span
-                    className="chip mt-2"
-                    style={{
-                      background: `color-mix(in oklab, ${HEALTH_COLORS[w.status]} 16%, transparent)`,
-                      color: HEALTH_COLORS[w.status],
-                      borderColor: HEALTH_COLORS[w.status],
-                    }}
-                  >
-                    {w.status}
-                  </span>
-                  <p className="mt-2 text-[11px] font-semibold text-[var(--ink3)]">
-                    {w.projects} Projects · {w.tasks} Tasks
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* AI SUMMARY — Coming Soon */}
@@ -323,27 +283,34 @@ function CommandCenter() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <section className="card p-4 lg:col-span-4">
             <CardHead title="Priority Radar" action="View all" />
-            <div className="flex flex-col">
-              {PRIORITY.map((p) => (
-                <div key={p.title} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
-                  <span className="h-8 w-1 shrink-0 rounded-full" style={{ background: p.bar }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
-                    <p className="truncate text-[11px] text-[var(--ink3)]">{p.sub}</p>
+            {d.priority.length === 0 ? (
+              <p className="py-4 text-center text-sm text-[var(--ink3)]">Nothing urgent 🎉</p>
+            ) : (
+              <div className="flex flex-col">
+                {d.priority.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
+                    <span className="h-8 w-1 shrink-0 rounded-full" style={{ background: DUE_COLORS[p.bucket] }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
+                      <p className="truncate text-[11px] text-[var(--ink3)]">
+                        {p.boardTitle}
+                        {p.wsName ? ` • ${p.wsName}` : ''}
+                      </p>
+                    </div>
+                    <span
+                      className="chip shrink-0"
+                      style={{
+                        background: `color-mix(in oklab, ${DUE_COLORS[p.bucket]} 16%, transparent)`,
+                        color: DUE_COLORS[p.bucket],
+                        borderColor: DUE_COLORS[p.bucket],
+                      }}
+                    >
+                      {p.bucket}
+                    </span>
                   </div>
-                  <span
-                    className="chip shrink-0"
-                    style={{
-                      background: `color-mix(in oklab, ${DUE_COLORS[p.due]} 16%, transparent)`,
-                      color: DUE_COLORS[p.due],
-                      borderColor: DUE_COLORS[p.due],
-                    }}
-                  >
-                    {p.due}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="card p-4 lg:col-span-5">
@@ -402,19 +369,20 @@ function CommandCenter() {
           <section className="card p-4">
             <CardHead title="Project Radar" action="View all projects" />
             <div className="flex flex-col gap-2.5">
-              {PROJECTS.map((p) => (
-                <div key={p.name}>
+              {d.projects.slice(0, 5).map((p) => (
+                <div key={p.id}>
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: p.dot }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: progressColor(p.progress) }} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-bold text-[var(--ink)]">{p.name}</p>
-                      <p className="truncate text-[10px] text-[var(--ink3)]">{p.ws}</p>
+                      <p className="truncate text-[12px] font-bold text-[var(--ink)]">{p.title}</p>
+                      <p className="truncate text-[10px] text-[var(--ink3)]">{p.wsName}</p>
                     </div>
-                    <span className="text-[12px] font-extrabold text-[var(--ink2)]">{p.pct}%</span>
+                    <span className="text-[12px] font-extrabold text-[var(--ink2)]">{p.progress}%</span>
                   </div>
-                  <Meter pct={p.pct} color={p.dot} />
+                  <Meter pct={p.progress} color={progressColor(p.progress)} />
                 </div>
               ))}
+              {d.projects.length === 0 && <p className="text-sm text-[var(--ink3)]">No projects yet.</p>}
             </div>
           </section>
 
@@ -453,23 +421,24 @@ function CommandCenter() {
           <section className="card p-4">
             <CardHead title="Portfolio Overview" action="View report" />
             <div className="flex flex-col">
-              {PORTFOLIO.map((p) => (
-                <div key={p.key} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
+              {d.workspaces.slice(0, 4).map((w) => (
+                <div key={w.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
                   <span
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                    style={{ background: ACCENTS[p.key] }}
+                    style={{ background: accentFor(w.id) }}
                   >
-                    {p.key}
+                    {w.name.slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-bold text-[var(--ink)]">{p.name}</p>
+                    <p className="truncate text-[12px] font-bold text-[var(--ink)]">{w.name}</p>
                     <p className="truncate text-[10px] text-[var(--ink3)]">
-                      {p.projects} Projects · {p.amount}
+                      {w.projects} Projects · {w.tasks} Tasks
                     </p>
                   </div>
-                  <Sparkline data={p.data} color={p.trend} />
+                  <Sparkline data={SPARK} color={progressColor(w.progress)} />
                 </div>
               ))}
+              {d.workspaces.length === 0 && <p className="text-sm text-[var(--ink3)]">No workspaces yet.</p>}
             </div>
           </section>
 
@@ -490,22 +459,23 @@ function CommandCenter() {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {WEEK_STATS.map((s) => (
-                <div key={s.label} className="rounded-[8px] border border-[var(--line)] p-2">
-                  <p className="display-title text-base font-extrabold leading-none text-[var(--ink)]">{s.n}</p>
-                  <p className="text-[10px] font-semibold text-[var(--ink3)]">{s.label}</p>
-                  <p
-                    className="text-[10px] font-bold"
-                    style={{ color: s.up ? 'var(--accent-ink)' : 'var(--danger)' }}
-                  >
-                    {s.delta}
-                  </p>
-                </div>
-              ))}
+              <WeekStat n={d.stats.completed} label="Completed" />
+              <WeekStat n={d.projectProgress.inProgress} label="On Progress" />
+              <WeekStat n={d.stats.overdue} label="Overdue" />
+              <WeekStat n={Math.max(0, d.stats.totalTasks - d.stats.completed)} label="Not Started" />
             </div>
           </section>
         </div>
       </div>
     </main>
+  )
+}
+
+function WeekStat({ n, label }: { n: number; label: string }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] p-2">
+      <p className="display-title text-base font-extrabold leading-none text-[var(--ink)]">{n}</p>
+      <p className="text-[10px] font-semibold text-[var(--ink3)]">{label}</p>
+    </div>
   )
 }

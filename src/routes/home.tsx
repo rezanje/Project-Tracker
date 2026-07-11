@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   AlarmClock,
-  ArrowRight,
-  ArrowUp,
   CheckSquare,
   Flame,
   FolderPlus,
@@ -21,31 +19,17 @@ import {
   Volume2,
 } from 'lucide-react'
 import { segFill } from '#/lib/progress'
+import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 
-// ponytail: Pixel Home is UI-first with the mockup's exact static data. Pomodoro
-// is genuinely functional (local countdown, no backend). Everything else is a
-// visual shell wired to real data/actions in the feature-combing phase.
+// ponytail: Pixel Home wires the schema-backed data (today tasks, active
+// projects, KPI headline numbers, project progress, announcements, notes).
+// Pomodoro is functional; Music, Quick Actions and the KPI mini-bar shapes stay
+// static (no source / a later slice).
 
 export const Route = createFileRoute('/home')({
+  loader: async () => await fetchDashboard(),
   component: PixelHome,
 })
-
-const TAG_COLORS: Record<string, string> = {
-  Finance: '#2563eb',
-  Meeting: '#7c3aed',
-  Content: '#0891b2',
-  Design: '#db2777',
-}
-type Prio = 'High' | 'Medium' | 'Low'
-const PRIO_COLORS: Record<Prio, string> = { High: 'var(--danger)', Medium: '#d97706', Low: 'var(--accent)' }
-
-const TASKS: Array<{ title: string; tag: string; prio: Prio; time: string; overdue?: boolean }> = [
-  { title: 'Finish Invoice', tag: 'Finance', prio: 'High', time: '09:00 AM' },
-  { title: 'Client Meeting', tag: 'Meeting', prio: 'Medium', time: '01:00 PM' },
-  { title: 'Upload Content', tag: 'Content', prio: 'Medium', time: '04:00 PM' },
-  { title: 'Review Design', tag: 'Design', prio: 'Low', time: 'Tomorrow' },
-  { title: 'Follow up Payment', tag: 'Finance', prio: 'High', time: 'Yesterday', overdue: true },
-]
 
 const QUICK_ACTIONS = [
   { label: 'Add Task', icon: CheckSquare, tint: 'var(--accent)' },
@@ -54,25 +38,14 @@ const QUICK_ACTIONS = [
   { label: 'Set Reminder', icon: AlarmClock, tint: '#2563eb' },
 ]
 
-const PROJECTS = [
-  { name: 'Gentanala', dot: 'var(--accent)', pct: 68, done: 12, total: 18 },
-  { name: 'Content Calendar', dot: '#d97706', pct: 32, done: 5, total: 16 },
-  { name: 'Marketing Campaign', dot: '#2563eb', pct: 88, done: 15, total: 17 },
-]
+const KPI_BARS = [4, 6, 5, 7, 6, 8, 9]
+const PROJECT_TINTS = ['var(--accent)', '#d97706', '#2563eb', '#7c3aed', '#db2777']
 
-const KPIS = [
-  { label: 'Revenue', val: 'Rp 8.2M', delta: '+12%', up: true, tint: 'var(--accent)', bars: [4, 6, 5, 7, 6, 8, 9] },
-  { label: 'Tasks Done', val: '24', delta: '+8%', up: true, tint: '#2563eb', bars: [3, 5, 4, 6, 7, 6, 8] },
-  { label: 'On Progress', val: '12', delta: '', up: true, tint: '#d97706', bars: [5, 4, 6, 5, 7, 5, 6] },
-  { label: 'Overdue', val: '2', delta: '-33%', up: false, tint: 'var(--danger)', bars: [6, 5, 4, 5, 3, 4, 2] },
-]
-
-const ANNOUNCEMENTS = [
-  { who: 'Reza Rahman', text: 'Meeting jam 3 sore di ruang A ya!', when: 'Yesterday' },
-  { who: 'Dimas Ardi', text: 'Server maintenance weekend ini.', when: '2 days ago' },
-]
-
-const NOTES = ['Meeting dengan supplier besok jam 10', 'Jangan lupa revisi logo Gentanala']
+function fmtRupiah(n: number): string {
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`
+  return `Rp ${n.toLocaleString('id-ID')}`
+}
 
 function SegBar({ pct, color }: { pct: number; color: string }) {
   const on = segFill(pct, 12)
@@ -182,12 +155,7 @@ function Donut({ pct }: { pct: number }) {
         strokeDasharray={`${(pct / 100) * c} ${c}`}
         transform="rotate(-90 48 48)"
       />
-      <text
-        x="48"
-        y="53"
-        textAnchor="middle"
-        className="display-title fill-[var(--ink)] text-lg font-extrabold"
-      >
+      <text x="48" y="53" textAnchor="middle" className="display-title fill-[var(--ink)] text-lg font-extrabold">
         {pct}%
       </text>
     </svg>
@@ -206,6 +174,19 @@ function Avatar({ i }: { i: number }) {
 }
 
 function PixelHome() {
+  const d = Route.useLoaderData() as DashboardData
+  const total = d.stats.totalTasks
+  const overallPct = total ? Math.round((d.stats.completed / total) * 100) : 0
+  const pp = d.projectProgress
+  const ppPct = pp.total ? Math.round((pp.completed / pp.total) * 100) : 0
+
+  const KPIS = [
+    { label: 'Revenue', val: fmtRupiah(d.revenue), tint: 'var(--accent)' },
+    { label: 'Tasks Done', val: String(d.stats.completed), tint: '#2563eb' },
+    { label: 'On Progress', val: String(pp.inProgress), tint: '#d97706' },
+    { label: 'Overdue', val: String(d.stats.overdue), tint: 'var(--danger)' },
+  ]
+
   return (
     <main className="min-w-0 flex-1 p-4 sm:p-6">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 lg:flex-row">
@@ -218,48 +199,27 @@ function PixelHome() {
               <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">Today</h3>
             </div>
             <div className="mb-3 flex flex-wrap items-center gap-4 border-b-2 border-[var(--line)] pb-3">
-              <Stat n="8" label="Tasks" />
-              <Stat n="2" label="Overdue" tint="var(--danger)" />
-              <Stat n="5" label="Due today" tint="#d97706" />
+              <Stat n={String(total)} label="Tasks" />
+              <Stat n={String(d.stats.overdue)} label="Overdue" tint="var(--danger)" />
+              <Stat n={String(d.stats.dueToday)} label="Due today" tint="#d97706" />
               <div className="ml-auto flex items-center gap-2">
-                <SegBar pct={63} color="var(--accent)" />
-                <span className="whitespace-nowrap text-sm font-extrabold text-[var(--accent-ink)]">63%</span>
+                <SegBar pct={overallPct} color="var(--accent)" />
+                <span className="whitespace-nowrap text-sm font-extrabold text-[var(--accent-ink)]">{overallPct}%</span>
               </div>
             </div>
             <div className="flex flex-col">
-              {TASKS.map((t) => (
-                <div
-                  key={t.title}
-                  className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0"
-                >
+              {d.today.length === 0 && (
+                <p className="py-3 text-sm text-[var(--ink3)]">Nothing due today 🎉</p>
+              )}
+              {d.today.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
                   <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-[13px] font-bold ${t.overdue ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}`}
-                    >
-                      {t.title}
-                    </p>
-                    <span className="text-[11px] font-bold" style={{ color: TAG_COLORS[t.tag] }}>
-                      {t.tag}
-                    </span>
+                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{t.title}</p>
+                    <span className="text-[11px] font-semibold text-[var(--ink3)]">{t.boardTitle}</span>
                   </div>
-                  <span
-                    className="chip shrink-0"
-                    style={{
-                      background: `color-mix(in oklab, ${PRIO_COLORS[t.prio]} 16%, transparent)`,
-                      color: PRIO_COLORS[t.prio],
-                      borderColor: PRIO_COLORS[t.prio],
-                    }}
-                  >
-                    {t.prio}
-                    {t.prio === 'High' ? <ArrowUp size={11} /> : <ArrowRight size={11} />}
-                  </span>
-                  <span
-                    className={`w-20 shrink-0 text-right text-[11px] font-semibold tabular-nums ${
-                      t.overdue ? 'text-[var(--danger)]' : 'text-[var(--ink3)]'
-                    }`}
-                  >
-                    {t.time}
+                  <span className="chip shrink-0" style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}>
+                    Due today
                   </span>
                   <Avatar i={0} />
                 </div>
@@ -278,29 +238,36 @@ function PixelHome() {
                 View all projects →
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              {PROJECTS.map((p) => (
-                <div key={p.name} className="rounded-[10px] border-2 border-[var(--ink)] p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: p.dot }} />
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.name}</p>
-                    <span className="ml-auto text-[12px] font-extrabold" style={{ color: p.dot }}>
-                      {p.pct}%
-                    </span>
-                  </div>
-                  <SegBar pct={p.pct} color={p.dot} />
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-[var(--ink3)]">
-                      {p.done} / {p.total} tasks
-                    </span>
-                    <span className="avatar-stack">
-                      <Avatar i={0} />
-                      <Avatar i={1} />
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {d.projects.length === 0 ? (
+              <p className="text-sm text-[var(--ink3)]">No projects yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {d.projects.slice(0, 3).map((p, i) => {
+                  const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
+                  return (
+                    <div key={p.id} className="rounded-[10px] border-2 border-[var(--ink)] p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
+                        <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
+                        <span className="ml-auto text-[12px] font-extrabold" style={{ color: tint }}>
+                          {p.progress}%
+                        </span>
+                      </div>
+                      <SegBar pct={p.progress} color={tint} />
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-[var(--ink3)]">
+                          {p.done} / {p.total} tasks
+                        </span>
+                        <span className="avatar-stack">
+                          <Avatar i={0} />
+                          <Avatar i={1} />
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           {/* KPI + PROJECT PROGRESS */}
@@ -314,16 +281,8 @@ function PixelHome() {
                   <div key={k.label} className="rounded-[10px] border-2 border-[var(--line)] p-3">
                     <p className="text-[11px] font-semibold text-[var(--ink3)]">{k.label}</p>
                     <p className="display-title text-lg font-extrabold leading-tight text-[var(--ink)]">{k.val}</p>
-                    <div className="mt-1 flex items-end justify-between">
-                      <MiniBars data={k.bars} color={k.tint} />
-                      {k.delta && (
-                        <span
-                          className="text-[11px] font-bold"
-                          style={{ color: k.up ? 'var(--accent-ink)' : 'var(--danger)' }}
-                        >
-                          {k.delta}
-                        </span>
-                      )}
+                    <div className="mt-1">
+                      <MiniBars data={KPI_BARS} color={k.tint} />
                     </div>
                   </div>
                 ))}
@@ -335,11 +294,11 @@ function PixelHome() {
                 <Target size={13} /> Project Progress
               </h3>
               <div className="flex items-center gap-4">
-                <Donut pct={68} />
+                <Donut pct={ppPct} />
                 <div className="flex-1 space-y-2">
-                  <ProgRow label="Total Projects" n={8} tint="var(--ink3)" />
-                  <ProgRow label="Completed" n={3} tint="var(--accent)" />
-                  <ProgRow label="In Progress" n={5} tint="#d97706" />
+                  <ProgRow label="Total Projects" n={pp.total} tint="var(--ink3)" />
+                  <ProgRow label="Completed" n={pp.completed} tint="var(--accent)" />
+                  <ProgRow label="In Progress" n={pp.inProgress} tint="#d97706" />
                 </div>
               </div>
             </section>
@@ -416,15 +375,13 @@ function PixelHome() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {ANNOUNCEMENTS.map((a, i) => (
-                <div key={a.text} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
+              {d.announcements.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No announcements.</p>}
+              {d.announcements.map((a, i) => (
+                <div key={a.id} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
                   <Avatar i={i} />
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center justify-between text-[11px] font-bold text-[var(--ink)]">
-                      {a.who}
-                      <span className="text-[10px] font-semibold text-[var(--ink3)]">{a.when}</span>
-                    </p>
-                    <p className="text-[12px] text-[var(--ink2)]">{a.text}</p>
+                    <p className="text-[11px] font-bold text-[var(--ink)]">{a.author ?? 'Team'}</p>
+                    <p className="text-[12px] text-[var(--ink2)]">{a.body}</p>
                   </div>
                 </div>
               ))}
@@ -442,12 +399,13 @@ function PixelHome() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {NOTES.map((n) => (
+              {d.notes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
+              {d.notes.map((n) => (
                 <div
-                  key={n}
+                  key={n.id}
                   className="flex items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
                 >
-                  <p className="min-w-0 flex-1 text-[12px] font-semibold text-[var(--pop-ink)]">{n}</p>
+                  <p className="min-w-0 flex-1 text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
                   <MoreVertical size={14} className="shrink-0 text-[var(--pop-ink)]" />
                 </div>
               ))}
