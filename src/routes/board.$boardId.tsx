@@ -28,6 +28,8 @@ import ProjectEdit from '#/components/ProjectEdit'
 import TaskCreate from '#/components/TaskCreate'
 import CalendarView from '#/components/CalendarView'
 import PillarManager from '#/components/PillarManager'
+import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
+import { isDoneColumn } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
@@ -561,6 +563,20 @@ function BoardView() {
   }
 
   const allCards = board.columns.flatMap((c) => c.cards)
+  const today = new Date().toISOString().slice(0, 10)
+  let completedCount = 0
+  let dueTodayCount = 0
+  let overdueCount = 0
+  for (const col of board.columns) {
+    const done = isDoneColumn(col.title)
+    for (const c of col.cards) {
+      if (done) completedCount++
+      else if (c.due_date) {
+        if (c.due_date < today) overdueCount++
+        else if (c.due_date === today) dueTodayCount++
+      }
+    }
+  }
   const categories = distinctCategories(allCards)
   const keep = (card: CardRow) => !filterCat || card.category === filterCat
   const phaseColumns: ColumnRow[] = board.columns.map((c) => ({
@@ -575,7 +591,7 @@ function BoardView() {
   }))
 
   const columnsContent = (
-    <div className="gt-scroll mx-auto flex max-w-[1400px] items-start gap-4 overflow-x-auto pb-3.5">
+    <div className="gt-scroll flex items-start gap-4 overflow-x-auto pb-3.5">
       {groupBy === 'phase'
         ? phaseColumns.map((col) => (
             <Column
@@ -746,6 +762,18 @@ function BoardView() {
       </div>
 
       {!isContent && (
+        <BoardStats
+          dueToday={dueTodayCount}
+          overdue={overdueCount}
+          completed={completedCount}
+          total={allCards.length}
+          members={(boardMeta?.members ?? []).length}
+          budgetIdr={board.value_idr ?? null}
+          spentPct={72}
+        />
+      )}
+
+      {!isContent && (
       <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
         <span className="text-[13px] font-semibold text-[var(--ink3)]">Group by</span>
         <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
@@ -806,16 +834,27 @@ function BoardView() {
         // Always wrap in DndContext so Column's useDroppable hook is inside a
         // context even for clients. Drag is a no-op for clients anyway: cards
         // are disabled (disabled:!isDraggable) and SortableContext is owner-only.
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          {columnsContent}
-        </DndContext>
+        <div className="mx-auto flex max-w-[1400px] items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              {columnsContent}
+            </DndContext>
+          </div>
+          <BoardRail
+            members={boardMeta?.members ?? []}
+            budgetIdr={board.value_idr ?? null}
+            spentPct={72}
+          />
+        </div>
       )}
+
+      {!isContent && board.columns.length > 0 && <BoardRoadmap />}
 
       {selectedCard && (
         <CardDetail
