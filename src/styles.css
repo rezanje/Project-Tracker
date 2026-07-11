@@ -1,11 +1,11 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400..700&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bricolage Grotesque", "Hanken Grotesk", sans-serif;
+  --font-display: "Pixelify Sans", "Hanken Grotesk", sans-serif;
 }
 
 /* Rakit "meadow" design tokens — light + dark, CSS-variable driven so the
@@ -29,10 +29,12 @@
   --btn-ink: #ffffff;
   --ring: rgba(31, 157, 85, 0.3);
   --header-bg: rgba(255, 255, 255, 0.72);
-  --radius: 20px;
+  --radius: 10px;
   --pad: 16px;
   --gap: 14px;
   --danger: #c0392b;
+  --shadow-pixel: 4px 4px 0 var(--ink);
+  --shadow-pixel-sm: 3px 3px 0 var(--ink);
 }
 
 /* Dark tokens shared by the explicit toggle and the system-preference path. */
@@ -56,6 +58,8 @@
   --ring: rgba(37, 180, 99, 0.35);
   --header-bg: rgba(14, 22, 18, 0.72);
   --danger: #f0908a;
+  --shadow-pixel: 4px 4px 0 var(--ink);
+  --shadow-pixel-sm: 3px 3px 0 var(--ink);
 }
 
 * {
