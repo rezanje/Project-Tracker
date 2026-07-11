@@ -182,50 +182,52 @@ export default function Sidebar() {
         )
       })}
 
-      {!collapsed && (
-        <div
-          className="mt-auto mb-3 h-24 rounded-[10px] border-2 border-[var(--ink)] bg-cover bg-bottom"
-          style={{ backgroundImage: "url('/meadow.png')" }}
-          aria-hidden="true"
-        />
-      )}
-
-      {email && (
-        <div
-          className={`flex shrink-0 flex-col gap-2 border-t border-[var(--line)] pt-3 ${
-            collapsed ? 'items-center' : ''
-          }`}
-        >
-          <div className="flex justify-center">
-            <ThemeToggle compact={collapsed} />
-          </div>
+      <div className="mt-auto flex flex-col gap-2">
+        {!collapsed && (
           <div
-            className={`flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--col)] py-1 ${
-              collapsed ? 'px-1' : 'pl-3 pr-1'
+            className="mb-3 h-24 rounded-[10px] border-2 border-[var(--ink)] bg-cover bg-bottom"
+            style={{ backgroundImage: "url('/meadow.png')" }}
+            aria-hidden="true"
+          />
+        )}
+
+        {email && (
+          <div
+            className={`flex shrink-0 flex-col gap-2 border-t border-[var(--line)] pt-3 ${
+              collapsed ? 'items-center' : ''
             }`}
-            title={email}
           >
-            {!collapsed && (
-              <span className="max-w-[8.5rem] truncate text-[12px] font-semibold text-[var(--ink2)]">
-                {email}
+            <div className="flex justify-center">
+              <ThemeToggle compact={collapsed} />
+            </div>
+            <div
+              className={`flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--col)] py-1 ${
+                collapsed ? 'px-1' : 'pl-3 pr-1'
+              }`}
+              title={email}
+            >
+              {!collapsed && (
+                <span className="max-w-[8.5rem] truncate text-[12px] font-semibold text-[var(--ink2)]">
+                  {email}
+                </span>
+              )}
+              <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
+                {initials(email)}
               </span>
-            )}
-            <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
-              {initials(email)}
-            </span>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              aria-label="Log out"
+              title="Log out"
+              className={`btn btn-ghost ${collapsed ? 'justify-center px-0' : ''}`}
+            >
+              <LogOut size={15} aria-hidden="true" />
+              {!collapsed && <span>Log out</span>}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            aria-label="Log out"
-            title="Log out"
-            className={`btn btn-ghost ${collapsed ? 'justify-center px-0' : ''}`}
-          >
-            <LogOut size={15} aria-hidden="true" />
-            {!collapsed && <span>Log out</span>}
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   )
 }
