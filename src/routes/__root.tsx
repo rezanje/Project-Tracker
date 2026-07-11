@@ -3,6 +3,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 
 import appCss from '../styles.css?url'
 
@@ -42,10 +43,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="flex min-h-screen flex-col font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--accent-soft)]">
-        {!bare && <Header />}
-        <div className="flex flex-1 flex-col">{children}</div>
-        {!bare && <Footer />}
+      <body className="flex min-h-screen font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--accent-soft)]">
+        {!bare && <Sidebar />}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {!bare && <Header />}
+          {children}
+          {!bare && <Footer />}
+        </div>
         <TanStackDevtools
           config={{
             position: 'bottom-right',
