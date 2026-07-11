@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Bell, Plus, Search } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import { Bell, LogOut, Plus, Search } from 'lucide-react'
+import { getBrowserSupabase } from '#/lib/supabase/browser'
+import ThemeToggle from './ThemeToggle'
 
 function greeting(h: number): string {
   if (h < 12) return 'Good morning'
@@ -8,12 +11,18 @@ function greeting(h: number): string {
 }
 
 export default function Header() {
+  const navigate = useNavigate()
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
     setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(id)
   }, [])
+
+  async function logout() {
+    await getBrowserSupabase().auth.signOut()
+    navigate({ to: '/login' })
+  }
 
   const hello = now ? greeting(now.getHours()) : 'Welcome'
   const dateStr = now
@@ -44,10 +53,22 @@ export default function Header() {
           <Bell size={16} aria-hidden="true" />
         </button>
         {/* ponytail: + New is a visual shell; wired to a create flow in a later sub-project */}
-        <button type="button" className="btn btn-primary">
+        <button type="button" aria-label="New" className="btn btn-primary">
           <Plus size={16} aria-hidden="true" />
           <span className="hidden sm:inline">New</span>
         </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle compact />
+          <button
+            type="button"
+            onClick={logout}
+            aria-label="Log out"
+            title="Log out"
+            className="btn btn-ghost px-2.5"
+          >
+            <LogOut size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </header>
   )

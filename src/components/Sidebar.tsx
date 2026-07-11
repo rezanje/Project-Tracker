@@ -33,11 +33,11 @@ function initials(email: string): string {
 }
 
 const MAIN_NAV = [
-  { label: 'Home', icon: Home, to: '/' as const, exists: true },
-  { label: 'Inbox', icon: Inbox, to: '/coming-soon' as const, exists: false },
-  { label: 'Tasks', icon: CheckSquare, to: '/coming-soon' as const, exists: false },
-  { label: 'Calendar', icon: Calendar, to: '/coming-soon' as const, exists: false },
-  { label: 'Reports', icon: BarChart3, to: '/coming-soon' as const, exists: false },
+  { label: 'Home', icon: Home, to: '/' as const },
+  { label: 'Inbox', icon: Inbox, to: '/coming-soon' as const },
+  { label: 'Tasks', icon: CheckSquare, to: '/coming-soon' as const },
+  { label: 'Calendar', icon: Calendar, to: '/coming-soon' as const },
+  { label: 'Reports', icon: BarChart3, to: '/coming-soon' as const },
 ]
 
 export default function Sidebar() {
@@ -88,11 +88,9 @@ export default function Sidebar() {
     null
   const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1] ?? null
 
-  if (workspaces.length === 0) return null
-
   return (
     <aside
-      className={`sticky top-16 z-10 hidden h-[calc(100dvh-4rem)] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--line)] bg-[var(--card)] py-4 md:flex ${
+      className={`sticky top-0 z-10 hidden h-dvh shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--line)] bg-[var(--card)] py-4 md:flex ${
         collapsed ? 'w-14 px-2' : 'w-60 px-3'
       }`}
     >
@@ -133,7 +131,7 @@ export default function Sidebar() {
           )
         })}
       </nav>
-      {!collapsed && (
+      {!collapsed && workspaces.length > 0 && (
         <p className="mb-1 mt-1 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
           Workspaces
         </p>
@@ -185,7 +183,7 @@ export default function Sidebar() {
       <div className="mt-auto flex flex-col gap-2">
         {!collapsed && (
           <div
-            className="mb-3 h-24 rounded-[10px] border-2 border-[var(--ink)] bg-cover bg-bottom"
+            className="h-24 rounded-[10px] border-2 border-[var(--ink)] bg-cover bg-bottom"
             style={{ backgroundImage: "url('/meadow.png')" }}
             aria-hidden="true"
           />
