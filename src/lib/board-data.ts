@@ -11,8 +11,25 @@ export type CardRow = {
   phone: string | null
   source: string | null
   deal_value: number | null
+  pillar_id: string | null
+  content_status: string | null
+  channels: string[] | null
+  format: string | null
   position: number
   card_labels: { label_id: string }[]
+}
+export type Pillar = { id: string; name: string; color: string }
+
+// Content-board vocab (kept here so forms + calendar share one source).
+export const CONTENT_CHANNELS = [
+  'Instagram', 'TikTok', 'LinkedIn', 'YouTube', 'Facebook', 'X', 'Threads',
+] as const
+export const CONTENT_FORMATS = [
+  'Reel', 'Carousel', 'Story', 'Single image', 'Video', 'Thread', 'Article',
+] as const
+export const CONTENT_STATUSES = ['draft', 'scheduled', 'posted'] as const
+export const STATUS_COLOR: Record<string, string> = {
+  draft: '#9ca3af', scheduled: '#d97706', posted: '#1f9d55',
 }
 export type ColumnRow = {
   id: string
@@ -37,7 +54,9 @@ export type BoardWithColumns = ProjectMeta & {
   title: string
   role: string
   kind: string
+  workspaceId: string | null
   columns: ColumnRow[]
+  pillars: Pillar[]
 }
 
 /**
@@ -61,7 +80,7 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,position,card_labels(label_id))',
+      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id))',
     )
     .eq('board_id', boardId)
     .order('position')
@@ -113,12 +132,26 @@ export async function loadBoard(
     value_idr = fin?.value_idr ?? 0
   }
 
+  // Content boards colour their calendar chips by pillar; pillars are
+  // workspace-wide, so load them once here for the whole board.
+  let pillars: Pillar[] = []
+  if ((board as { kind?: string }).kind === 'content' && workspaceId) {
+    const { data: pl } = await supabase
+      .from('pillars')
+      .select('id,name,color')
+      .eq('workspace_id', workspaceId)
+      .order('position')
+    pillars = (pl ?? []) as Pillar[]
+  }
+
   const b = board as Record<string, unknown>
   return {
     id: board.id,
     title: board.title,
     role,
     kind: (b.kind as string) ?? 'tasks',
+    workspaceId,
+    pillars,
     description: (b.description as string | null) ?? null,
     type: (b.type as string | null) ?? null,
     pic: (b.pic as string | null) ?? null,

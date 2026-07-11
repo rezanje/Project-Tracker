@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import Attachments from '#/components/Attachments'
 import Comments from '#/components/Comments'
-import type { CardRow } from '#/lib/board-data'
+import {
+  CONTENT_CHANNELS, CONTENT_FORMATS, CONTENT_STATUSES, type CardRow, type Pillar,
+} from '#/lib/board-data'
 import type { BoardMeta } from '#/routes/board.$boardId'
 
 interface CardDetailProps {
@@ -25,11 +27,17 @@ interface CardDetailProps {
       phone: string | null
       source: string | null
       deal_value: number | null
+      pillar_id: string | null
+      content_status: string | null
+      channels: string[] | null
+      format: string | null
     }>,
   ) => Promise<void>
   onSetLabels: (cardId: string, labelIds: string[]) => Promise<void>
   categorySuggestions?: string[]
   isLeads?: boolean
+  isContent?: boolean
+  pillars?: Pillar[]
 }
 
 const fieldLabel =
@@ -53,6 +61,8 @@ export default function CardDetail({
   onSetLabels,
   categorySuggestions = [],
   isLeads = false,
+  isContent = false,
+  pillars = [],
 }: CardDetailProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -63,6 +73,10 @@ export default function CardDetail({
   const [phone, setPhone] = useState(card.phone ?? '')
   const [source, setSource] = useState(card.source ?? '')
   const [dealValue, setDealValue] = useState(card.deal_value != null ? String(card.deal_value) : '')
+  const [pillarId, setPillarId] = useState(card.pillar_id ?? '')
+  const [contentStatus, setContentStatus] = useState(card.content_status ?? 'draft')
+  const [channels, setChannels] = useState<string[]>(card.channels ?? [])
+  const [format, setFormat] = useState(card.format ?? '')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(
     card.card_labels.map((cl) => cl.label_id),
   )
@@ -73,6 +87,10 @@ export default function CardDetail({
     setSelectedLabelIds((prev) =>
       prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id],
     )
+  }
+
+  function toggleChannel(c: string) {
+    setChannels((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
   }
 
   async function handleSave() {
@@ -91,6 +109,14 @@ export default function CardDetail({
               phone: phone.trim() || null,
               source: source.trim() || null,
               deal_value: dealValue ? Math.max(0, Math.floor(Number(dealValue) || 0)) : null,
+            }
+          : {}),
+        ...(isContent
+          ? {
+              pillar_id: pillarId || null,
+              content_status: contentStatus || null,
+              channels: channels.length ? channels : null,
+              format: format || null,
             }
           : {}),
       })
@@ -283,7 +309,54 @@ export default function CardDetail({
             </div>
           )}
 
-          {isOwner && (
+          {isOwner && isContent && (
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className={fieldLabel}>Pillar</label>
+                <select value={pillarId} onChange={(e) => setPillarId(e.target.value)} className="field">
+                  <option value="">None</option>
+                  {pillars.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={fieldLabel}>Status</label>
+                <select value={contentStatus} onChange={(e) => setContentStatus(e.target.value)} className="field capitalize">
+                  {CONTENT_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={fieldLabel}>Format</label>
+                <select value={format} onChange={(e) => setFormat(e.target.value)} className="field">
+                  <option value="">None</option>
+                  {CONTENT_FORMATS.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={fieldLabel}>Channels</label>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {CONTENT_CHANNELS.map((c) => {
+                    const on = channels.includes(c)
+                    return (
+                      <button key={c} type="button" onClick={() => toggleChannel(c)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                          on ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--line)] text-[var(--ink2)]'
+                        }`}>
+                        {c}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isOwner && !isContent && (
             <div className="mb-4">
               <label className={fieldLabel}>Category</label>
               <input

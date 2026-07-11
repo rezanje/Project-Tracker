@@ -8,7 +8,7 @@ import type { CardRow } from '#/lib/board-data'
 export async function updateCard(
   supabase: SupabaseClient,
   cardId: string,
-  fields: Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null }>,
+  fields: Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null; pillar_id: string | null; content_status: string | null; channels: string[] | null; format: string | null }>,
 ): Promise<void> {
   const { error } = await supabase.from('cards').update(fields).eq('id', cardId)
   if (error) throw error
@@ -71,6 +71,10 @@ export async function createCard(
     phone?: string | null
     source?: string | null
     deal_value?: number | null
+    pillar_id?: string | null
+    content_status?: string | null
+    channels?: string[] | null
+    format?: string | null
   } = {},
 ): Promise<CardRow> {
   const { data: last } = await supabase
@@ -85,7 +89,7 @@ export async function createCard(
   const { data, error } = await supabase
     .from('cards')
     .insert({ column_id: columnId, title, position: nextPosition, ...extra })
-    .select('id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,position,card_labels(label_id)')
+    .select('id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id)')
     .single()
 
   if (error) throw error

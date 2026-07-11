@@ -21,10 +21,13 @@ import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '
 import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
+import { createPillar, deletePillar } from '#/lib/pillars'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import ProjectEdit from '#/components/ProjectEdit'
 import TaskCreate from '#/components/TaskCreate'
+import CalendarView from '#/components/CalendarView'
+import PillarManager from '#/components/PillarManager'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
@@ -193,7 +196,11 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.phone === 'string' || f.phone === null ? { phone: f.phone as string | null } : {}),
         ...(typeof f.source === 'string' || f.source === null ? { source: f.source as string | null } : {}),
         ...(typeof f.deal_value === 'number' || f.deal_value === null ? { deal_value: f.deal_value as number | null } : {}),
-      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null }>,
+        ...(typeof f.pillar_id === 'string' || f.pillar_id === null ? { pillar_id: f.pillar_id as string | null } : {}),
+        ...(typeof f.content_status === 'string' || f.content_status === null ? { content_status: f.content_status as string | null } : {}),
+        ...((Array.isArray(f.channels) && f.channels.every((x) => typeof x === 'string')) || f.channels === null ? { channels: f.channels as string[] | null } : {}),
+        ...(typeof f.format === 'string' || f.format === null ? { format: f.format as string | null } : {}),
+      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null; pillar_id: string | null; content_status: string | null; channels: string[] | null; format: string | null }>,
     }
   })
   .handler(async ({ data }) => {
@@ -237,6 +244,8 @@ const addTaskFn = createServerFn({ method: 'POST' })
     if (typeof f.columnId !== 'string' || typeof f.title !== 'string' || !f.title.trim())
       throw new Error('columnId and title required')
     const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+    const arr = (v: unknown) =>
+      Array.isArray(v) && v.every((x) => typeof x === 'string') && v.length ? (v as string[]) : null
     return {
       columnId: f.columnId,
       title: f.title.trim(),
@@ -244,6 +253,10 @@ const addTaskFn = createServerFn({ method: 'POST' })
       assignee_id: s(f.assignee_id),
       category: s(f.category),
       description: s(f.description),
+      pillar_id: s(f.pillar_id),
+      content_status: s(f.content_status),
+      channels: arr(f.channels),
+      format: s(f.format),
     }
   })
   .handler(async ({ data }) => {
@@ -304,6 +317,39 @@ const deleteBoardFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const addPillarFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, name, color } = (d ?? {}) as {
+      workspaceId?: unknown; name?: unknown; color?: unknown
+    }
+    if (typeof workspaceId !== 'string' || typeof name !== 'string' || !name.trim())
+      throw new Error('workspaceId and name required')
+    return {
+      workspaceId,
+      name: name.trim(),
+      color: typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#2563eb',
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await createPillar(supabase, data.workspaceId, data.name, data.color)
+    flush(headers)
+  })
+
+const deletePillarFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const pillarId = (d as { pillarId?: unknown })?.pillarId
+    if (typeof pillarId !== 'string') throw new Error('pillarId required')
+    return { pillarId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await deletePillar(supabase, data.pillarId)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/board/$boardId')({
   component: BoardView,
   loader: async ({ params }) => await fetchBoard({ data: { boardId: params.boardId } }),
@@ -328,6 +374,7 @@ function BoardView() {
   const [boardMeta, setBoardMeta] = useState<BoardMeta | null>(null)
   const [editing, setEditing] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
+  const [addInitialDate, setAddInitialDate] = useState<string>('')
   const [groupBy, setGroupBy] = useState<'phase' | 'category'>('phase')
   const [filterCat, setFilterCat] = useState<string>('')
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
@@ -339,6 +386,12 @@ function BoardView() {
     if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
   }, [initialBoard.id, boardMeta])
   const board = { ...initialBoard, columns }
+  const isContent = board.kind === 'content'
+
+  function openAddContent(date: string) {
+    setAddInitialDate(date)
+    setAddingTask(true)
+  }
 
   async function openCardDetail(card: CardRow) {
     setSelectedCard(card)
@@ -623,10 +676,10 @@ function BoardView() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setAddingTask(true)}
+                onClick={() => openAddContent('')}
                 className="btn btn-primary shrink-0"
               >
-                + Add task
+                {isContent ? '+ Add content' : '+ Add task'}
               </button>
               {isOwner && (
                 <button
@@ -692,6 +745,7 @@ function BoardView() {
         )}
       </div>
 
+      {!isContent && (
       <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
         <span className="text-[13px] font-semibold text-[var(--ink3)]">Group by</span>
         <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
@@ -721,8 +775,30 @@ function BoardView() {
           ))}
         </select>
       </div>
+      )}
 
-      {board.columns.length === 0 ? (
+      {isContent ? (
+        <div className="gt-fade">
+          {isOwner && (
+            <PillarManager
+              pillars={board.pillars}
+              onAdd={(name, color) =>
+                addPillarFn({ data: { workspaceId: board.workspaceId ?? '', name, color } }).then(() =>
+                  router.invalidate(),
+                )
+              }
+              onDelete={(id) => deletePillarFn({ data: { pillarId: id } }).then(() => router.invalidate())}
+            />
+          )}
+          <CalendarView
+            cards={board.columns.flatMap((c) => c.cards)}
+            pillars={board.pillars}
+            canEdit={canEdit}
+            onCardClick={openCardDetail}
+            onAddOnDay={openAddContent}
+          />
+        </div>
+      ) : board.columns.length === 0 ? (
         <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
           No columns yet.
         </div>
@@ -757,6 +833,8 @@ function BoardView() {
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
           categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
           isLeads={board.kind === 'leads'}
+          isContent={isContent}
+          pillars={board.pillars}
         />
       )}
 
@@ -765,9 +843,16 @@ function BoardView() {
           columns={columns.map((c) => ({ id: c.id, title: c.title }))}
           members={(boardMeta ?? { members: [], labels: [] }).members}
           categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
-          onClose={() => setAddingTask(false)}
+          isContent={isContent}
+          pillars={board.pillars}
+          initialDueDate={addInitialDate}
+          onClose={() => {
+            setAddingTask(false)
+            setAddInitialDate('')
+          }}
           onCreated={() => {
             setAddingTask(false)
+            setAddInitialDate('')
             router.invalidate()
           }}
           onCreate={(t) => addTaskFn({ data: t })}
