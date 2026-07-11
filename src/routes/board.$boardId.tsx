@@ -29,6 +29,7 @@ import TaskCreate from '#/components/TaskCreate'
 import CalendarView from '#/components/CalendarView'
 import PillarManager from '#/components/PillarManager'
 import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
+import { ContentStats, ContentPipeline, ContentRail } from '#/components/ContentPanels'
 import { isDoneColumn } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
@@ -577,6 +578,17 @@ function BoardView() {
       }
     }
   }
+  let draftCount = 0
+  let scheduledCount = 0
+  let postedCount = 0
+  for (const c of allCards) {
+    if (c.content_status === 'draft') draftCount++
+    else if (c.content_status === 'scheduled') scheduledCount++
+    else if (c.content_status === 'posted') postedCount++
+  }
+  const todayContent = allCards
+    .filter((c) => c.due_date === today)
+    .map((c) => ({ id: c.id, title: c.title, status: c.content_status ?? null }))
   const categories = distinctCategories(allCards)
   const keep = (card: CardRow) => !filterCat || card.category === filterCat
   const phaseColumns: ColumnRow[] = board.columns.map((c) => ({
@@ -818,13 +830,25 @@ function BoardView() {
               onDelete={(id) => deletePillarFn({ data: { pillarId: id } }).then(() => router.invalidate())}
             />
           )}
-          <CalendarView
-            cards={board.columns.flatMap((c) => c.cards)}
-            pillars={board.pillars}
-            canEdit={canEdit}
-            onCardClick={openCardDetail}
-            onAddOnDay={openAddContent}
+          <ContentStats
+            total={allCards.length}
+            draft={draftCount}
+            scheduled={scheduledCount}
+            posted={postedCount}
           />
+          <ContentPipeline scheduled={scheduledCount} posted={postedCount} />
+          <div className="mx-auto flex max-w-[1400px] items-start gap-4">
+            <div className="min-w-0 flex-1">
+              <CalendarView
+                cards={board.columns.flatMap((c) => c.cards)}
+                pillars={board.pillars}
+                canEdit={canEdit}
+                onCardClick={openCardDetail}
+                onAddOnDay={openAddContent}
+              />
+            </div>
+            <ContentRail today={todayContent} />
+          </div>
         </div>
       ) : board.columns.length === 0 ? (
         <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
