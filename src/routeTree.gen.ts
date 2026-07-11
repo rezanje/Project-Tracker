@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceWorkspaceIdRouteImport } from './routes/workspace.$workspaceId'
@@ -33,6 +34,11 @@ const PendingRoute = PendingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComingSoonRoute = ComingSoonRouteImport.update({
@@ -74,6 +80,7 @@ const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/pending': typeof PendingRoute
   '/signup': typeof SignupRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/coming-soon'
+    | '/home'
     | '/login'
     | '/pending'
     | '/signup'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/coming-soon'
+    | '/home'
     | '/login'
     | '/pending'
     | '/signup'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/coming-soon'
+    | '/home'
     | '/login'
     | '/pending'
     | '/signup'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ComingSoonRoute: typeof ComingSoonRoute
+  HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   PendingRoute: typeof PendingRoute
   SignupRoute: typeof SignupRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coming-soon': {
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComingSoonRoute: ComingSoonRoute,
+  HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   PendingRoute: PendingRoute,
   SignupRoute: SignupRoute,
