@@ -16,6 +16,7 @@ import {
   Star,
 } from 'lucide-react'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import ThemeToggle from './ThemeToggle'
 
@@ -82,6 +83,16 @@ export default function Sidebar() {
     await getBrowserSupabase().auth.signOut()
     setEmail(null)
     navigate({ to: '/login' })
+  }
+
+  async function addWorkspace() {
+    const name = window.prompt('Workspace name')
+    if (!name?.trim()) return
+    const ws = await createWorkspaceFn({ data: { name } })
+    const nav = await fetchNav()
+    setWorkspaces(nav.workspaces)
+    setBoards(nav.boards)
+    navigate({ to: '/workspace/$workspaceId', params: { workspaceId: ws.id } })
   }
 
   function toggleCollapsed() {
@@ -196,16 +207,17 @@ export default function Sidebar() {
       })}
 
       {/* add workspace */}
-      <Link
-        to="/coming-soon"
+      <button
+        type="button"
+        onClick={addWorkspace}
         title="Add workspace"
-        className={`flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-semibold text-[var(--ink3)] no-underline hover:bg-[var(--col)] hover:text-[var(--ink2)] ${
+        className={`flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-semibold text-[var(--ink3)] hover:bg-[var(--col)] hover:text-[var(--ink2)] ${
           collapsed ? 'justify-center px-0' : 'px-2.5'
         }`}
       >
         <Plus size={16} className="shrink-0" aria-hidden="true" />
         {!collapsed && <span className="truncate">Add workspace</span>}
-      </Link>
+      </button>
 
       {/* favorites */}
       <button

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   AlarmClock,
   CheckSquare,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import { createNoteFn, deleteNoteFn } from '#/lib/actions'
 
 // ponytail: Pixel Home wires the schema-backed data (today tasks, active
 // projects, KPI headline numbers, project progress, announcements, notes).
@@ -175,6 +176,20 @@ function Avatar({ i }: { i: number }) {
 
 function PixelHome() {
   const d = Route.useLoaderData() as DashboardData
+  const router = useRouter()
+
+  async function addNote() {
+    const body = window.prompt('New note')
+    if (body?.trim()) {
+      await createNoteFn({ data: { body } })
+      router.invalidate()
+    }
+  }
+  async function removeNote(id: string) {
+    await deleteNoteFn({ data: { id } })
+    router.invalidate()
+  }
+
   const total = d.stats.totalTasks
   const overallPct = total ? Math.round((d.stats.completed / total) * 100) : 0
   const pp = d.projectProgress
@@ -317,6 +332,7 @@ function PixelHome() {
                 <button
                   key={a.label}
                   type="button"
+                  onClick={a.label === 'Add Note' ? addNote : undefined}
                   className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center hover:border-[var(--ink)]"
                 >
                   <span
@@ -394,7 +410,11 @@ function PixelHome() {
               <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
                 📝 Notes
               </h3>
-              <button type="button" className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
+              <button
+                type="button"
+                onClick={addNote}
+                className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+              >
                 <Plus size={12} /> New Note
               </button>
             </div>
@@ -406,7 +426,14 @@ function PixelHome() {
                   className="flex items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
                 >
                   <p className="min-w-0 flex-1 text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
-                  <MoreVertical size={14} className="shrink-0 text-[var(--pop-ink)]" />
+                  <button
+                    type="button"
+                    onClick={() => removeNote(n.id)}
+                    aria-label="Delete note"
+                    className="shrink-0 text-[var(--pop-ink)] hover:text-[var(--danger)]"
+                  >
+                    <MoreVertical size={14} />
+                  </button>
                 </div>
               ))}
             </div>
