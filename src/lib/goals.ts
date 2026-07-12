@@ -273,7 +273,8 @@ export const deleteGoalFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').delete().eq('id', data.id)
+    const { error } = await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').delete().eq('id', data.id)
+    if (error) throw error
     flush(headers)
     return { ok: true }
   })
@@ -288,7 +289,8 @@ export const setGoalStatusFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').update({ status: data.status }).eq('id', data.id)
+    const { error } = await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').update({ status: data.status }).eq('id', data.id)
+    if (error) throw error
     flush(headers)
     return { ok: true }
   })
