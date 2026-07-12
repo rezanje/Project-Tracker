@@ -374,3 +374,60 @@ export const reviewKrCheckinFn = createServerFn({ method: 'POST' })
     flush(headers)
     return { ok: true }
   })
+
+/**
+ * Self-assign a workspace-less personal KPI/Objective (assignee = assigner =
+ * caller). Relies on migration 0023's `kpi_insert`/`obj_insert` RLS branch
+ * (`workspace_id is null and assignee_id = auth.uid()`). The client never
+ * supplies an assignee — both identity fields are set server-side from the
+ * authenticated user, so there is no way to forge a self-assign onto someone
+ * else.
+ */
+export const selfAssignKpiFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const name = typeof f.name === 'string' ? f.name.trim() : ''
+    if (!name) throw new Error('name required')
+    return {
+      name,
+      target: Number(f.target) || 0,
+      unit: typeof f.unit === 'string' && f.unit.trim() ? f.unit.trim() : null,
+      startDate: typeof f.startDate === 'string' && f.startDate ? f.startDate : null,
+      endDate: typeof f.endDate === 'string' && f.endDate ? f.endDate : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('kpis').insert({
+      name: data.name, target: data.target, unit: data.unit, current: 0,
+      assignee_id: user.id, assigned_by: user.id, workspace_id: null,
+      start_date: data.startDate, end_date: data.endDate,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const selfAssignObjectiveFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const title = typeof f.title === 'string' ? f.title.trim() : ''
+    if (!title) throw new Error('title required')
+    return {
+      title,
+      startDate: typeof f.startDate === 'string' && f.startDate ? f.startDate : null,
+      endDate: typeof f.endDate === 'string' && f.endDate ? f.endDate : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('objectives').insert({
+      title: data.title, assignee_id: user.id, assigned_by: user.id, workspace_id: null,
+      start_date: data.startDate, end_date: data.endDate,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })

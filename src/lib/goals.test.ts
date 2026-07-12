@@ -166,3 +166,26 @@ test('reviewKpiCheckinFn-equivalent RPC moves current only on approve', async ()
     await admin.auth.admin.deleteUser(owner.id)
   }
 }, 25000)
+
+test('kpi_insert policy allows a signed-in user to self-assign a workspace-less KPI', async () => {
+  const user = await mkUser('selfassignkpi')
+  let kpiId: string | undefined
+  try {
+    const anon = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+    await anon.auth.signInWithPassword({ email: (await admin.auth.admin.getUserById(user.id)).data.user!.email!, password: 'Babikeguling1!' })
+
+    const { data, error } = await anon
+      .from('kpis')
+      .insert({
+        name: 'Read 12 books', target: 12, unit: 'books',
+        assignee_id: user.id, assigned_by: user.id, workspace_id: null,
+      })
+      .select('id')
+      .single()
+    expect(error).toBeNull() // self-assign branch: workspace_id is null and assignee_id = auth.uid()
+    kpiId = data!.id
+  } finally {
+    if (kpiId) await admin.from('kpis').delete().eq('id', kpiId)
+    await admin.auth.admin.deleteUser(user.id)
+  }
+}, 25000)
