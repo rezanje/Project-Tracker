@@ -18,6 +18,8 @@ interface Props {
   onReviewKr: (checkinId: string, approve: boolean) => void
   onDeleteKpi: (id: string) => void
   onDeleteObjective: (id: string) => void
+  onAssignObjective: (assigneeId: string, title: string, startDate: string, endDate: string) => void
+  onAddKeyResult: (objectiveId: string, title: string, target: number) => void
 }
 
 function initials(name: string | null, email: string | null): string {
@@ -76,9 +78,52 @@ function AssignKpiForm({ members, onAssign }: { members: TeamMember[]; onAssign:
   )
 }
 
+function AssignObjectiveForm({ members, onAssign }: { members: TeamMember[]; onAssign: Props['onAssignObjective'] }) {
+  const [open, setOpen] = useState(false)
+  const [assigneeId, setAssigneeId] = useState(members[0]?.user_id ?? '')
+  const [title, setTitle] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-square mb-4 w-full text-xs">
+        Assign Objective
+      </button>
+    )
+  }
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!assigneeId || !title.trim()) return
+        onAssign(assigneeId, title.trim(), startDate, endDate)
+        setOpen(false)
+        setTitle('')
+        setStartDate('')
+        setEndDate('')
+      }}
+      className="mb-4 flex flex-col gap-2 rounded-[12px] border border-[var(--line)] p-3"
+    >
+      <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="field text-[13px]">
+        {members.map((m) => (
+          <option key={m.user_id} value={m.user_id}>{m.name ?? m.email ?? m.user_id}</option>
+        ))}
+      </select>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Objective title" className="field text-[13px]" />
+      <div className="flex gap-2">
+        <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className="field flex-1 text-[13px]" />
+        <input value={endDate} onChange={(e) => setEndDate(e.target.value)} type="date" className="field flex-1 text-[13px]" />
+      </div>
+      <button type="submit" className="btn btn-primary btn-square text-xs">Assign</button>
+    </form>
+  )
+}
+
 export default function TeamPanel({
   members, meId, busy, onSetRole, onRemove, onClose,
   assignedKpis, assignedObjectives, onAssignKpi, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective,
+  onAssignObjective, onAddKeyResult,
 }: Props) {
   return (
     <div
@@ -143,6 +188,8 @@ export default function TeamPanel({
         <div className="border-t border-[var(--line)] pt-4">
           <h3 className="display-title mb-2 text-[15px] font-bold text-[var(--ink)]">KPIs</h3>
           <AssignKpiForm members={members} onAssign={onAssignKpi} />
+          <h3 className="display-title mb-2 text-[15px] font-bold text-[var(--ink)]">Objectives</h3>
+          <AssignObjectiveForm members={members} onAssign={onAssignObjective} />
           <AssignedGoalsCard
             kpis={assignedKpis}
             objectives={assignedObjectives}
@@ -150,6 +197,7 @@ export default function TeamPanel({
             onReviewKr={onReviewKr}
             onDeleteKpi={onDeleteKpi}
             onDeleteObjective={onDeleteObjective}
+            onAddKeyResult={onAddKeyResult}
           />
         </div>
       </div>

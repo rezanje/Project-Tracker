@@ -146,6 +146,7 @@ interface OwnerProps {
   onReviewKr: (checkinId: string, approve: boolean) => void
   onDeleteKpi: (id: string) => void
   onDeleteObjective: (id: string) => void
+  onAddKeyResult: (objectiveId: string, title: string, target: number) => void
 }
 
 function ReviewRow({ pending, onReview }: { pending: Kr['pending']; onReview: (checkinId: string, approve: boolean) => void }) {
@@ -173,7 +174,51 @@ function ReviewRow({ pending, onReview }: { pending: Kr['pending']; onReview: (c
   )
 }
 
-export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective }: OwnerProps) {
+function AddKrForm({ onAdd }: { onAdd: (title: string, target: number) => void }) {
+  const [title, setTitle] = useState('')
+  const [target, setTarget] = useState('')
+  const [open, setOpen] = useState(false)
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-ghost btn-square px-2 text-[11px]">
+        ＋ Key result
+      </button>
+    )
+  }
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!title.trim()) return
+        onAdd(title.trim(), Number(target) || 100)
+        setOpen(false)
+        setTitle('')
+        setTarget('')
+      }}
+      className="mt-2 flex flex-wrap gap-2 gt-fade"
+    >
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Key result title"
+        aria-label="Key result title"
+        autoFocus
+        className="field flex-1 text-[12px]"
+      />
+      <input
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        type="number"
+        placeholder="Target"
+        aria-label="Target"
+        className="field w-24 text-[12px]"
+      />
+      <button type="submit" className="btn btn-primary btn-square px-3 text-xs">Add</button>
+    </form>
+  )
+}
+
+export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective, onAddKeyResult }: OwnerProps) {
   return (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
       <div className="card p-5">
@@ -229,6 +274,9 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
                   </li>
                 ))}
               </ul>
+              <div className="pl-3">
+                <AddKrForm onAdd={(title, target) => onAddKeyResult(o.id, title, target)} />
+              </div>
             </li>
           ))}
         </ul>

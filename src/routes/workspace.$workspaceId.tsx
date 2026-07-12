@@ -15,7 +15,7 @@ import {
 import TeamPanel from '#/components/TeamPanel'
 import {
   fetchAssignedGoalsFn, assignKpiFn, reviewKpiCheckinFn, reviewKrCheckinFn,
-  deleteGoalFn, type AssignedKpi, type AssignedObjective,
+  deleteGoalFn, assignObjectiveFn, addKeyResultFn, type AssignedKpi, type AssignedObjective,
 } from '#/lib/goals'
 import { isDoneColumn, localDateStr } from '#/lib/home'
 import WorkspaceDashboard, {
@@ -359,6 +359,14 @@ function Home() {
     await deleteGoalFn({ data: { kind: 'objective', id } })
     await refreshGoals()
   }
+  async function onAssignObjective(assigneeId: string, title: string, startDate: string, endDate: string) {
+    await assignObjectiveFn({ data: { assigneeId, workspaceId, title, startDate, endDate } })
+    await refreshGoals()
+  }
+  async function onAddKeyResult(objectiveId: string, title: string, target: number) {
+    await addKeyResultFn({ data: { objectiveId, title, target } })
+    await refreshGoals()
+  }
 
   // create project — kept
   const [creating, setCreating] = useState(false)
@@ -489,6 +497,8 @@ function Home() {
           onReviewKr={onReviewKr}
           onDeleteKpi={onDeleteKpi}
           onDeleteObjective={onDeleteObjective}
+          onAssignObjective={onAssignObjective}
+          onAddKeyResult={onAddKeyResult}
         />
       )}
 
