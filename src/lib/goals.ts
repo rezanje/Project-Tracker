@@ -189,3 +189,106 @@ export const fetchAssignedGoalsFn = createServerFn({ method: 'POST' })
       return { kpis: [], objectives: [] }
     }
   })
+
+export const assignKpiFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const assigneeId = typeof f.assigneeId === 'string' ? f.assigneeId : ''
+    const name = typeof f.name === 'string' ? f.name.trim() : ''
+    if (!assigneeId || !name) throw new Error('assigneeId and name required')
+    return {
+      assigneeId,
+      workspaceId: typeof f.workspaceId === 'string' ? f.workspaceId : null,
+      name,
+      target: Number(f.target) || 0,
+      unit: typeof f.unit === 'string' && f.unit.trim() ? f.unit.trim() : null,
+      startDate: typeof f.startDate === 'string' && f.startDate ? f.startDate : null,
+      endDate: typeof f.endDate === 'string' && f.endDate ? f.endDate : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('kpis').insert({
+      name: data.name, target: data.target, unit: data.unit, current: 0,
+      assignee_id: data.assigneeId, assigned_by: user.id, workspace_id: data.workspaceId,
+      start_date: data.startDate, end_date: data.endDate,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const assignObjectiveFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const assigneeId = typeof f.assigneeId === 'string' ? f.assigneeId : ''
+    const title = typeof f.title === 'string' ? f.title.trim() : ''
+    if (!assigneeId || !title) throw new Error('assigneeId and title required')
+    return {
+      assigneeId,
+      workspaceId: typeof f.workspaceId === 'string' ? f.workspaceId : null,
+      title,
+      startDate: typeof f.startDate === 'string' && f.startDate ? f.startDate : null,
+      endDate: typeof f.endDate === 'string' && f.endDate ? f.endDate : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('objectives').insert({
+      title: data.title, assignee_id: data.assigneeId, assigned_by: user.id,
+      workspace_id: data.workspaceId, start_date: data.startDate, end_date: data.endDate,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const addKeyResultFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const objectiveId = typeof f.objectiveId === 'string' ? f.objectiveId : ''
+    const title = typeof f.title === 'string' ? f.title.trim() : ''
+    if (!objectiveId || !title) throw new Error('objectiveId and title required')
+    return { objectiveId, title, target: Number(f.target) || 100 }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase
+      .from('key_results')
+      .insert({ objective_id: data.objectiveId, title: data.title, target: data.target, current: 0 })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const deleteGoalFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { kind, id } = (d ?? {}) as { kind?: unknown; id?: unknown }
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    return { kind: kind === 'objective' ? ('objective' as const) : ('kpi' as const), id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').delete().eq('id', data.id)
+    flush(headers)
+    return { ok: true }
+  })
+
+export const setGoalStatusFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { kind, id, status } = (d ?? {}) as { kind?: unknown; id?: unknown; status?: unknown }
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    if (status !== 'active' && status !== 'completed' && status !== 'archived') throw new Error('invalid status')
+    return { kind: kind === 'objective' ? ('objective' as const) : ('kpi' as const), id, status }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await supabase.from(data.kind === 'objective' ? 'objectives' : 'kpis').update({ status: data.status }).eq('id', data.id)
+    flush(headers)
+    return { ok: true }
+  })

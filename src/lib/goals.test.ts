@@ -74,3 +74,30 @@ test('listMyGoals returns KPIs and Objectives assigned to the caller', async () 
     await admin.auth.admin.deleteUser(owner.id)
   }
 }, 25000)
+
+test('kpi_insert policy rejects assigning to a non-member of the workspace', async () => {
+  const owner = await mkUser('kpiowner')
+  const outsider = await mkUser('kpioutsider')
+  let workspaceId: string | undefined
+  try {
+    const { data: ws } = await admin
+      .from('workspaces')
+      .insert({ owner_id: owner.id, name: 'KPI Test Workspace' })
+      .select('id')
+      .single()
+    workspaceId = ws!.id
+
+    const anon = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+    await anon.auth.signInWithPassword({ email: (await admin.auth.admin.getUserById(owner.id)).data.user!.email!, password: 'Babikeguling1!' })
+
+    const { error } = await anon.from('kpis').insert({
+      name: 'Outsider KPI', target: 1, workspace_id: workspaceId,
+      assignee_id: outsider.id, assigned_by: owner.id,
+    })
+    expect(error).toBeTruthy() // outsider isn't a workspace_members row
+  } finally {
+    if (workspaceId) await admin.from('workspaces').delete().eq('id', workspaceId)
+    await admin.auth.admin.deleteUser(outsider.id)
+    await admin.auth.admin.deleteUser(owner.id)
+  }
+}, 25000)
