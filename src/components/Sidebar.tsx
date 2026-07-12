@@ -40,13 +40,13 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: typeof Home
-  to: '/' | '/coming-soon' | '/my-tasks'
+  to: '/' | '/coming-soon' | '/my-tasks' | '/calendar'
   badge?: number
 }> = [
   { label: 'Command Center', icon: Home, to: '/' },
   { label: 'Inbox', icon: Inbox, to: '/coming-soon', badge: 8 },
   { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
-  { label: 'Calendar', icon: Calendar, to: '/coming-soon' },
+  { label: 'Calendar', icon: Calendar, to: '/calendar' },
   { label: 'Reports', icon: BarChart3, to: '/coming-soon' },
 ]
 
