@@ -21,17 +21,8 @@ import {
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { deleteNoteFn } from '#/lib/actions'
-import {
-  fetchPersonalGoals,
-  personalKpiSaveFn,
-  personalKpiDeleteFn,
-  personalObjAddFn,
-  personalObjDeleteFn,
-  personalKrSaveFn,
-  personalKrDeleteFn,
-  type PersonalGoals,
-} from '#/lib/personal-goals'
-import Goals from '#/components/Goals'
+import { fetchMyGoalsFn, submitKpiCheckinFn, submitKrCheckinFn, type MyGoals } from '#/lib/goals'
+import { MyGoalsCard } from '#/components/Goals'
 import Popover from '#/components/Popover'
 import QuickTaskForm from '#/components/QuickTaskForm'
 import QuickProjectForm from '#/components/QuickProjectForm'
@@ -45,7 +36,7 @@ import QuickReminderForm from '#/components/QuickReminderForm'
 
 export const Route = createFileRoute('/home')({
   loader: async () => {
-    const [dashboard, goals] = await Promise.all([fetchDashboard(), fetchPersonalGoals()])
+    const [dashboard, goals] = await Promise.all([fetchDashboard(), fetchMyGoalsFn()])
     return { dashboard, goals }
   },
   component: PixelHome,
@@ -223,7 +214,7 @@ function Avatar({ i }: { i: number }) {
 }
 
 function PixelHome() {
-  const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: PersonalGoals }
+  const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: MyGoals }
   const router = useRouter()
 
   async function removeNote(id: string) {
@@ -232,15 +223,13 @@ function PixelHome() {
     router.invalidate()
   }
 
-  const goalHandlers = {
-    onKpiSave: (k: { id?: string; name: string; target: number; current: number; unit: string }) =>
-      personalKpiSaveFn({ data: k }).then(() => router.invalidate()),
-    onKpiDelete: (id: string) => personalKpiDeleteFn({ data: { id } }).then(() => router.invalidate()),
-    onObjAdd: (title: string) => personalObjAddFn({ data: { title } }).then(() => router.invalidate()),
-    onObjDelete: (id: string) => personalObjDeleteFn({ data: { id } }).then(() => router.invalidate()),
-    onKrSave: (k: { id?: string; objectiveId?: string; title: string; target: number; current: number }) =>
-      personalKrSaveFn({ data: k }).then(() => router.invalidate()),
-    onKrDelete: (id: string) => personalKrDeleteFn({ data: { id } }).then(() => router.invalidate()),
+  async function onCheckinKpi(kpiId: string, proposedValue: number, note: string) {
+    await submitKpiCheckinFn({ data: { kpiId, proposedValue, note } })
+    router.invalidate()
+  }
+  async function onCheckinKr(krId: string, proposedValue: number, note: string) {
+    await submitKrCheckinFn({ data: { krId, proposedValue, note } })
+    router.invalidate()
   }
 
   const total = d.stats.totalTasks
@@ -377,7 +366,12 @@ function PixelHome() {
             </section>
           </div>
 
-          <Goals kpis={goals.kpis} okrs={goals.okrs} isOwner {...goalHandlers} />
+          <MyGoalsCard
+            kpis={goals.kpis}
+            objectives={goals.objectives}
+            onCheckinKpi={onCheckinKpi}
+            onCheckinKr={onCheckinKr}
+          />
         </div>
 
         {/* right rail */}
