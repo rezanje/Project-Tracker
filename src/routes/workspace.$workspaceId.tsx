@@ -13,6 +13,10 @@ import {
   type TeamMember,
 } from '#/lib/workspaces'
 import TeamPanel from '#/components/TeamPanel'
+import {
+  fetchAssignedGoalsFn, assignKpiFn, reviewKpiCheckinFn, reviewKrCheckinFn,
+  deleteGoalFn, type AssignedKpi, type AssignedObjective,
+} from '#/lib/goals'
 import { isDoneColumn, localDateStr } from '#/lib/home'
 import WorkspaceDashboard, {
   type WsProject,
@@ -160,8 +164,6 @@ const fetchHome = createServerFn({ method: 'GET' })
     { data: wm },
     { data: announcements },
     { data: notes },
-    { data: kpis },
-    { data: objectives },
     { data: boardRows },
     { data: finance },
   ] = await Promise.all([
@@ -184,16 +186,6 @@ const fetchHome = createServerFn({ method: 'GET' })
         .select('id,body,created_at')
         .order('created_at', { ascending: false })
         .limit(8),
-      supabase
-        .from('kpis')
-        .select('id,name,target,current,unit')
-        .eq('workspace_id', data.workspaceId)
-        .order('created_at'),
-      supabase
-        .from('objectives')
-        .select('id,title,key_results(id,title,target,current)')
-        .eq('workspace_id', data.workspaceId)
-        .order('created_at'),
       supabase
         .from('boards')
         .select(
@@ -285,36 +277,6 @@ const fetchHome = createServerFn({ method: 'GET' })
       body: n.body as string,
       created_at: n.created_at as string,
     })),
-    kpis: (kpis ?? []).map((k) => ({
-      id: k.id as string,
-      name: k.name as string,
-      target: Number(k.target) || 0,
-      current: Number(k.current) || 0,
-      unit: (k.unit as string | null) ?? null,
-    })),
-    okrs: (objectives ?? []).map((o) => {
-      const krsRaw = (o as { key_results: unknown }).key_results
-      const krs = (Array.isArray(krsRaw) ? krsRaw : []) as Array<{
-        id: string
-        title: string
-        target: number
-        current: number
-      }>
-      const krList = krs.map((k) => ({
-        id: k.id,
-        title: k.title,
-        target: Number(k.target) || 0,
-        current: Number(k.current) || 0,
-      }))
-      const progress = krList.length
-        ? Math.round(
-            (krList.reduce((a, k) => a + (k.target ? Math.min(1, k.current / k.target) : 0), 0) /
-              krList.length) *
-              100,
-          )
-        : 0
-      return { id: o.id as string, title: o.title as string, krs: krList, progress }
-    }),
   }
 })
 
@@ -332,6 +294,13 @@ function Home() {
   const [teamOpen, setTeamOpen] = useState(false)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [teamBusy, setTeamBusy] = useState(false)
+  const [assignedKpis, setAssignedKpis] = useState<AssignedKpi[]>([])
+  const [assignedObjectives, setAssignedObjectives] = useState<AssignedObjective[]>([])
+  async function refreshGoals() {
+    const { kpis, objectives } = await fetchAssignedGoalsFn({ data: { workspaceId } })
+    setAssignedKpis(kpis)
+    setAssignedObjectives(objectives)
+  }
   useEffect(() => {
     fetchTeamFn({ data: { workspaceId } })
       .then(({ members }) => setTeamMembers(members))
@@ -343,6 +312,7 @@ function Home() {
     try {
       const { members } = await fetchTeamFn({ data: { workspaceId } })
       setTeamMembers(members)
+      await refreshGoals()
     } finally {
       setTeamBusy(false)
     }
@@ -368,6 +338,26 @@ function Home() {
     } finally {
       setTeamBusy(false)
     }
+  }
+  async function onAssignKpi(assigneeId: string, name: string, target: number, unit: string, startDate: string, endDate: string) {
+    await assignKpiFn({ data: { assigneeId, workspaceId, name, target, unit, startDate, endDate } })
+    await refreshGoals()
+  }
+  async function onReviewKpi(checkinId: string, approve: boolean) {
+    await reviewKpiCheckinFn({ data: { checkinId, approve } })
+    await refreshGoals()
+  }
+  async function onReviewKr(checkinId: string, approve: boolean) {
+    await reviewKrCheckinFn({ data: { checkinId, approve } })
+    await refreshGoals()
+  }
+  async function onDeleteKpi(id: string) {
+    await deleteGoalFn({ data: { kind: 'kpi', id } })
+    await refreshGoals()
+  }
+  async function onDeleteObjective(id: string) {
+    await deleteGoalFn({ data: { kind: 'objective', id } })
+    await refreshGoals()
   }
 
   // create project — kept
@@ -492,6 +482,13 @@ function Home() {
           onSetRole={onSetRole}
           onRemove={onRemoveMember}
           onClose={() => setTeamOpen(false)}
+          assignedKpis={assignedKpis}
+          assignedObjectives={assignedObjectives}
+          onAssignKpi={onAssignKpi}
+          onReviewKpi={onReviewKpi}
+          onReviewKr={onReviewKr}
+          onDeleteKpi={onDeleteKpi}
+          onDeleteObjective={onDeleteObjective}
         />
       )}
 
