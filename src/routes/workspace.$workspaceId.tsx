@@ -529,20 +529,12 @@ function Clock() {
     return () => clearInterval(t)
   }, [])
   return (
-    <div className="card flex items-center justify-between p-5">
-      <div>
-        <div className="display-title text-3xl font-extrabold tabular-nums text-[var(--ink)]" suppressHydrationWarning>
-          {now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-        </div>
-        <div className="mt-1 text-[13px] font-semibold text-[var(--ink3)]" suppressHydrationWarning>
-          {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-        </div>
-      </div>
-      <span
-        className="text-3xl font-extrabold tabular-nums text-[var(--ink3)]"
-        suppressHydrationWarning
-      >
-        {now.toLocaleTimeString(undefined, { second: '2-digit' }).replace(/\D/g, '')}
+    <div className="flex items-center gap-3 self-center" suppressHydrationWarning>
+      <span className="display-title text-3xl font-extrabold tabular-nums text-[var(--ink)]">
+        {now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+      </span>
+      <span className="text-[13px] font-semibold text-[var(--ink3)]">
+        {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
       </span>
     </div>
   )
@@ -725,6 +717,7 @@ function Home() {
               Hi {name ?? 'there'} — here's this workspace today.
             </p>
           </div>
+          <Clock />
           <div className="flex items-center gap-4">
             {members.length > 0 && (
               <div className="flex -space-x-2">
@@ -836,7 +829,6 @@ function Home() {
         )}
 
         <div className="mb-8 grid gap-4 lg:grid-cols-2">
-          <Clock />
           <div className="card p-5">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">Overdue</h3>

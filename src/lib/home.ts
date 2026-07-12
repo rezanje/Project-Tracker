@@ -3,6 +3,14 @@ export function isDoneColumn(title: string): boolean {
   return /done|complete/i.test(title)
 }
 
+/** Local (not UTC) calendar date as YYYY-MM-DD. Due dates are stored as plain
+ *  calendar dates, so comparisons must use the local day — `toISOString()` would
+ *  return the UTC day and mis-bucket tasks for non-UTC users up to ~half a day. */
+export function localDateStr(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 /** Aggregate card counts across a user's columns. active = total - done. */
 export function computeStats(
   columns: { title: string; cards: { id: string }[] }[],

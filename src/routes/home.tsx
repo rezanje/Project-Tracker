@@ -186,6 +186,7 @@ function PixelHome() {
     }
   }
   async function removeNote(id: string) {
+    if (!window.confirm('Delete this note?')) return
     await deleteNoteFn({ data: { id } })
     router.invalidate()
   }

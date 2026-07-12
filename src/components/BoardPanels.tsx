@@ -33,7 +33,6 @@ export function BoardStats({
   total,
   members,
   budgetIdr,
-  spentPct,
 }: {
   dueToday: number
   overdue: number
@@ -41,7 +40,6 @@ export function BoardStats({
   total: number
   members: number
   budgetIdr: number | null
-  spentPct: number
 }) {
   const cells = [
     { icon: Flame, n: dueToday, label: 'Due today', tint: '#d97706' },
@@ -73,18 +71,13 @@ export function BoardStats({
       ))}
       {budgetIdr != null && (
         <div className="flex min-w-[180px] flex-[1.4] flex-col justify-center gap-1 border-l-2 border-[var(--line)] px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--ink2)]">
-              <Wallet size={14} className="text-[var(--accent)]" /> Budget
-            </span>
-            <span className="text-[12px] font-extrabold text-[var(--ink)]">{spentPct}%</span>
-          </div>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--ink2)]">
+            <Wallet size={14} className="text-[var(--accent)]" /> Budget
+          </span>
           <p className="display-title text-sm font-extrabold leading-none text-[var(--ink)]">
             Rp {budgetIdr.toLocaleString('id-ID')}
           </p>
-          <div className="h-2 overflow-hidden rounded-full bg-[var(--col)]">
-            <div className="h-full rounded-full bg-[var(--pop)]" style={{ width: `${spentPct}%` }} />
-          </div>
+          <p className="text-[10px] text-[var(--ink3)]">Spend tracking coming soon</p>
         </div>
       )}
     </div>
@@ -125,14 +118,10 @@ const FILES = [
 export function BoardRail({
   members,
   budgetIdr,
-  spentPct,
 }: {
   members: Member[]
   budgetIdr: number | null
-  spentPct: number
 }) {
-  const spent = budgetIdr != null ? Math.round((budgetIdr * spentPct) / 100) : 0
-  const remaining = budgetIdr != null ? budgetIdr - spent : 0
   return (
     <aside className="hidden w-72 shrink-0 flex-col gap-4 xl:flex">
       {/* AI assistant — Coming Soon */}
@@ -191,19 +180,7 @@ export function BoardRail({
           <p className="display-title text-lg font-extrabold text-[var(--ink)]">
             Rp {budgetIdr.toLocaleString('id-ID')}
           </p>
-          <div className="mt-1.5 flex flex-col gap-1 text-[12px]">
-            <span className="flex justify-between">
-              <span className="text-[var(--ink3)]">Spent</span>
-              <span className="font-bold text-[var(--danger)]">Rp {spent.toLocaleString('id-ID')}</span>
-            </span>
-            <span className="flex justify-between">
-              <span className="text-[var(--ink3)]">Remaining</span>
-              <span className="font-bold text-[var(--accent-ink)]">Rp {remaining.toLocaleString('id-ID')}</span>
-            </span>
-          </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--col)]">
-            <div className="h-full rounded-full bg-[var(--pop)]" style={{ width: `${spentPct}%` }} />
-          </div>
+          <p className="mt-1 text-[11px] text-[var(--ink3)]">Spend tracking coming soon</p>
         </RailCard>
       )}
 

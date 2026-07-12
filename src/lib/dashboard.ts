@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
-import { isDoneColumn } from './home'
+import { isDoneColumn, localDateStr } from './home'
 
 // One aggregation feeding both dashboards (Command Center + Pixel Home). Panels
 // that need history or event data we don't store (timeline times, sparkline
@@ -61,8 +61,11 @@ function dayDiff(due: string, today: string): number {
 
 export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async (): Promise<DashboardData> => {
   const headers = new Headers()
+  // requireUser throws a redirect (to /login or /pending) for unauthenticated or
+  // unapproved users — keep it OUTSIDE the try so that control-flow redirect is
+  // not swallowed by the data-error fallback below.
+  const { user, supabase } = await requireUser(getRequest(), headers)
   try {
-    const { user, supabase } = await requireUser(getRequest(), headers)
     const [{ data: me }, { data: workspaces }, { data: boards }, { data: notes }, { data: anns }, { data: finance }] =
       await Promise.all([
         supabase.from('profiles').select('name, is_super_admin').eq('id', user.id).single(),
@@ -90,7 +93,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       ? ((await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending')).count ?? 0)
       : 0
 
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateStr()
     const wsName = new Map<string, string>((workspaces ?? []).map((w) => [w.id as string, w.name as string]))
     const wsStat = new Map<string, { total: number; done: number; projects: number }>()
 

@@ -17,8 +17,10 @@ function accentFor(id: string): string {
 
 const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promise<CalTask[]> => {
   const headers = new Headers()
+  // requireUser redirects unauthenticated/unapproved users — keep it outside the
+  // try so the redirect is not swallowed by the empty-list fallback.
+  const { supabase } = await requireUser(getRequest(), headers)
   try {
-    const { supabase } = await requireUser(getRequest(), headers)
     const { data: boards } = await supabase
       .from('boards')
       .select('id,columns(title,cards(id,title,due_date))')

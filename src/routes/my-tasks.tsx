@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { CheckSquare, ChevronRight } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
-import { isDoneColumn } from '#/lib/home'
+import { isDoneColumn, localDateStr } from '#/lib/home'
 
 type Task = {
   id: string
@@ -16,8 +16,10 @@ type Task = {
 
 const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise<Task[]> => {
   const headers = new Headers()
+  // requireUser redirects unauthenticated/unapproved users — keep it outside the
+  // try so the redirect is not swallowed by the empty-list fallback.
+  const { supabase } = await requireUser(getRequest(), headers)
   try {
-    const { supabase } = await requireUser(getRequest(), headers)
     const { data: boards } = await supabase
       .from('boards')
       .select('id,title,columns(title,cards(id,title,due_date))')
@@ -51,8 +53,8 @@ export const Route = createFileRoute('/my-tasks')({
 type Bucket = { key: string; label: string; tint: string; tasks: Task[] }
 
 function bucketize(tasks: Task[]): Bucket[] {
-  const today = new Date().toISOString().slice(0, 10)
-  const in7 = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
+  const today = localDateStr()
+  const in7 = localDateStr(new Date(Date.now() + 7 * 86_400_000))
   const buckets: Bucket[] = [
     { key: 'overdue', label: 'Overdue', tint: 'var(--danger)', tasks: [] },
     { key: 'today', label: 'Today', tint: '#d97706', tasks: [] },

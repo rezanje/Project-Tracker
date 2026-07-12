@@ -30,7 +30,7 @@ import CalendarView from '#/components/CalendarView'
 import PillarManager from '#/components/PillarManager'
 import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
 import { ContentStats, ContentPipeline, ContentRail } from '#/components/ContentPanels'
-import { isDoneColumn } from '#/lib/home'
+import { isDoneColumn, localDateStr } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
@@ -564,7 +564,7 @@ function BoardView() {
   }
 
   const allCards = board.columns.flatMap((c) => c.cards)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr()
   let completedCount = 0
   let dueTodayCount = 0
   let overdueCount = 0
@@ -781,7 +781,6 @@ function BoardView() {
           total={allCards.length}
           members={(boardMeta?.members ?? []).length}
           budgetIdr={board.value_idr ?? null}
-          spentPct={72}
         />
       )}
 
@@ -873,7 +872,6 @@ function BoardView() {
           <BoardRail
             members={boardMeta?.members ?? []}
             budgetIdr={board.value_idr ?? null}
-            spentPct={72}
           />
         </div>
       )}
