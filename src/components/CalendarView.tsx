@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { STATUS_COLOR, type CardRow, type Pillar } from '#/lib/board-data'
 
@@ -36,7 +36,13 @@ export default function CalendarView({ cards, pillars, canEdit, onCardClick, onA
 
   const firstWeekday = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const todayStr = dateStr(today.getFullYear(), today.getMonth(), today.getDate())
+  // Client-only: deriving "today" during SSR mismatches the client at the day
+  // boundary. Start empty (no highlight on the server) and fill after mount.
+  const [todayStr, setTodayStr] = useState('')
+  useEffect(() => {
+    const n = new Date()
+    setTodayStr(dateStr(n.getFullYear(), n.getMonth(), n.getDate()))
+  }, [])
 
   // Leading blanks then day cells, padded to full weeks.
   const cells: (number | null)[] = []

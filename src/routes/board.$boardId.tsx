@@ -14,7 +14,7 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { ChevronLeft } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
@@ -28,10 +28,14 @@ import ProjectEdit from '#/components/ProjectEdit'
 import TaskCreate from '#/components/TaskCreate'
 import CalendarView from '#/components/CalendarView'
 import PillarManager from '#/components/PillarManager'
+import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
+import { ContentStats, ContentPipeline, ContentRail } from '#/components/ContentPanels'
+import ContentViews, { type ContentView } from '#/components/ContentViews'
+import { isDoneColumn, localDateStr } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
-  members: { id: string; name: string }[]
+  members: { id: string; name: string; avatar_url: string | null }[]
   labels: { id: string; name: string; color: string }[]
 }
 
@@ -150,7 +154,7 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     const { supabase } = await requireUser(getRequest(), headers)
     const { data: members, error: mErr } = await supabase
       .from('board_members')
-      .select('user_id, profiles(id,name)')
+      .select('user_id, profiles(id,name,avatar_url)')
       .eq('board_id', data.boardId)
     if (mErr) throw mErr
     const { data: labels, error: lErr } = await supabase
@@ -161,8 +165,8 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     flush(headers)
     return {
       members: (members ?? []).map((m) => {
-        const p = (m.profiles as unknown) as { id: string; name: string } | null
-        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown' }
+        const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
+        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
       }),
       labels: (labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
     }
@@ -377,6 +381,10 @@ function BoardView() {
   const [addInitialDate, setAddInitialDate] = useState<string>('')
   const [groupBy, setGroupBy] = useState<'phase' | 'category'>('phase')
   const [filterCat, setFilterCat] = useState<string>('')
+  const [view, setView] = useState<'board' | 'list'>('board')
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
+  const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
@@ -561,8 +569,48 @@ function BoardView() {
   }
 
   const allCards = board.columns.flatMap((c) => c.cards)
+  const today = localDateStr()
+  let completedCount = 0
+  let dueTodayCount = 0
+  let overdueCount = 0
+  for (const col of board.columns) {
+    const done = isDoneColumn(col.title)
+    for (const c of col.cards) {
+      if (done) completedCount++
+      else if (c.due_date) {
+        if (c.due_date < today) overdueCount++
+        else if (c.due_date === today) dueTodayCount++
+      }
+    }
+  }
+  const boardProgress = allCards.length ? Math.round((completedCount / allCards.length) * 100) : 0
+  let draftCount = 0
+  let scheduledCount = 0
+  let postedCount = 0
+  for (const c of allCards) {
+    if (c.content_status === 'draft') draftCount++
+    else if (c.content_status === 'scheduled') scheduledCount++
+    else if (c.content_status === 'posted') postedCount++
+  }
+  const todayContent = allCards
+    .filter((c) => c.due_date === today)
+    .map((c) => ({ id: c.id, title: c.title, status: c.content_status ?? null }))
   const categories = distinctCategories(allCards)
-  const keep = (card: CardRow) => !filterCat || card.category === filterCat
+  const q = search.trim().toLowerCase()
+  const keep = (card: CardRow) =>
+    (!filterCat || card.category === filterCat) &&
+    (!q || card.title.toLowerCase().includes(q))
+  const listCards = board.columns
+    .flatMap((c) => c.cards.filter(keep).map((card) => ({ card, colTitle: c.title })))
+    .sort((a, b) => {
+      if (sortBy === 'title') return a.card.title.localeCompare(b.card.title)
+      if (sortBy === 'due') {
+        const ad = a.card.due_date ?? '9999-99-99'
+        const bd = b.card.due_date ?? '9999-99-99'
+        return ad < bd ? -1 : ad > bd ? 1 : 0
+      }
+      return 0
+    })
   const phaseColumns: ColumnRow[] = board.columns.map((c) => ({
     ...c,
     cards: c.cards.filter(keep),
@@ -575,7 +623,7 @@ function BoardView() {
   }))
 
   const columnsContent = (
-    <div className="gt-scroll mx-auto flex max-w-[1400px] items-start gap-4 overflow-x-auto pb-3.5">
+    <div className="gt-scroll flex items-start gap-4 overflow-x-auto pb-3.5">
       {groupBy === 'phase'
         ? phaseColumns.map((col) => (
             <Column
@@ -584,11 +632,18 @@ function BoardView() {
               isOwner={canEdit}
               onAddCard={onAddCard}
               onCardClick={openCardDetail}
+              members={boardMeta?.members}
             />
           ))
         : categoryColumns.map((col) => (
             // Read-only view: no owner tools / drag in category mode.
-            <Column key={col.id} column={col} isOwner={false} onCardClick={openCardDetail} />
+            <Column
+              key={col.id}
+              column={col}
+              isOwner={false}
+              onCardClick={openCardDetail}
+              members={boardMeta?.members}
+            />
           ))}
     </div>
   )
@@ -671,6 +726,54 @@ function BoardView() {
           )}
         </div>
 
+        {!isContent && (
+          <div className="flex flex-wrap items-center gap-3">
+            {(boardMeta?.members.length ?? 0) > 0 && (
+              <span className="avatar-stack">
+                {(boardMeta?.members ?? []).slice(0, 4).map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.name}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    style={{ background: accentFor(m.id) }}
+                  >
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      (m.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()
+                    )}
+                  </span>
+                ))}
+                {(boardMeta?.members.length ?? 0) > 4 && (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--col)] text-[10px] font-bold text-[var(--ink2)]">
+                    +{(boardMeta?.members.length ?? 0) - 4}
+                  </span>
+                )}
+              </span>
+            )}
+            {board.deadline && (
+              <div className="stat-tile flex items-center gap-2 px-3 py-2">
+                <CalendarDays size={16} className="text-[var(--accent)]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Deadline</p>
+                  <p className="text-[13px] font-extrabold text-[var(--ink)]">
+                    {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="stat-tile min-w-[140px] px-3 py-2">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Progress</p>
+                <span className="text-[12px] font-extrabold text-[var(--accent-ink)]">{boardProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--col)]">
+                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {canEdit ? (
           <div className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
@@ -746,22 +849,59 @@ function BoardView() {
       </div>
 
       {!isContent && (
+        <BoardStats
+          dueToday={dueTodayCount}
+          overdue={overdueCount}
+          completed={completedCount}
+          total={allCards.length}
+          members={(boardMeta?.members ?? []).length}
+          budgetIdr={board.value_idr ?? null}
+        />
+      )}
+
+      {!isContent && (
       <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
-        <span className="text-[13px] font-semibold text-[var(--ink3)]">Group by</span>
-        <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
-          {(['phase', 'category'] as const).map((g) => (
+        {/* view tabs */}
+        <div className="flex overflow-hidden rounded-full border-2 border-[var(--ink)]">
+          {(['board', 'list'] as const).map((v) => (
             <button
-              key={g}
+              key={v}
               type="button"
-              onClick={() => setGroupBy(g)}
-              className={`px-3 py-1.5 text-[13px] font-bold capitalize ${
-                groupBy === g ? 'bg-[var(--btn)] text-white' : 'text-[var(--ink2)]'
+              onClick={() => setView(v)}
+              className={`px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+                view === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)]'
               }`}
             >
-              {g}
+              {v}
             </button>
           ))}
         </div>
+        {view === 'board' && (
+          <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
+            {(['phase', 'category'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setGroupBy(g)}
+                className={`px-3 py-1.5 text-[13px] font-bold capitalize ${
+                  groupBy === g ? 'bg-[var(--btn)] text-white' : 'text-[var(--ink2)]'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        )}
+        <label className="flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5">
+          <Search size={14} className="text-[var(--ink3)]" aria-hidden="true" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            type="search"
+            placeholder="Search tasks…"
+            className="w-32 bg-transparent text-[13px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
+          />
+        </label>
         <select
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
@@ -774,6 +914,17 @@ function BoardView() {
             </option>
           ))}
         </select>
+        {view === 'list' && (
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'none' | 'due' | 'title')}
+            className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+          >
+            <option value="none">Sort: default</option>
+            <option value="due">Sort: due date</option>
+            <option value="title">Sort: title</option>
+          </select>
+        )}
       </div>
       )}
 
@@ -790,32 +941,111 @@ function BoardView() {
               onDelete={(id) => deletePillarFn({ data: { pillarId: id } }).then(() => router.invalidate())}
             />
           )}
-          <CalendarView
-            cards={board.columns.flatMap((c) => c.cards)}
-            pillars={board.pillars}
-            canEdit={canEdit}
-            onCardClick={openCardDetail}
-            onAddOnDay={openAddContent}
+          <ContentStats
+            total={allCards.length}
+            draft={draftCount}
+            scheduled={scheduledCount}
+            posted={postedCount}
           />
+          <ContentPipeline scheduled={scheduledCount} posted={postedCount} />
+          <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-1 px-1">
+            {(['calendar', 'list', 'timeline', 'pipeline', 'gallery', 'analytics'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setContentView(v)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+                  contentView === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <div className="mx-auto flex max-w-[1400px] items-start gap-4">
+            <div className="min-w-0 flex-1">
+              {contentView === 'calendar' ? (
+                <CalendarView
+                  cards={board.columns.flatMap((c) => c.cards)}
+                  pillars={board.pillars}
+                  canEdit={canEdit}
+                  onCardClick={openCardDetail}
+                  onAddOnDay={openAddContent}
+                />
+              ) : (
+                <ContentViews
+                  view={contentView}
+                  cards={board.columns.flatMap((c) => c.cards)}
+                  pillars={board.pillars}
+                  onCardClick={openCardDetail}
+                />
+              )}
+            </div>
+            <ContentRail today={todayContent} />
+          </div>
         </div>
       ) : board.columns.length === 0 ? (
         <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
           No columns yet.
         </div>
+      ) : view === 'list' ? (
+        <div className="mx-auto max-w-[1400px]">
+          <div className="card p-1.5">
+            {listCards.length === 0 ? (
+              <p className="p-6 text-center text-sm text-[var(--ink3)]">No matching tasks.</p>
+            ) : (
+              <div className="flex flex-col">
+                {listCards.map(({ card, colTitle }) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => openCardDetail(card)}
+                    className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                  >
+                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{card.title}</p>
+                      <p className="truncate text-[11px] text-[var(--ink3)]">
+                        {colTitle}
+                        {card.category ? ` · ${card.category}` : ''}
+                      </p>
+                    </div>
+                    {card.due_date && (
+                      <span className="shrink-0 text-[11px] font-bold tabular-nums text-[var(--ink2)]">
+                        {new Date(card.due_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                      </span>
+                    )}
+                    <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         // Always wrap in DndContext so Column's useDroppable hook is inside a
         // context even for clients. Drag is a no-op for clients anyway: cards
         // are disabled (disabled:!isDraggable) and SortableContext is owner-only.
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          {columnsContent}
-        </DndContext>
+        <div className="mx-auto flex max-w-[1400px] items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              {columnsContent}
+            </DndContext>
+          </div>
+          <BoardRail
+            members={boardMeta?.members ?? []}
+            budgetIdr={board.value_idr ?? null}
+          />
+        </div>
       )}
+
+      {!isContent && board.columns.length > 0 && <BoardRoadmap />}
 
       {selectedCard && (
         <CardDetail

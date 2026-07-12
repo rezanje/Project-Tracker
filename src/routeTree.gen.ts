@@ -10,8 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PendingRouteImport } from './routes/pending'
+import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as ComingSoonRouteImport } from './routes/coming-soon'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceWorkspaceIdRouteImport } from './routes/workspace.$workspaceId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
@@ -24,14 +29,39 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PendingRoute = PendingRouteImport.update({
   id: '/pending',
   path: '/pending',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyTasksRoute = MyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComingSoonRoute = ComingSoonRouteImport.update({
+  id: '/coming-soon',
+  path: '/coming-soon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -67,8 +97,13 @@ const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -78,8 +113,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -90,8 +130,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/coming-soon': typeof ComingSoonRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -103,8 +148,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/calendar'
+    | '/coming-soon'
+    | '/home'
     | '/login'
+    | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -114,8 +164,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/calendar'
+    | '/coming-soon'
+    | '/home'
     | '/login'
+    | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -125,8 +180,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/calendar'
+    | '/coming-soon'
+    | '/home'
     | '/login'
+    | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -137,8 +197,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
+  ComingSoonRoute: typeof ComingSoonRoute
+  HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
+  MyTasksRoute: typeof MyTasksRoute
   PendingRoute: typeof PendingRoute
+  ReportsRoute: typeof ReportsRoute
   SignupRoute: typeof SignupRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
@@ -156,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pending': {
       id: '/pending'
       path: '/pending'
@@ -163,11 +235,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PendingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-tasks': {
+      id: '/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/my-tasks'
+      preLoaderRoute: typeof MyTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coming-soon': {
+      id: '/coming-soon'
+      path: '/coming-soon'
+      fullPath: '/coming-soon'
+      preLoaderRoute: typeof ComingSoonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -217,8 +317,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
+  ComingSoonRoute: ComingSoonRoute,
+  HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
+  MyTasksRoute: MyTasksRoute,
   PendingRoute: PendingRoute,
+  ReportsRoute: ReportsRoute,
   SignupRoute: SignupRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,

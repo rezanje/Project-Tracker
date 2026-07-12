@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "project-tracker",
+  "name": "rakit",
   "compatibility_date": "2026-01-01",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "main": "@tanstack/react-start/server-entry"

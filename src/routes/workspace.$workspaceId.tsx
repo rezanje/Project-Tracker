@@ -1,16 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
-import {
-  ArrowUpRight,
-  BarChart3,
-  CheckCircle2,
-  ChevronRight,
-  Eye,
-  Phone,
-  Zap,
-} from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { createBoard } from '#/lib/boards'
@@ -22,8 +13,13 @@ import {
   type TeamMember,
 } from '#/lib/workspaces'
 import TeamPanel from '#/components/TeamPanel'
-import Goals from '#/components/Goals'
-import { isDoneColumn } from '#/lib/home'
+import { isDoneColumn, localDateStr } from '#/lib/home'
+import WorkspaceDashboard, {
+  type WsProject,
+  type WsScheduleItem,
+  type WsMember,
+  type WsActivity,
+} from '#/components/WorkspaceDashboard'
 
 // Supabase may rotate the session cookie on any call; flush those Set-Cookie
 // headers (collected on a throwaway Headers) onto the real response.
@@ -122,152 +118,6 @@ const removeMemberFn = createServerFn({ method: 'POST' })
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
     await removeWorkspaceMember(supabase, data.workspaceId, data.userId)
-    flush(headers)
-  })
-
-const postAnnouncementFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const { workspaceId, body } = (d ?? {}) as { workspaceId?: unknown; body?: unknown }
-    if (typeof workspaceId !== 'string' || typeof body !== 'string' || !body.trim())
-      throw new Error('workspaceId and body required')
-    return { workspaceId, body: body.trim() }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { user, supabase } = await requireUser(getRequest(), headers)
-    const { error } = await supabase
-      .from('announcements')
-      .insert({ workspace_id: data.workspaceId, author_id: user.id, body: data.body })
-    if (error) throw error
-    flush(headers)
-  })
-
-const addNoteFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const body = (d as { body?: unknown })?.body
-    if (typeof body !== 'string' || !body.trim()) throw new Error('body required')
-    return { body: body.trim() }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { user, supabase } = await requireUser(getRequest(), headers)
-    const { error } = await supabase.from('notes').insert({ user_id: user.id, body: data.body })
-    if (error) throw error
-    flush(headers)
-  })
-
-const deleteNoteFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const id = (d as { id?: unknown })?.id
-    if (typeof id !== 'string') throw new Error('id required')
-    return { id }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from('notes').delete().eq('id', data.id)
-    flush(headers)
-  })
-
-const kpiSaveFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const f = (d ?? {}) as Record<string, unknown>
-    if (typeof f.workspaceId !== 'string') throw new Error('workspaceId required')
-    return {
-      id: typeof f.id === 'string' ? f.id : null,
-      workspaceId: f.workspaceId,
-      name: typeof f.name === 'string' ? f.name.trim() : '',
-      target: Number(f.target) || 0,
-      current: Number(f.current) || 0,
-      unit: typeof f.unit === 'string' && f.unit.trim() ? f.unit.trim() : null,
-    }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    if (data.id) {
-      await supabase.from('kpis').update({ name: data.name, target: data.target, current: data.current, unit: data.unit }).eq('id', data.id)
-    } else {
-      const { error } = await supabase.from('kpis').insert({ workspace_id: data.workspaceId, name: data.name || 'KPI', target: data.target, current: data.current, unit: data.unit })
-      if (error) throw error
-    }
-    flush(headers)
-  })
-
-const kpiDeleteFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const id = (d as { id?: unknown })?.id
-    if (typeof id !== 'string') throw new Error('id required')
-    return { id }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from('kpis').delete().eq('id', data.id)
-    flush(headers)
-  })
-
-const objAddFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const { workspaceId, title } = (d ?? {}) as { workspaceId?: unknown; title?: unknown }
-    if (typeof workspaceId !== 'string' || typeof title !== 'string' || !title.trim())
-      throw new Error('workspaceId and title required')
-    return { workspaceId, title: title.trim() }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    const { error } = await supabase.from('objectives').insert({ workspace_id: data.workspaceId, title: data.title })
-    if (error) throw error
-    flush(headers)
-  })
-
-const objDeleteFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const id = (d as { id?: unknown })?.id
-    if (typeof id !== 'string') throw new Error('id required')
-    return { id }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from('objectives').delete().eq('id', data.id)
-    flush(headers)
-  })
-
-const krSaveFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const f = (d ?? {}) as Record<string, unknown>
-    return {
-      id: typeof f.id === 'string' ? f.id : null,
-      objectiveId: typeof f.objectiveId === 'string' ? f.objectiveId : null,
-      title: typeof f.title === 'string' ? f.title.trim() : '',
-      target: Number(f.target) || 0,
-      current: Number(f.current) || 0,
-    }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    if (data.id) {
-      await supabase.from('key_results').update({ title: data.title, target: data.target, current: data.current }).eq('id', data.id)
-    } else if (data.objectiveId) {
-      const { error } = await supabase.from('key_results').insert({ objective_id: data.objectiveId, title: data.title || 'Key result', target: data.target || 100, current: data.current })
-      if (error) throw error
-    }
-    flush(headers)
-  })
-
-const krDeleteFn = createServerFn({ method: 'POST' })
-  .validator((d: unknown) => {
-    const id = (d as { id?: unknown })?.id
-    if (typeof id !== 'string') throw new Error('id required')
-    return { id }
-  })
-  .handler(async ({ data }) => {
-    const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
-    await supabase.from('key_results').delete().eq('id', data.id)
     flush(headers)
   })
 
@@ -473,123 +323,20 @@ export const Route = createFileRoute('/workspace/$workspaceId')({
   loader: async ({ params }) => await fetchHome({ data: { workspaceId: params.workspaceId } }),
 })
 
-// Deterministic accent per board so each project reads with its own colour.
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function accentFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
-}
-
-const TASK_ICONS = [Eye, Phone, CheckCircle2]
-
-function personInitials(name: string | null): string {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
-  const chars = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')
-  return chars.toUpperCase() || '?'
-}
-
-function Avatar({
-  name,
-  url,
-  className = '',
-}: {
-  name: string | null
-  url?: string | null
-  className?: string
-}) {
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt={name ?? ''}
-        className={`h-7 w-7 rounded-full border-2 border-[var(--card)] object-cover ${className}`}
-      />
-    )
-  }
-  return (
-    <span
-      className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] bg-[var(--accent)] text-[11px] font-bold text-white ${className}`}
-    >
-      {personInitials(name)}
-    </span>
-  )
-}
-
-function fmtDue(due: string | null): string {
-  if (!due) return '—'
-  return new Date(due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function Clock() {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-  return (
-    <div className="card flex items-center justify-between p-5">
-      <div>
-        <div className="display-title text-3xl font-extrabold tabular-nums text-[var(--ink)]" suppressHydrationWarning>
-          {now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-        </div>
-        <div className="mt-1 text-[13px] font-semibold text-[var(--ink3)]" suppressHydrationWarning>
-          {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-        </div>
-      </div>
-      <span
-        className="text-3xl font-extrabold tabular-nums text-[var(--ink3)]"
-        suppressHydrationWarning
-      >
-        {now.toLocaleTimeString(undefined, { second: '2-digit' }).replace(/\D/g, '')}
-      </span>
-    </div>
-  )
-}
-
 function Home() {
   const router = useRouter()
-  const { name, projects, totalValue, workspaceId, workspaceName, wsRole, meId, announcements, notes, kpis, okrs } =
-    Route.useLoaderData()
+  const { projects, workspaceId, workspaceName, wsRole, meId, announcements } = Route.useLoaderData()
   const isWsOwner = wsRole === 'owner'
 
-  const inv = () => router.invalidate()
-  const goalHandlers = {
-    onKpiSave: (k: { id?: string; name: string; target: number; current: number; unit: string }) =>
-      kpiSaveFn({ data: { ...k, workspaceId } }).then(inv),
-    onKpiDelete: (id: string) => kpiDeleteFn({ data: { id } }).then(inv),
-    onObjAdd: (title: string) => objAddFn({ data: { workspaceId, title } }).then(inv),
-    onObjDelete: (id: string) => objDeleteFn({ data: { id } }).then(inv),
-    onKrSave: (k: { id?: string; objectiveId?: string; title: string; target: number; current: number }) =>
-      krSaveFn({ data: k }).then(inv),
-    onKrDelete: (id: string) => krDeleteFn({ data: { id } }).then(inv),
-  }
-  const [annBody, setAnnBody] = useState('')
-  const [noteBody, setNoteBody] = useState('')
-
-  async function onPostAnn(e: React.FormEvent) {
-    e.preventDefault()
-    if (!annBody.trim()) return
-    await postAnnouncementFn({ data: { workspaceId, body: annBody } })
-    setAnnBody('')
-    router.invalidate()
-  }
-  async function onAddNote(e: React.FormEvent) {
-    e.preventDefault()
-    if (!noteBody.trim()) return
-    await addNoteFn({ data: { body: noteBody } })
-    setNoteBody('')
-    router.invalidate()
-  }
-  async function onDelNote(id: string) {
-    await deleteNoteFn({ data: { id } })
-    router.invalidate()
-  }
+  // team panel (manage roles) — kept
   const [teamOpen, setTeamOpen] = useState(false)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [teamBusy, setTeamBusy] = useState(false)
-
+  useEffect(() => {
+    fetchTeamFn({ data: { workspaceId } })
+      .then(({ members }) => setTeamMembers(members))
+      .catch(() => {})
+  }, [workspaceId])
   async function openTeam() {
     setTeamBusy(true)
     setTeamOpen(true)
@@ -622,18 +369,35 @@ function Home() {
       setTeamBusy(false)
     }
   }
-  const [selectedId, setSelectedId] = useState(projects[0]?.id ?? '')
+
+  // create project — kept
   const [creating, setCreating] = useState(false)
-  const [kind, setKind] = useState<'tasks' | 'leads'>('tasks')
   const [title, setTitle] = useState('')
+  const [kind, setKind] = useState<'tasks' | 'leads'>('tasks')
   const [busy, setBusy] = useState(false)
   const [createErr, setCreateErr] = useState<string | null>(null)
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setBusy(true)
+    setCreateErr(null)
+    try {
+      const board = await newBoard({ data: { title, workspaceId, kind } })
+      setTitle('')
+      setCreating(false)
+      router.navigate({ to: '/board/$boardId', params: { boardId: board.id } })
+    } catch {
+      setCreateErr('Could not create project. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // invite (owner) — kept
   const [invEmail, setInvEmail] = useState('')
   const [invMsg, setInvMsg] = useState<string | null>(null)
   const [invLink, setInvLink] = useState<string | null>(null)
-
-  async function onInviteTeam(e: React.FormEvent) {
-    e.preventDefault()
+  async function onInviteTeam() {
     if (!invEmail.trim()) return
     setInvMsg(null)
     setInvLink(null)
@@ -649,676 +413,151 @@ function Home() {
       setInvMsg('Failed to invite.')
     }
   }
-  const [showArchived, setShowArchived] = useState(false)
 
-  // Archived projects stay loaded (0 extra query) but are hidden from the grid
-  // by default so finished work doesn't clutter active projects.
-  const archivedCount = projects.filter((p) => p.projectStatus === 'archived').length
-  const visible = showArchived
-    ? projects
-    : projects.filter((p) => p.projectStatus !== 'archived')
+  // ---- aggregate real data for the mockup dashboard ----
+  const active = projects.filter((p) => p.projectStatus !== 'archived')
+  const allTasks = active.flatMap((p) => p.tasks)
+  const total = allTasks.length
+  const done = allTasks.filter((t) => t.done).length
+  const progress = total ? Math.round((done / total) * 100) : 0
+  const today = localDateStr()
+  const overdue = allTasks.filter((t) => t.due && t.due < today && !t.done).length
 
-  const project =
-    visible.find((p) => p.id === selectedId) ?? visible[0] ?? null
-
-  const derived = useMemo(() => {
-    const tasks = project?.tasks ?? []
-    const total = tasks.length
-    const done = tasks.filter((t) => t.done).length
-    return {
-      tasks,
-      total,
-      done,
-      active: total - done,
-      progress: total ? Math.round((done / total) * 100) : 0,
-      todayTasks: tasks.filter((t) => !t.done).slice(0, 3),
-      requests: tasks.filter((t) => !t.due && !t.done).slice(0, 4),
-    }
-  }, [project])
-
-  const members = project?.members ?? []
-
-  // Overdue across every project in this workspace (past due, not done).
-  const today = new Date().toISOString().slice(0, 10)
-  const overdue = projects
-    .flatMap((p) => p.tasks.map((t) => ({ ...t, projectId: p.id, projectTitle: p.title })))
-    .filter((t) => t.due && t.due < today && !t.done)
-    .sort((a, b) => (a.due! < b.due! ? -1 : 1))
-    .slice(0, 6)
-
-  async function onCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) return
-    setBusy(true)
-    setCreateErr(null)
-    try {
-      const board = await newBoard({ data: { title, workspaceId, kind } })
-      setTitle('')
-      setCreating(false)
-      setSelectedId(board.id)
-      router.invalidate()
-    } catch {
-      setCreateErr('Could not create project. Please try again.')
-    } finally {
-      setBusy(false)
-    }
+  const breakdown = { done: 0, inProgress: 0, todo: 0, blocked: 0, total }
+  for (const t of allTasks) {
+    if (t.done) breakdown.done++
+    else if (/block/i.test(t.status)) breakdown.blocked++
+    else if (/progress|doing|review/i.test(t.status)) breakdown.inProgress++
+    else breakdown.todo++
   }
+
+  const dashProjects: WsProject[] = active.map((p) => {
+    const t = p.tasks.length
+    const d = p.tasks.filter((x) => x.done).length
+    return { id: p.id, title: p.title, progress: t ? Math.round((d / t) * 100) : 0, members: p.members }
+  })
+
+  const TAGC: Record<string, string> = { Finance: '#2563eb', Meeting: '#7c3aed', Content: '#0891b2', Design: '#db2777' }
+  const schedule: WsScheduleItem[] = active
+    .flatMap((p) => p.tasks.map((t) => ({ task: t, boardId: p.id })))
+    .filter(({ task }) => task.due === today && !task.done)
+    .slice(0, 5)
+    .map(({ task, boardId }) => ({
+      id: task.id,
+      title: task.title,
+      tag: task.label?.name ?? null,
+      tagColor: task.label?.color ?? (task.label ? (TAGC[task.label.name] ?? 'var(--ink3)') : 'var(--ink3)'),
+      boardId,
+    }))
+
+  const dashMembers: WsMember[] = teamMembers.map((m) => ({
+    name: m.name,
+    role: m.role,
+    avatar_url: (m as { avatar_url?: string | null }).avatar_url ?? null,
+  }))
+  const membersCount =
+    teamMembers.length || new Set(active.flatMap((p) => p.members.map((m) => m.name))).size
+
+  const activity: WsActivity[] = announcements.map((a) => ({
+    id: a.id,
+    author: a.author,
+    text: `— ${a.body}`,
+    when: new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  }))
 
   return (
     <>
-      <div className="meadow-bg" aria-hidden="true" />
-      <main className="page-wrap relative z-[1] pb-32 pt-9 gt-fade">
-        {/* Hero */}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <Link
-              to="/"
-              className="mb-2.5 inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
-            >
-              <ChevronRight size={15} className="rotate-180" aria-hidden="true" />
-              Workspaces
-            </Link>
-            <h1 className="display-title text-4xl font-extrabold leading-none text-[var(--ink)]">
-              {workspaceName}
-            </h1>
-            <p className="mt-3 text-[15px] text-[var(--ink2)]">
-              Hi {name ?? 'there'} — here's this workspace today.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {members.length > 0 && (
-              <div className="flex -space-x-2">
-                {members.map((m, i) => (
-                  <Avatar key={i} name={m.name} url={m.avatar_url} />
-                ))}
-              </div>
-            )}
-            {isWsOwner && (
-              <button
-                type="button"
-                onClick={openTeam}
-                className="btn btn-ghost px-4 py-3 text-sm"
-              >
-                Team
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setCreating((c) => !c)}
-              className="btn btn-primary px-5 py-3 text-sm"
-            >
-              <span className="text-[17px] leading-none">+</span>
-              New project
-            </button>
-          </div>
-        </div>
+      <WorkspaceDashboard
+        workspaceId={workspaceId}
+        name={workspaceName}
+        progress={progress}
+        totalTasks={total}
+        overdue={overdue}
+        membersCount={membersCount}
+        activeProjects={active.length}
+        projects={dashProjects}
+        schedule={schedule}
+        members={dashMembers}
+        breakdown={breakdown}
+        activity={activity}
+        onManageTeam={isWsOwner ? openTeam : () => {}}
+        onNewProject={() => setCreating(true)}
+      />
 
-        {teamOpen && (
-          <TeamPanel
-            members={teamMembers}
-            meId={meId}
-            busy={teamBusy}
-            onSetRole={onSetRole}
-            onRemove={onRemoveMember}
-            onClose={() => setTeamOpen(false)}
-          />
-        )}
+      {teamOpen && (
+        <TeamPanel
+          members={teamMembers}
+          meId={meId}
+          busy={teamBusy}
+          onSetRole={onSetRole}
+          onRemove={onRemoveMember}
+          onClose={() => setTeamOpen(false)}
+        />
+      )}
 
-        {isWsOwner && (
-          <div className="mb-8 flex flex-col items-start gap-2">
-            <form onSubmit={onInviteTeam} className="flex flex-wrap gap-2">
-              <input
-                type="email"
-                placeholder="Invite team member by email…"
-                value={invEmail}
-                onChange={(e) => setInvEmail(e.target.value)}
-                className="field rounded-full px-4 py-2.5 text-[13px] sm:w-[260px]"
-              />
-              <button type="submit" className="btn btn-primary btn-square">
-                Invite to workspace
-              </button>
-            </form>
-            {invMsg && (
-              <span className="text-xs font-semibold text-[var(--accent-ink)]">{invMsg}</span>
-            )}
-            {invLink && (
-              <div className="flex w-full max-w-[420px] items-center gap-2">
-                <input
-                  readOnly
-                  value={invLink}
-                  onFocus={(e) => e.target.select()}
-                  className="field flex-1 rounded-full px-3 py-2 text-[12px]"
-                />
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard?.writeText(invLink)}
-                  className="btn btn-ghost btn-square px-3 py-2 text-xs"
-                >
-                  Copy
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {creating && (
-          <form onSubmit={onCreate} className="card mb-8 flex flex-wrap gap-3 p-4">
+      {creating && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setCreating(false)}
+        >
+          <form onSubmit={onCreate} onClick={(e) => e.stopPropagation()} className="card w-full max-w-md p-5">
+            <h3 className="display-title mb-3 text-lg font-bold text-[var(--ink)]">New project</h3>
             {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
             <input
               autoFocus
               placeholder="Project name…"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="field min-w-[220px] flex-1"
+              className="field mb-3"
             />
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as 'tasks' | 'leads')}
-              className="field w-auto"
+              className="field mb-3 w-full"
             >
               <option value="tasks">Task board</option>
               <option value="leads">Leads pipeline</option>
             </select>
-            <button type="submit" disabled={busy} className="btn btn-primary btn-square">
-              {busy ? 'Creating…' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreating(false)}
-              className="btn btn-ghost btn-square"
-            >
-              Cancel
-            </button>
-            {createErr && (
-              <p className="w-full text-[13px] font-semibold text-[var(--danger)]">{createErr}</p>
-            )}
-          </form>
-        )}
-
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
-          <Clock />
-          <div className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">Overdue</h3>
-              <span className="text-[13px] font-semibold text-[var(--ink2)]">{overdue.length}</span>
-            </div>
-            {overdue.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--ink3)]">Nothing overdue — nice.</p>
-            ) : (
-              <ul className="divide-y divide-[var(--line)]">
-                {overdue.map((t) => (
-                  <li key={t.id}>
-                    <a
-                      href={`/board/${t.projectId}`}
-                      className="flex items-center justify-between gap-3 py-2.5 no-underline"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-[var(--ink)]">
-                          {t.title}
-                        </span>
-                        <span className="block truncate text-[12px] text-[var(--ink3)]">
-                          {t.projectTitle} · due {fmtDue(t.due)}
-                        </span>
-                      </span>
-                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--danger)]">
-                        overdue
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="card p-5">
-            <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">
-              Announcements
-            </h3>
             {isWsOwner && (
-              <form onSubmit={onPostAnn} className="mb-3 flex gap-2">
-                <input
-                  value={annBody}
-                  onChange={(e) => setAnnBody(e.target.value)}
-                  placeholder="Post to the team…"
-                  className="field flex-1 text-[13px]"
-                />
-                <button type="submit" className="btn btn-primary btn-square px-3 text-xs">
-                  Post
-                </button>
-              </form>
-            )}
-            {announcements.length === 0 ? (
-              <p className="py-2 text-sm text-[var(--ink3)]">No announcements yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {announcements.map((a) => (
-                  <li key={a.id} className="border-l-2 border-[var(--accent)] pl-3">
-                    <p className="text-sm leading-snug text-[var(--ink)]">{a.body}</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--ink3)]">
-                      {a.author ?? 'Owner'} ·{' '}
-                      {new Date(a.created_at).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="card p-5">
-            <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My notes</h3>
-            <form onSubmit={onAddNote} className="mb-3 flex gap-2">
-              <input
-                value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
-                placeholder="Quick note…"
-                className="field flex-1 text-[13px]"
-              />
-              <button type="submit" className="btn btn-primary btn-square px-3 text-xs">
-                Add
-              </button>
-            </form>
-            {notes.length === 0 ? (
-              <p className="py-2 text-sm text-[var(--ink3)]">No notes.</p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-[var(--line)]">
-                {notes.map((n) => (
-                  <li key={n.id} className="flex items-start justify-between gap-2 py-2">
-                    <span className="text-sm leading-snug text-[var(--ink)]">{n.body}</span>
-                    <button
-                      type="button"
-                      onClick={() => onDelNote(n.id)}
-                      aria-label="Delete note"
-                      className="shrink-0 text-lg leading-none text-[var(--ink3)] hover:text-[var(--danger)]"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <Goals kpis={kpis} okrs={okrs} isOwner={isWsOwner} {...goalHandlers} />
-
-        {!project ? (
-          <div className="card p-10 text-center">
-            {projects.length === 0 ? (
-              <>
-                <div className="display-title text-xl font-bold text-[var(--ink)]">
-                  No projects yet
-                </div>
-                <p className="mt-2 text-sm text-[var(--ink2)]">
-                  Create your first project to see it here.
+              <div className="mb-3 border-t border-[var(--line)] pt-3">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+                  Invite member
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  className="btn btn-primary btn-square mt-5"
-                >
-                  + New project
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="display-title text-xl font-bold text-[var(--ink)]">
-                  Semua project di-archive
-                </div>
-                <p className="mt-2 text-sm text-[var(--ink2)]">
-                  {archivedCount} project archived tersembunyi.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowArchived(true)}
-                  className="btn btn-primary btn-square mt-5"
-                >
-                  Tampilkan archived
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
-            {/* Left column: project + progress + activity */}
-            <div className="flex flex-col gap-4">
-              <div className="card flex items-center gap-3 p-4">
-                <span
-                  className="h-10 w-10 shrink-0 rounded-[11px]"
-                  style={{ background: accentFor(project.id) }}
-                />
-                <div className="min-w-0 flex-1">
-                  <select
-                    value={project.id}
-                    onChange={(e) => setSelectedId(e.target.value)}
-                    className="w-full cursor-pointer truncate bg-transparent text-[15px] font-bold text-[var(--ink)] focus:outline-none"
-                  >
-                    {visible.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="text-xs font-semibold text-[var(--ink3)]">
-                    {derived.total} task{derived.total === 1 ? '' : 's'} ·{' '}
-                    {members.length} member{members.length === 1 ? '' : 's'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="card p-5">
-                <div className="display-title text-5xl font-extrabold leading-none text-[var(--ink)]">
-                  {derived.progress}%
-                </div>
-                <div className="mt-2 text-sm font-semibold text-[var(--ink2)]">
-                  Project progress
-                </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${derived.progress}%`, background: 'var(--accent)' }}
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="email…"
+                    value={invEmail}
+                    onChange={(e) => setInvEmail(e.target.value)}
+                    className="field flex-1 text-[13px]"
                   />
-                </div>
-              </div>
-
-              <div
-                className="rounded-[var(--radius)] p-5"
-                style={{ background: '#F5C948' }}
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-[15px] font-bold text-[#3a2f00]">
-                    Project activity
-                  </span>
-                  <span className="rounded-full bg-[#3a2f00]/10 px-2.5 py-1 text-[11px] font-bold text-[#3a2f00]">
-                    Stats
-                  </span>
-                </div>
-                <div className="flex gap-7">
-                  {[
-                    ['Tasks', derived.total],
-                    ['Active', derived.active],
-                    ['Done', derived.done],
-                  ].map(([label, val]) => (
-                    <div key={label}>
-                      <div className="display-title text-2xl font-extrabold text-[#3a2f00]">
-                        {val}
-                      </div>
-                      <div className="text-[12px] font-semibold text-[#6b5900]">
-                        {label}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Middle column: today's tasks */}
-            <div>
-              <div className="mb-4 flex items-baseline justify-between px-0.5">
-                <h2 className="display-title text-xl font-bold text-[var(--ink)]">
-                  Today's tasks
-                </h2>
-                <span className="text-[13px] font-semibold text-[var(--ink2)]">
-                  {derived.active} up next
-                </span>
-              </div>
-
-              {derived.todayTasks.length === 0 ? (
-                <div className="card p-8 text-center text-sm text-[var(--ink3)]">
-                  Nothing active. Clear runway.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {derived.todayTasks.map((t, i) => {
-                    const Icon = TASK_ICONS[i % TASK_ICONS.length]
-                    const tint = t.label?.color ?? accentFor(project.id)
-                    return (
-                      <div key={t.id} className="card p-5">
-                        <div className="mb-4 flex items-center gap-3">
-                          <span
-                            className="flex h-9 w-9 items-center justify-center rounded-[10px]"
-                            style={{ background: `${tint}22`, color: tint }}
-                          >
-                            <Icon size={18} aria-hidden="true" />
-                          </span>
-                          {t.label && (
-                            <span
-                              className="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                              style={{ background: `${t.label.color}22`, color: t.label.color }}
-                            >
-                              {t.label.name}
-                            </span>
-                          )}
-                        </div>
-                        <div className="border-b border-[var(--line)] pb-4 text-lg font-bold text-[var(--ink)]">
-                          {t.title}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 py-4">
-                          {[
-                            ['STATUS', t.status],
-                            ['DUE', fmtDue(t.due)],
-                            ['OWNER', t.owner?.name ?? 'Unassigned'],
-                          ].map(([label, val]) => (
-                            <div key={label}>
-                              <div className="text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--ink3)]">
-                                {label}
-                              </div>
-                              <div className="mt-0.5 truncate text-sm font-semibold text-[var(--ink)]">
-                                {val}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between border-t border-[var(--line)] pt-4">
-                          <div className="flex -space-x-2">
-                            {members.slice(0, 3).map((m, j) => (
-                              <Avatar key={j} name={m.name} url={m.avatar_url} />
-                            ))}
-                          </div>
-                          <a
-                            href={`/board/${project.id}`}
-                            className="btn btn-primary px-4 py-2 text-sm no-underline"
-                          >
-                            Open card
-                          </a>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Right column: quick requests + focus mode */}
-            <div className="flex flex-col gap-4">
-              <div className="card p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap size={17} className="text-[var(--accent)]" aria-hidden="true" />
-                    <h3 className="display-title text-[17px] font-bold text-[var(--ink)]">
-                      Quick requests
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCreating(true)}
-                    className="text-[13px] font-semibold text-[var(--accent)]"
-                  >
-                    + Set task
+                  <button type="button" onClick={onInviteTeam} className="btn btn-ghost btn-square px-3 text-xs">
+                    Invite
                   </button>
                 </div>
-                {derived.requests.length === 0 ? (
-                  <p className="py-3 text-sm text-[var(--ink3)]">No open requests.</p>
-                ) : (
-                  <ul className="divide-y divide-[var(--line)]">
-                    {derived.requests.map((r) => (
-                      <li key={r.id}>
-                        <a
-                          href={`/board/${project.id}`}
-                          className="flex items-center justify-between gap-3 py-3 no-underline"
-                        >
-                          <span className="truncate text-sm font-semibold text-[var(--ink)]">
-                            {r.title}
-                          </span>
-                          <ChevronRight
-                            size={16}
-                            className="shrink-0 text-[var(--ink3)]"
-                            aria-hidden="true"
-                          />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                {invMsg && <p className="mt-1 text-xs font-semibold text-[var(--accent-ink)]">{invMsg}</p>}
+                {invLink && (
+                  <input
+                    readOnly
+                    value={invLink}
+                    onFocus={(e) => e.target.select()}
+                    className="field mt-1 w-full text-[11px]"
+                  />
                 )}
               </div>
-
-              <div
-                className="flex flex-col gap-4 rounded-[var(--radius)] p-5"
-                style={{ background: '#0E1A14' }}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="display-title text-[17px] font-bold text-white">
-                    Focus mode
-                  </h3>
-                  <BarChart3 size={18} className="text-white/40" aria-hidden="true" />
-                </div>
-                <p className="text-sm text-white/60">
-                  Lo-fi & instrumental while you work.
-                </p>
-                <iframe
-                  src="https://open.spotify.com/embed/playlist/37i9dQZF1DZ06evO4pXYMW?utm_source=generator"
-                  width="100%"
-                  height="352"
-                  style={{ border: 0, borderRadius: 12 }}
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  title="Focus playlist"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Your projects — click a card to switch the dashboard above */}
-          <div className="mb-4 mt-10 flex items-baseline justify-between px-0.5">
-            <h2 className="display-title text-2xl font-bold text-[var(--ink)]">
-              Your projects
-            </h2>
-            <div className="flex items-baseline gap-3">
-              {archivedCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowArchived((v) => !v)}
-                  className="text-[13px] font-semibold text-[var(--accent)] hover:underline"
-                >
-                  {showArchived ? 'Sembunyikan' : 'Tampilkan'} archived ({archivedCount})
-                </button>
-              )}
-              <span className="text-[13px] font-semibold text-[var(--ink2)]">
-                {visible.length} project{visible.length === 1 ? '' : 's'}
-                {totalValue > 0 && ` · Rp ${totalValue.toLocaleString('id-ID')}`}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-            {visible.map((p) => {
-              const accent = accentFor(p.id)
-              const total = p.tasks.length
-              const done = p.tasks.filter((t) => t.done).length
-              const pct = total ? Math.round((done / total) * 100) : 0
-              return (
-                <a
-                  key={p.id}
-                  href={`/board/${p.id}`}
-                  className={`card card-hover flex flex-col gap-4 p-5 no-underline${
-                    p.projectStatus === 'archived' ? ' opacity-60' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ background: accent }}
-                      />
-                      <span className="truncate text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--ink2)]">
-                        {p.type ?? 'Project'}
-                      </span>
-                    </span>
-                    <ArrowUpRight
-                      size={17}
-                      className="shrink-0 text-[var(--ink3)]"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="display-title text-[21px] font-bold leading-tight text-[var(--ink)]">
-                    {p.title}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[var(--col)] px-2.5 py-0.5 text-[11px] font-bold capitalize text-[var(--ink2)]">
-                      {p.projectStatus.replace('_', ' ')}
-                    </span>
-                    {p.value > 0 && (
-                      <span className="text-[11px] font-bold text-[var(--accent-ink)]">
-                        Rp {p.value.toLocaleString('id-ID')}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-[var(--ink3)]">
-                      <span>
-                        {done}/{total} task{total === 1 ? '' : 's'}
-                      </span>
-                      <span>{pct}%</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, background: accent }}
-                      />
-                    </div>
-                  </div>
-                  {p.members.length > 0 && (
-                    <div className="flex -space-x-2">
-                      {p.members.slice(0, 4).map((m, j) => (
-                        <Avatar key={j} name={m.name} url={m.avatar_url} />
-                      ))}
-                    </div>
-                  )}
-                </a>
-              )
-            })}
-
-            <form
-              onSubmit={onCreate}
-              className="flex flex-col justify-center gap-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--line)] p-5"
-            >
-              <div className="display-title text-base font-bold text-[var(--ink2)]">
-                Start a new project
-              </div>
-              <input
-                placeholder="Project name…"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="field"
-              />
-              <button
-                type="submit"
-                disabled={busy}
-                className="btn btn-primary btn-square w-full"
-              >
-                {busy ? 'Creating…' : 'Create project'}
+            )}
+            {createErr && <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">{createErr}</p>}
+            <div className="flex gap-2">
+              <button type="submit" disabled={busy} className="btn btn-primary btn-square flex-1">
+                {busy ? 'Creating…' : 'Create'}
               </button>
-              {createErr && (
-                <p className="text-[13px] font-semibold text-[var(--danger)]">{createErr}</p>
-              )}
-            </form>
-          </div>
-          </>
-        )}
-      </main>
+              <button type="button" onClick={() => setCreating(false)} className="btn btn-ghost btn-square">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Moon, Sun, SunMoon } from 'lucide-react'
 
 type ThemeMode = 'light' | 'dark' | 'auto'
 
@@ -33,7 +34,7 @@ function applyThemeMode(mode: ThemeMode) {
   document.documentElement.style.colorScheme = resolved
 }
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [mode, setMode] = useState<ThemeMode>('auto')
 
   useEffect(() => {
@@ -69,15 +70,20 @@ export default function ThemeToggle() {
       ? 'Theme mode: auto (system). Click to switch to light mode.'
       : `Theme mode: ${mode}. Click to switch mode.`
 
+  const Icon = mode === 'auto' ? SunMoon : mode === 'dark' ? Moon : Sun
+  const size = compact ? 15 : 16
+
   return (
     <button
       type="button"
       onClick={toggleMode}
       aria-label={label}
       title={label}
-      className="rounded-full border border-[var(--line)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink2)] transition hover:border-[var(--accent)] hover:text-[var(--ink)]"
+      className={`flex items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink2)] transition hover:border-[var(--accent)] hover:text-[var(--ink)] ${
+        compact ? 'h-8 w-8' : 'h-9 w-9'
+      }`}
     >
-      {mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'}
+      <Icon size={size} aria-hidden="true" />
     </button>
   )
 }
