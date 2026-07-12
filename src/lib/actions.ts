@@ -3,6 +3,8 @@ import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
 import { createNote, deleteNote } from './notes'
 import { createWorkspace } from './workspaces'
+import { createBoard } from './boards'
+import { createCard } from './cards'
 
 // Shared client-callable mutations used by the chrome (sidebar / dashboards).
 
@@ -36,6 +38,50 @@ export const deleteNoteFn = createServerFn({ method: 'POST' })
     await deleteNote(supabase, data.id)
     flush(headers)
     return { ok: true }
+  })
+
+// Header "+ New" quick-create: drop the task into the target board's first
+// column (its leftmost/"To Do"-equivalent lane) rather than making the user
+// pick one.
+export const quickCreateTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, title } = (d ?? {}) as { boardId?: unknown; title?: unknown }
+    if (typeof boardId !== 'string' || !boardId) throw new Error('boardId required')
+    if (typeof title !== 'string' || !title.trim()) throw new Error('title required')
+    return { boardId, title: title.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { data: col, error: colErr } = await supabase
+      .from('columns')
+      .select('id')
+      .eq('board_id', data.boardId)
+      .order('position', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (colErr) throw colErr
+    if (!col) throw new Error('Board has no columns yet')
+    const card = await createCard(supabase, col.id as string, data.title)
+    flush(headers)
+    return { cardId: card.id, boardId: data.boardId }
+  })
+
+// Header/Home "+ New Project" quick-create: title + target workspace, always
+// a 'tasks' kind board (the Leads kind is chosen from inside a workspace today).
+export const createBoardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, title } = (d ?? {}) as { workspaceId?: unknown; title?: unknown }
+    if (typeof workspaceId !== 'string' || !workspaceId) throw new Error('workspaceId required')
+    if (typeof title !== 'string' || !title.trim()) throw new Error('title required')
+    return { workspaceId, title: title.trim() }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const board = await createBoard(supabase, user.id, data.title, data.workspaceId)
+    flush(headers)
+    return { boardId: board.id }
   })
 
 export const createWorkspaceFn = createServerFn({ method: 'POST' })

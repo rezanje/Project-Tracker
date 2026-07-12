@@ -10,11 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetRouteImport } from './routes/reset'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as ForgotRouteImport } from './routes/forgot'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,9 +32,19 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetRoute = ResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PendingRoute = PendingRouteImport.update({
@@ -52,6 +65,11 @@ const LoginRoute = LoginRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotRoute = ForgotRouteImport.update({
+  id: '/forgot',
+  path: '/forgot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComingSoonRoute = ComingSoonRouteImport.update({
@@ -99,11 +117,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -115,11 +136,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -132,11 +156,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -150,11 +177,14 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/coming-soon'
+    | '/forgot'
     | '/home'
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/projects'
     | '/reports'
+    | '/reset'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -166,11 +196,14 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/coming-soon'
+    | '/forgot'
     | '/home'
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/projects'
     | '/reports'
+    | '/reset'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -182,11 +215,14 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/coming-soon'
+    | '/forgot'
     | '/home'
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/projects'
     | '/reports'
+    | '/reset'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -199,11 +235,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   ComingSoonRoute: typeof ComingSoonRoute
+  ForgotRoute: typeof ForgotRoute
   HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   MyTasksRoute: typeof MyTasksRoute
   PendingRoute: typeof PendingRoute
+  ProjectsRoute: typeof ProjectsRoute
   ReportsRoute: typeof ReportsRoute
+  ResetRoute: typeof ResetRoute
   SignupRoute: typeof SignupRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
@@ -221,11 +260,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset': {
+      id: '/reset'
+      path: '/reset'
+      fullPath: '/reset'
+      preLoaderRoute: typeof ResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports': {
       id: '/reports'
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pending': {
@@ -254,6 +307,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot': {
+      id: '/forgot'
+      path: '/forgot'
+      fullPath: '/forgot'
+      preLoaderRoute: typeof ForgotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coming-soon': {
@@ -319,11 +379,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   ComingSoonRoute: ComingSoonRoute,
+  ForgotRoute: ForgotRoute,
   HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   MyTasksRoute: MyTasksRoute,
   PendingRoute: PendingRoute,
+  ProjectsRoute: ProjectsRoute,
   ReportsRoute: ReportsRoute,
+  ResetRoute: ResetRoute,
   SignupRoute: SignupRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,

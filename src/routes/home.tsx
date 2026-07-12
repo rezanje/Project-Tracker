@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import {
   AlarmClock,
   CheckSquare,
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
-import { createNoteFn, deleteNoteFn } from '#/lib/actions'
+import { deleteNoteFn } from '#/lib/actions'
 import {
   fetchPersonalGoals,
   personalKpiSaveFn,
@@ -32,11 +32,16 @@ import {
   type PersonalGoals,
 } from '#/lib/personal-goals'
 import Goals from '#/components/Goals'
+import Popover from '#/components/Popover'
+import QuickTaskForm from '#/components/QuickTaskForm'
+import QuickProjectForm from '#/components/QuickProjectForm'
+import QuickNoteForm from '#/components/QuickNoteForm'
+import QuickReminderForm from '#/components/QuickReminderForm'
 
 // ponytail: Pixel Home wires the schema-backed data (today tasks, active
 // projects, KPI headline numbers, project progress, announcements, notes).
-// Pomodoro is functional; Music, Quick Actions and the KPI mini-bar shapes stay
-// static (no source / a later slice).
+// Pomodoro is functional; Music and the KPI mini-bar shapes stay static (no
+// source / a later slice).
 
 export const Route = createFileRoute('/home')({
   loader: async () => {
@@ -46,12 +51,39 @@ export const Route = createFileRoute('/home')({
   component: PixelHome,
 })
 
-const QUICK_ACTIONS = [
-  { label: 'Add Task', icon: CheckSquare, tint: 'var(--accent)' },
-  { label: 'Add Project', icon: FolderPlus, tint: '#d97706' },
-  { label: 'Add Note', icon: StickyNote, tint: '#7c3aed' },
-  { label: 'Set Reminder', icon: AlarmClock, tint: '#2563eb' },
-]
+function QuickTile({
+  label,
+  icon: Icon,
+  tint,
+  panel,
+}: {
+  label: string
+  icon: typeof CheckSquare
+  tint: string
+  panel: (close: () => void) => React.ReactNode
+}) {
+  return (
+    <Popover
+      panelClassName="w-64"
+      renderTrigger={(_open, toggle) => (
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center hover:border-[var(--ink)]"
+        >
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
+            style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
+          >
+            <Icon size={16} />
+          </span>
+          <span className="text-[10px] font-bold text-[var(--ink2)]">{label}</span>
+        </button>
+      )}
+      renderPanel={panel}
+    />
+  )
+}
 
 const KPI_BARS = [4, 6, 5, 7, 6, 8, 9]
 const PROJECT_TINTS = ['var(--accent)', '#d97706', '#2563eb', '#7c3aed', '#db2777']
@@ -124,9 +156,11 @@ function Pomodoro() {
         </h3>
         <Settings size={14} className="text-[var(--ink3)]" aria-hidden="true" />
       </div>
-      <p className="display-title mb-3 text-center text-5xl font-extrabold tabular-nums text-[var(--ink)]">
-        {mm}:{ss}
-      </p>
+      <div className="lcd-screen mb-3">
+        <p className="lcd-digits text-center text-5xl font-bold">
+          {mm}:{ss}
+        </p>
+      </div>
       <div className="flex gap-2">
         <button
           type="button"
@@ -192,13 +226,6 @@ function PixelHome() {
   const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: PersonalGoals }
   const router = useRouter()
 
-  async function addNote() {
-    const body = window.prompt('New note')
-    if (body?.trim()) {
-      await createNoteFn({ data: { body } })
-      router.invalidate()
-    }
-  }
   async function removeNote(id: string) {
     if (!window.confirm('Delete this note?')) return
     await deleteNoteFn({ data: { id } })
@@ -266,18 +293,18 @@ function PixelHome() {
                 </div>
               ))}
             </div>
-            <button type="button" className="mt-2 text-[12px] font-bold text-[var(--accent-ink)] hover:underline">
+            <Link to="/my-tasks" className="mt-2 inline-block text-[12px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
               View all tasks →
-            </button>
+            </Link>
           </section>
 
           {/* ACTIVE PROJECTS */}
           <section className="card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">Active Projects</h3>
-              <button type="button" className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
+              <Link to="/projects" className="text-[11px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
                 View all projects →
-              </button>
+              </Link>
             </div>
             {d.projects.length === 0 ? (
               <p className="text-sm text-[var(--ink3)]">No projects yet.</p>
@@ -286,7 +313,12 @@ function PixelHome() {
                 {d.projects.slice(0, 3).map((p, i) => {
                   const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
                   return (
-                    <div key={p.id} className="rounded-[10px] border-2 border-[var(--ink)] p-3">
+                    <Link
+                      key={p.id}
+                      to="/board/$boardId"
+                      params={{ boardId: p.id }}
+                      className="rounded-[10px] border-2 border-[var(--ink)] p-3 no-underline hover:bg-[var(--col)]"
+                    >
                       <div className="mb-2 flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
                         <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
@@ -304,7 +336,7 @@ function PixelHome() {
                           <Avatar i={1} />
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>
@@ -356,22 +388,37 @@ function PixelHome() {
               ⚡ Quick Actions
             </h3>
             <div className="grid grid-cols-4 gap-2">
-              {QUICK_ACTIONS.map((a) => (
-                <button
-                  key={a.label}
-                  type="button"
-                  onClick={a.label === 'Add Note' ? addNote : undefined}
-                  className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center hover:border-[var(--ink)]"
-                >
-                  <span
-                    className="flex h-9 w-9 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
-                    style={{ background: `color-mix(in oklab, ${a.tint} 18%, transparent)`, color: a.tint }}
-                  >
-                    <a.icon size={16} />
-                  </span>
-                  <span className="text-[10px] font-bold text-[var(--ink2)]">{a.label}</span>
-                </button>
-              ))}
+              <QuickTile
+                label="Add Task"
+                icon={CheckSquare}
+                tint="var(--accent)"
+                panel={(close) => <QuickTaskForm onDone={close} />}
+              />
+              <QuickTile
+                label="Add Project"
+                icon={FolderPlus}
+                tint="#d97706"
+                panel={(close) => <QuickProjectForm onDone={close} />}
+              />
+              <QuickTile
+                label="Add Note"
+                icon={StickyNote}
+                tint="#7c3aed"
+                panel={(close) => (
+                  <QuickNoteForm
+                    onDone={() => {
+                      close()
+                      router.invalidate()
+                    }}
+                  />
+                )}
+              />
+              <QuickTile
+                label="Set Reminder"
+                icon={AlarmClock}
+                tint="#2563eb"
+                panel={(close) => <QuickReminderForm onDone={close} />}
+              />
             </div>
           </section>
 
@@ -438,13 +485,27 @@ function PixelHome() {
               <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
                 📝 Notes
               </h3>
-              <button
-                type="button"
-                onClick={addNote}
-                className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
-              >
-                <Plus size={12} /> New Note
-              </button>
+              <Popover
+                align="left"
+                panelClassName="w-64"
+                renderTrigger={(_open, toggle) => (
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+                  >
+                    <Plus size={12} /> New Note
+                  </button>
+                )}
+                renderPanel={(close) => (
+                  <QuickNoteForm
+                    onDone={() => {
+                      close()
+                      router.invalidate()
+                    }}
+                  />
+                )}
+              />
             </div>
             <div className="flex flex-col gap-2">
               {d.notes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
