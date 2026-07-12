@@ -294,3 +294,49 @@ export const setGoalStatusFn = createServerFn({ method: 'POST' })
     flush(headers)
     return { ok: true }
   })
+
+export const submitKpiCheckinFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const kpiId = typeof f.kpiId === 'string' ? f.kpiId : ''
+    if (!kpiId) throw new Error('kpiId required')
+    if (f.proposedValue == null || Number.isNaN(Number(f.proposedValue))) throw new Error('proposedValue required')
+    return {
+      kpiId,
+      proposedValue: Number(f.proposedValue),
+      note: typeof f.note === 'string' && f.note.trim() ? f.note.trim() : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('kpi_checkins').insert({
+      kpi_id: data.kpiId, submitted_by: user.id, proposed_value: data.proposedValue, note: data.note,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const submitKrCheckinFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const krId = typeof f.krId === 'string' ? f.krId : ''
+    if (!krId) throw new Error('krId required')
+    if (f.proposedValue == null || Number.isNaN(Number(f.proposedValue))) throw new Error('proposedValue required')
+    return {
+      krId,
+      proposedValue: Number(f.proposedValue),
+      note: typeof f.note === 'string' && f.note.trim() ? f.note.trim() : null,
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('kr_checkins').insert({
+      kr_id: data.krId, submitted_by: user.id, proposed_value: data.proposedValue, note: data.note,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })

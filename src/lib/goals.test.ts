@@ -101,3 +101,31 @@ test('kpi_insert policy rejects assigning to a non-member of the workspace', asy
     await admin.auth.admin.deleteUser(owner.id)
   }
 }, 25000)
+
+test('submitKpiCheckinFn-equivalent insert enforces one pending at a time', async () => {
+  const owner = await mkUser('checkinowner')
+  const staff = await mkUser('checkinstaff')
+  let kpiId: string | undefined
+  try {
+    const { data: kpi } = await admin
+      .from('kpis')
+      .insert({ name: 'Revenue', target: 100, assignee_id: staff.id, assigned_by: owner.id })
+      .select('id')
+      .single()
+    kpiId = kpi!.id
+
+    const { error: first } = await admin
+      .from('kpi_checkins')
+      .insert({ kpi_id: kpiId, submitted_by: staff.id, proposed_value: 40 })
+    expect(first).toBeNull()
+
+    const { error: second } = await admin
+      .from('kpi_checkins')
+      .insert({ kpi_id: kpiId, submitted_by: staff.id, proposed_value: 55 })
+    expect(second).toBeTruthy() // unique index kpi_checkins_one_pending
+  } finally {
+    if (kpiId) await admin.from('kpis').delete().eq('id', kpiId)
+    await admin.auth.admin.deleteUser(staff.id)
+    await admin.auth.admin.deleteUser(owner.id)
+  }
+}, 25000)
