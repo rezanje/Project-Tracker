@@ -1,0 +1,76 @@
+import { readFileSync } from 'node:fs'
+import { createClient } from '@supabase/supabase-js'
+import { expect, test } from 'vitest'
+import { listMyGoals, listAssignedGoals } from './goals'
+
+const env = Object.fromEntries(
+  readFileSync('.dev.vars', 'utf8')
+    .split('\n')
+    .filter((l) => l && !l.startsWith('#') && l.includes('='))
+    .map((l) => {
+      const i = l.indexOf('=')
+      return [l.slice(0, i).trim(), l.slice(i + 1).trim()]
+    }),
+)
+
+const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+})
+
+async function mkUser(tag: string) {
+  const { data, error } = await admin.auth.admin.createUser({
+    email: `${tag}.${Date.now()}@gmail.com`,
+    password: 'Babikeguling1!',
+    email_confirm: true,
+    user_metadata: { name: tag },
+  })
+  if (error) throw error
+  return data.user
+}
+
+test('listMyGoals returns KPIs and Objectives assigned to the caller', async () => {
+  const owner = await mkUser('goalsowner')
+  const staff = await mkUser('goalsstaff')
+  let kpiId: string | undefined
+  let objId: string | undefined
+  try {
+    const { data: kpi } = await admin
+      .from('kpis')
+      .insert({
+        name: 'Closed deals', target: 10, unit: 'deals',
+        assignee_id: staff.id, assigned_by: owner.id,
+        start_date: '2026-07-01', end_date: '2026-07-31',
+      })
+      .select('id')
+      .single()
+    kpiId = kpi!.id
+
+    const { data: obj } = await admin
+      .from('objectives')
+      .insert({
+        title: 'Grow the pipeline',
+        assignee_id: staff.id, assigned_by: owner.id,
+        start_date: '2026-07-01', end_date: '2026-07-31',
+      })
+      .select('id')
+      .single()
+    objId = obj!.id
+    await admin.from('key_results').insert({ objective_id: objId, title: 'Book 5 demos', target: 5, current: 2 })
+
+    const mine = await listMyGoals(admin, staff.id)
+    expect(mine.kpis).toHaveLength(1)
+    expect(mine.kpis[0].name).toBe('Closed deals')
+    expect(mine.objectives).toHaveLength(1)
+    expect(mine.objectives[0].krs).toHaveLength(1)
+    expect(mine.objectives[0].progress).toBe(40) // 2/5 = 40%
+
+    const assigned = await listAssignedGoals(admin, owner.id, null)
+    expect(assigned.kpis).toHaveLength(1)
+    expect(assigned.kpis[0].assigneeName).toBe('goalsstaff')
+  } finally {
+    if (kpiId) await admin.from('kpis').delete().eq('id', kpiId)
+    if (objId) await admin.from('objectives').delete().eq('id', objId)
+    await admin.auth.admin.deleteUser(staff.id)
+    await admin.auth.admin.deleteUser(owner.id)
+  }
+}, 25000)
