@@ -30,6 +30,7 @@ import CalendarView from '#/components/CalendarView'
 import PillarManager from '#/components/PillarManager'
 import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
 import { ContentStats, ContentPipeline, ContentRail } from '#/components/ContentPanels'
+import ContentViews, { type ContentView } from '#/components/ContentViews'
 import { isDoneColumn, localDateStr } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
@@ -383,6 +384,7 @@ function BoardView() {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
+  const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
   useEffect(() => {
     setColumns(initialBoard.columns)
@@ -946,15 +948,38 @@ function BoardView() {
             posted={postedCount}
           />
           <ContentPipeline scheduled={scheduledCount} posted={postedCount} />
+          <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-1 px-1">
+            {(['calendar', 'list', 'timeline', 'pipeline', 'gallery', 'analytics'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setContentView(v)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+                  contentView === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
           <div className="mx-auto flex max-w-[1400px] items-start gap-4">
             <div className="min-w-0 flex-1">
-              <CalendarView
-                cards={board.columns.flatMap((c) => c.cards)}
-                pillars={board.pillars}
-                canEdit={canEdit}
-                onCardClick={openCardDetail}
-                onAddOnDay={openAddContent}
-              />
+              {contentView === 'calendar' ? (
+                <CalendarView
+                  cards={board.columns.flatMap((c) => c.cards)}
+                  pillars={board.pillars}
+                  canEdit={canEdit}
+                  onCardClick={openCardDetail}
+                  onAddOnDay={openAddContent}
+                />
+              ) : (
+                <ContentViews
+                  view={contentView}
+                  cards={board.columns.flatMap((c) => c.cards)}
+                  pillars={board.pillars}
+                  onCardClick={openCardDetail}
+                />
+              )}
             </div>
             <ContentRail today={todayContent} />
           </div>
