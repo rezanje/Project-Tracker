@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { TeamMember } from '#/lib/workspaces'
+import type { AssignedKpi, AssignedObjective } from '#/lib/goals'
+import { AssignedGoalsCard } from './Goals'
 
 interface Props {
   members: TeamMember[]
@@ -8,6 +11,13 @@ interface Props {
   onSetRole: (userId: string, role: 'owner' | 'member') => void
   onRemove: (userId: string) => void
   onClose: () => void
+  assignedKpis: AssignedKpi[]
+  assignedObjectives: AssignedObjective[]
+  onAssignKpi: (assigneeId: string, name: string, target: number, unit: string, startDate: string, endDate: string) => void
+  onReviewKpi: (checkinId: string, approve: boolean) => void
+  onReviewKr: (checkinId: string, approve: boolean) => void
+  onDeleteKpi: (id: string) => void
+  onDeleteObjective: (id: string) => void
 }
 
 function initials(name: string | null, email: string | null): string {
@@ -16,13 +26,66 @@ function initials(name: string | null, email: string | null): string {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || s.slice(0, 2).toUpperCase()
 }
 
-export default function TeamPanel({ members, meId, busy, onSetRole, onRemove, onClose }: Props) {
+function AssignKpiForm({ members, onAssign }: { members: TeamMember[]; onAssign: Props['onAssignKpi'] }) {
+  const [open, setOpen] = useState(false)
+  const [assigneeId, setAssigneeId] = useState(members[0]?.user_id ?? '')
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [unit, setUnit] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary btn-square mb-4 w-full text-xs">
+        Assign KPI
+      </button>
+    )
+  }
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!assigneeId || !name.trim()) return
+        onAssign(assigneeId, name.trim(), Number(target) || 0, unit.trim(), startDate, endDate)
+        setOpen(false)
+        setName('')
+        setTarget('')
+        setUnit('')
+        setStartDate('')
+        setEndDate('')
+      }}
+      className="mb-4 flex flex-col gap-2 rounded-[12px] border border-[var(--line)] p-3"
+    >
+      <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="field text-[13px]">
+        {members.map((m) => (
+          <option key={m.user_id} value={m.user_id}>{m.name ?? m.email ?? m.user_id}</option>
+        ))}
+      </select>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="KPI name" className="field text-[13px]" />
+      <div className="flex gap-2">
+        <input value={target} onChange={(e) => setTarget(e.target.value)} type="number" placeholder="Target" className="field w-24 text-[13px]" />
+        <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit" className="field flex-1 text-[13px]" />
+      </div>
+      <div className="flex gap-2">
+        <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className="field flex-1 text-[13px]" />
+        <input value={endDate} onChange={(e) => setEndDate(e.target.value)} type="date" className="field flex-1 text-[13px]" />
+      </div>
+      <button type="submit" className="btn btn-primary btn-square text-xs">Assign</button>
+    </form>
+  )
+}
+
+export default function TeamPanel({
+  members, meId, busy, onSetRole, onRemove, onClose,
+  assignedKpis, assignedObjectives, onAssignKpi, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective,
+}: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-[560px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="display-title text-2xl font-extrabold text-[var(--ink)]">
             Team · {members.length}
@@ -36,7 +99,7 @@ export default function TeamPanel({ members, meId, busy, onSetRole, onRemove, on
           </button>
         </div>
 
-        <ul className="flex flex-col divide-y divide-[var(--line)]">
+        <ul className="mb-4 flex flex-col divide-y divide-[var(--line)]">
           {members.map((m) => {
             const isMe = m.user_id === meId
             return (
@@ -76,6 +139,19 @@ export default function TeamPanel({ members, meId, busy, onSetRole, onRemove, on
             <li className="py-6 text-center text-sm text-[var(--ink3)]">No members yet.</li>
           )}
         </ul>
+
+        <div className="border-t border-[var(--line)] pt-4">
+          <h3 className="display-title mb-2 text-[15px] font-bold text-[var(--ink)]">KPIs</h3>
+          <AssignKpiForm members={members} onAssign={onAssignKpi} />
+          <AssignedGoalsCard
+            kpis={assignedKpis}
+            objectives={assignedObjectives}
+            onReviewKpi={onReviewKpi}
+            onReviewKr={onReviewKr}
+            onDeleteKpi={onDeleteKpi}
+            onDeleteObjective={onDeleteObjective}
+          />
+        </div>
       </div>
     </div>
   )
