@@ -40,14 +40,14 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: typeof Home
-  to: '/' | '/coming-soon' | '/my-tasks' | '/calendar'
+  to: '/' | '/coming-soon' | '/my-tasks' | '/calendar' | '/reports'
   badge?: number
 }> = [
   { label: 'Command Center', icon: Home, to: '/' },
   { label: 'Inbox', icon: Inbox, to: '/coming-soon', badge: 8 },
   { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Calendar', icon: Calendar, to: '/calendar' },
-  { label: 'Reports', icon: BarChart3, to: '/coming-soon' },
+  { label: 'Reports', icon: BarChart3, to: '/reports' },
 ]
 
 export default function Sidebar() {

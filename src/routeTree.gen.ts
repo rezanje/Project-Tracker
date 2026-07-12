@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as LoginRouteImport } from './routes/login'
@@ -26,6 +27,11 @@ import { Route as AdminApprovalsRouteImport } from './routes/admin/approvals'
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PendingRoute = PendingRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
+  '/reports': typeof ReportsRoute
   '/signup': typeof SignupRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-tasks'
     | '/pending'
+    | '/reports'
     | '/signup'
     | '/admin/approvals'
     | '/api/accept-invite'
@@ -191,6 +203,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyTasksRoute: typeof MyTasksRoute
   PendingRoute: typeof PendingRoute
+  ReportsRoute: typeof ReportsRoute
   SignupRoute: typeof SignupRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pending': {
@@ -303,6 +323,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyTasksRoute: MyTasksRoute,
   PendingRoute: PendingRoute,
+  ReportsRoute: ReportsRoute,
   SignupRoute: SignupRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,
