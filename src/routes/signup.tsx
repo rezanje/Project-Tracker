@@ -19,12 +19,14 @@ function Signup() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [confirmSent, setConfirmSent] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (password !== confirm) return setError('Passwords do not match.')
     setLoading(true)
     setError(null)
     const { data, error } = await getBrowserSupabase().auth.signUp({
@@ -43,18 +45,6 @@ function Signup() {
       body: JSON.stringify({ token: invite, wtoken: winvite }),
     }).catch(() => {})
     navigate({ to: '/' })
-  }
-
-  async function onGoogle() {
-    setError(null)
-    // ponytail: invite+Google not wired — the token is dropped on OAuth redirect.
-    // Owner sign-in (the current need) doesn't use invites; wire via redirectTo
-    // query + callback accept-invite if client OAuth onboarding is needed later.
-    const { error } = await getBrowserSupabase().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (error) setError(error.message)
   }
 
   if (confirmSent) {
@@ -76,12 +66,6 @@ function Signup() {
       heading="Create your account"
       subtitle="Start tracking projects in minutes."
     >
-      <button type="button" onClick={onGoogle} className="btn btn-ghost btn-square mb-4 w-full">
-        Continue with Google
-      </button>
-      <div className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
-        <span className="h-px flex-1 bg-[var(--line)]" /> or <span className="h-px flex-1 bg-[var(--line)]" />
-      </div>
       <form onSubmit={onSubmit}>
         <label htmlFor="signup-name" className={fieldLabel}>
           Name
@@ -117,8 +101,25 @@ function Signup() {
           placeholder="At least 6 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="field mb-2.5"
+          className="field mb-4"
         />
+        <label htmlFor="signup-confirm" className={fieldLabel}>
+          Confirm password
+        </label>
+        <input
+          id="signup-confirm"
+          type="password"
+          required
+          minLength={6}
+          placeholder="Re-enter your password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="field mb-2.5"
+          aria-invalid={confirm.length > 0 && confirm !== password}
+        />
+        {confirm.length > 0 && confirm !== password && (
+          <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">Passwords do not match.</p>
+        )}
         {error && (
           <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">{error}</p>
         )}

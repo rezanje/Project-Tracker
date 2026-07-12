@@ -32,7 +32,7 @@ function Pending() {
   // Approved while this tab was open (e.g. admin granted access moments ago)
   // — send them into the app instead of stranding them on the waiting page.
   useEffect(() => {
-    if (approved) router.navigate({ to: '/' })
+    if (approved) router.navigate({ to: '/home' })
   }, [approved, router])
 
   if (approved) return null

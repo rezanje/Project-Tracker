@@ -17,8 +17,8 @@ export const Route = createFileRoute('/auth/callback')({
           const supabase = getServerSupabase(request, headers)
           await supabase.auth.exchangeCodeForSession(code)
         }
-        // 303 → GET on `/`, carrying the freshly-set session Set-Cookie headers.
-        headers.set('Location', new URL(code ? '/' : '/login', url.origin).toString())
+        // 303 → GET on `/home`, carrying the freshly-set session Set-Cookie headers.
+        headers.set('Location', new URL(code ? '/home' : '/login', url.origin).toString())
         return new Response(null, { status: 303, headers })
       },
     },

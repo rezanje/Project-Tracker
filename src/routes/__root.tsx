@@ -36,7 +36,7 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: React.ReactNode }) {
   // Auth screens are full-bleed with their own brand mark — skip the app chrome.
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const bare = pathname === '/login' || pathname === '/signup'
+  const bare = ['/login', '/signup', '/forgot', '/reset'].includes(pathname)
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

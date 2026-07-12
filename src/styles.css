@@ -1,5 +1,5 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400..700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400..700&family=Space+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -193,6 +193,111 @@ a {
 }
 :root[data-theme="dark"] .meadow-bg,
 .dark .meadow-bg { display: none; }
+
+/* LCD-style countdown readout (Pomodoro). Fixed dark screen + glowing digits
+   regardless of light/dark theme — reads as a physical retro timer, and a
+   true monospace face stays legible at large sizes where Pixelify Sans's
+   pixel-art strokes blur together. */
+.lcd-screen {
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: #0f1f16;
+  box-shadow: var(--shadow-pixel-sm);
+  padding: 0.65rem 0.5rem;
+}
+.lcd-digits {
+  font-family: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  color: #6be89a;
+  text-shadow: 0 0 8px rgba(107, 232, 154, 0.55);
+}
+
+/* ---- Pixel-game auth scene (login / signup) ---- */
+.auth-card {
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  background: #f3ecd8; /* parchment */
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: 30px;
+}
+:root[data-theme="dark"] .auth-card { background: #201d15; }
+
+/* Field with a leading pixel icon + optional trailing button (eye toggle). */
+.auth-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 0.1rem 0.75rem;
+  box-shadow: var(--shadow-pixel-sm);
+}
+.auth-field:focus-within { box-shadow: 0 0 0 3px var(--ring), var(--shadow-pixel-sm); }
+.auth-field input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.auth-field input::placeholder { color: var(--ink3); }
+.auth-field .auth-ic { color: var(--ink3); flex: none; }
+
+/* Robot mascot + speech bubble. */
+.auth-mascot {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-pixel-sm);
+  flex: none;
+}
+.auth-bubble {
+  position: relative;
+  align-self: center;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: var(--shadow-pixel-sm);
+}
+.auth-bubble::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  margin-top: -5px;
+  border: 5px solid transparent;
+  border-left-color: var(--ink);
+}
+
+/* Big green pixel submit — matches the comp's "Log in" button. */
+.btn-pixel {
+  width: 100%;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-pixel);
+  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end);
+}
+.btn-pixel:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+.btn-pixel:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Thin, unobtrusive horizontal scrollbar for the board lane row. */
 .gt-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }

@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Home,
   Inbox,
+  LayoutDashboard,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
@@ -40,10 +41,11 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: typeof Home
-  to: '/' | '/coming-soon' | '/my-tasks' | '/calendar' | '/reports'
+  to: '/home' | '/' | '/coming-soon' | '/my-tasks' | '/calendar' | '/reports'
   badge?: number
 }> = [
-  { label: 'Command Center', icon: Home, to: '/' },
+  { label: 'Home', icon: Home, to: '/home' },
+  { label: 'Command Center', icon: LayoutDashboard, to: '/' },
   { label: 'Inbox', icon: Inbox, to: '/coming-soon', badge: 8 },
   { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Calendar', icon: Calendar, to: '/calendar' },
