@@ -340,3 +340,37 @@ export const submitKrCheckinFn = createServerFn({ method: 'POST' })
     flush(headers)
     return { ok: true }
   })
+
+export const reviewKpiCheckinFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { checkinId, approve } = (d ?? {}) as { checkinId?: unknown; approve?: unknown }
+    if (typeof checkinId !== 'string' || !checkinId) throw new Error('checkinId required')
+    return { checkinId, approve: approve === true }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.rpc('approve_kpi_checkin', {
+      p_checkin_id: data.checkinId, p_approve: data.approve,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+export const reviewKrCheckinFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { checkinId, approve } = (d ?? {}) as { checkinId?: unknown; approve?: unknown }
+    if (typeof checkinId !== 'string' || !checkinId) throw new Error('checkinId required')
+    return { checkinId, approve: approve === true }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.rpc('approve_kr_checkin', {
+      p_checkin_id: data.checkinId, p_approve: data.approve,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
