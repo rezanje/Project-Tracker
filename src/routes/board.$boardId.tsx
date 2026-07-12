@@ -14,7 +14,7 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
@@ -581,6 +581,7 @@ function BoardView() {
       }
     }
   }
+  const boardProgress = allCards.length ? Math.round((completedCount / allCards.length) * 100) : 0
   let draftCount = 0
   let scheduledCount = 0
   let postedCount = 0
@@ -722,6 +723,54 @@ function BoardView() {
             </p>
           )}
         </div>
+
+        {!isContent && (
+          <div className="flex flex-wrap items-center gap-3">
+            {(boardMeta?.members.length ?? 0) > 0 && (
+              <span className="avatar-stack">
+                {(boardMeta?.members ?? []).slice(0, 4).map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.name}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    style={{ background: accentFor(m.id) }}
+                  >
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      (m.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()
+                    )}
+                  </span>
+                ))}
+                {(boardMeta?.members.length ?? 0) > 4 && (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--col)] text-[10px] font-bold text-[var(--ink2)]">
+                    +{(boardMeta?.members.length ?? 0) - 4}
+                  </span>
+                )}
+              </span>
+            )}
+            {board.deadline && (
+              <div className="stat-tile flex items-center gap-2 px-3 py-2">
+                <CalendarDays size={16} className="text-[var(--accent)]" aria-hidden="true" />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Deadline</p>
+                  <p className="text-[13px] font-extrabold text-[var(--ink)]">
+                    {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="stat-tile min-w-[140px] px-3 py-2">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Progress</p>
+                <span className="text-[12px] font-extrabold text-[var(--accent-ink)]">{boardProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--col)]">
+                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {canEdit ? (
           <div className="flex flex-col items-end gap-2">
