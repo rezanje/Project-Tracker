@@ -188,8 +188,12 @@ begin
   update kpi_checkins set
     status = case when p_approve then 'approved' else 'rejected' end,
     reviewed_by = auth.uid(), reviewed_at = now()
-  where id = p_checkin_id
+  where id = p_checkin_id and status = 'pending'
   returning submitted_by into v_submitted_by;
+
+  if not found then
+    raise exception 'checkin no longer pending';
+  end if;
 
   if p_approve then
     update kpis set current = v_value where id = v_kpi_id;
@@ -222,8 +226,12 @@ begin
   update kr_checkins set
     status = case when p_approve then 'approved' else 'rejected' end,
     reviewed_by = auth.uid(), reviewed_at = now()
-  where id = p_checkin_id
+  where id = p_checkin_id and status = 'pending'
   returning submitted_by into v_submitted_by;
+
+  if not found then
+    raise exception 'checkin no longer pending';
+  end if;
 
   if p_approve then
     update key_results set current = v_value where id = v_kr_id;
