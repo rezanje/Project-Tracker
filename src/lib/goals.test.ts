@@ -152,9 +152,10 @@ test('reviewKpiCheckinFn-equivalent RPC moves current only on approve', async ()
       p_checkin_id: checkin!.id, p_approve: true,
     })
     // admin (service role) has no auth.uid(), so the RPC's owner check
-    // (`v_owner <> auth.uid()`) fails against a real session — this call is
-    // here only to confirm the RPC exists and runs; the real authorization
-    // path is exercised manually in Task 11 with a signed-in owner session.
+    // (`v_owner is distinct from auth.uid()`, hardened in 0024) fails closed
+    // and raises 'not authorized' — confirming the guard rejects a null-uid
+    // caller. The real approve happy-path runs manually in Task 11 with a
+    // signed-in owner session.
     expect(rpcErr).toBeTruthy()
 
     const { data: after } = await admin.from('kpis').select('current').eq('id', kpiId).single()
