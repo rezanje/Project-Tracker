@@ -21,6 +21,17 @@ import {
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { createNoteFn, deleteNoteFn } from '#/lib/actions'
+import {
+  fetchPersonalGoals,
+  personalKpiSaveFn,
+  personalKpiDeleteFn,
+  personalObjAddFn,
+  personalObjDeleteFn,
+  personalKrSaveFn,
+  personalKrDeleteFn,
+  type PersonalGoals,
+} from '#/lib/personal-goals'
+import Goals from '#/components/Goals'
 
 // ponytail: Pixel Home wires the schema-backed data (today tasks, active
 // projects, KPI headline numbers, project progress, announcements, notes).
@@ -28,7 +39,10 @@ import { createNoteFn, deleteNoteFn } from '#/lib/actions'
 // static (no source / a later slice).
 
 export const Route = createFileRoute('/home')({
-  loader: async () => await fetchDashboard(),
+  loader: async () => {
+    const [dashboard, goals] = await Promise.all([fetchDashboard(), fetchPersonalGoals()])
+    return { dashboard, goals }
+  },
   component: PixelHome,
 })
 
@@ -175,7 +189,7 @@ function Avatar({ i }: { i: number }) {
 }
 
 function PixelHome() {
-  const d = Route.useLoaderData() as DashboardData
+  const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: PersonalGoals }
   const router = useRouter()
 
   async function addNote() {
@@ -189,6 +203,17 @@ function PixelHome() {
     if (!window.confirm('Delete this note?')) return
     await deleteNoteFn({ data: { id } })
     router.invalidate()
+  }
+
+  const goalHandlers = {
+    onKpiSave: (k: { id?: string; name: string; target: number; current: number; unit: string }) =>
+      personalKpiSaveFn({ data: k }).then(() => router.invalidate()),
+    onKpiDelete: (id: string) => personalKpiDeleteFn({ data: { id } }).then(() => router.invalidate()),
+    onObjAdd: (title: string) => personalObjAddFn({ data: { title } }).then(() => router.invalidate()),
+    onObjDelete: (id: string) => personalObjDeleteFn({ data: { id } }).then(() => router.invalidate()),
+    onKrSave: (k: { id?: string; objectiveId?: string; title: string; target: number; current: number }) =>
+      personalKrSaveFn({ data: k }).then(() => router.invalidate()),
+    onKrDelete: (id: string) => personalKrDeleteFn({ data: { id } }).then(() => router.invalidate()),
   }
 
   const total = d.stats.totalTasks
@@ -319,6 +344,8 @@ function PixelHome() {
               </div>
             </section>
           </div>
+
+          <Goals kpis={goals.kpis} okrs={goals.okrs} isOwner {...goalHandlers} />
         </div>
 
         {/* right rail */}
