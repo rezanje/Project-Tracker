@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import Card from './Card'
+import Card, { type CardAssignee } from './Card'
 import type { ColumnRow, CardRow } from '#/lib/board-data'
 
 interface ColumnProps {
@@ -9,6 +9,7 @@ interface ColumnProps {
   isOwner?: boolean
   onAddCard?: (columnId: string, title: string) => Promise<void>
   onCardClick?: (card: CardRow) => void
+  members?: CardAssignee[]
 }
 
 const DOTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -18,7 +19,8 @@ function dotFor(id: string): string {
   return DOTS[h % DOTS.length]
 }
 
-export default function Column({ column, isOwner, onAddCard, onCardClick }: ColumnProps) {
+export default function Column({ column, isOwner, onAddCard, onCardClick, members }: ColumnProps) {
+  const memberById = new Map((members ?? []).map((m) => [m.id, m]))
   const [newTitle, setNewTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [addError, setAddError] = useState(false)
@@ -69,7 +71,13 @@ export default function Column({ column, isOwner, onAddCard, onCardClick }: Colu
           </div>
         ) : (
           column.cards.map((c) => (
-            <Card key={c.id} card={c} isDraggable={isOwner} onCardClick={onCardClick} />
+            <Card
+              key={c.id}
+              card={c}
+              isDraggable={isOwner}
+              onCardClick={onCardClick}
+              assignee={c.assignee_id ? memberById.get(c.assignee_id) : null}
+            />
           ))
         )}
       </div>

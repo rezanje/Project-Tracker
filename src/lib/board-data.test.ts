@@ -15,7 +15,7 @@ test('groupByCategory buckets by category with an Uncategorised bucket', () => {
     id, title: id, description: null, due_date: null, assignee_id: null,
     category, contact: null, phone: null, source: null, deal_value: null,
     pillar_id: null, content_status: null, channels: null, format: null,
-    position: 0, card_labels: [],
+    position: 0, card_labels: [], attachment_count: 0, comment_count: 0,
   })
   const groups = groupByCategory([mk('a', 'Design'), mk('b', null), mk('c', 'Design')])
   expect(groups.find((g) => g.category === 'Design')!.cards.map((c) => c.id)).toEqual(['a', 'c'])

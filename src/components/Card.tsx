@@ -1,12 +1,20 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Calendar, Tag } from 'lucide-react'
+import { Calendar, MessageSquare, Paperclip, Tag } from 'lucide-react'
 import type { CardRow } from '#/lib/board-data'
+
+export type CardAssignee = { id: string; name: string; avatar_url: string | null }
 
 interface CardProps {
   card: CardRow
   isDraggable?: boolean
   onCardClick?: (card: CardRow) => void
+  assignee?: CardAssignee | null
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
 function shortDate(iso: string): string {
@@ -22,7 +30,7 @@ export function catColor(s: string): string {
   return CAT_COLORS[h % CAT_COLORS.length]
 }
 
-export default function Card({ card, isDraggable, onCardClick }: CardProps) {
+export default function Card({ card, isDraggable, onCardClick, assignee }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: !isDraggable })
 
@@ -53,9 +61,24 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
       onClick={handleClick}
       className="card card-hover p-3.5"
     >
-      <p className="text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
-        {card.title}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
+          {card.title}
+        </p>
+        {assignee && (
+          <span
+            title={assignee.name}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--ink)] text-[9px] font-bold text-white"
+            style={{ background: catColor(assignee.id) }}
+          >
+            {assignee.avatar_url ? (
+              <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              initials(assignee.name)
+            )}
+          </span>
+        )}
+      </div>
 
       {card.category && (
         <span
@@ -72,8 +95,8 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
         </p>
       )}
 
-      {(card.due_date || labelCount > 0) && (
-        <div className="mt-3 flex items-center gap-2.5">
+      {(card.due_date || labelCount > 0 || card.attachment_count > 0 || card.comment_count > 0) && (
+        <div className="mt-3 flex flex-wrap items-center gap-2.5">
           {card.due_date && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-xs font-semibold text-[var(--accent-ink)]">
               <Calendar size={13} aria-hidden="true" />
@@ -84,6 +107,18 @@ export default function Card({ card, isDraggable, onCardClick }: CardProps) {
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
               <Tag size={14} aria-hidden="true" />
               {labelCount}
+            </span>
+          )}
+          {card.attachment_count > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
+              <Paperclip size={13} aria-hidden="true" />
+              {card.attachment_count}
+            </span>
+          )}
+          {card.comment_count > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
+              <MessageSquare size={13} aria-hidden="true" />
+              {card.comment_count}
             </span>
           )}
         </div>

@@ -17,6 +17,8 @@ export type CardRow = {
   format: string | null
   position: number
   card_labels: { label_id: string }[]
+  attachment_count: number
+  comment_count: number
 }
 export type Pillar = { id: string; name: string; color: string }
 
@@ -80,10 +82,27 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id))',
+      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id),attachments(count),comments(count))',
     )
     .eq('board_id', boardId)
     .order('position')
+
+  // Supabase's `rel(count)` embed returns [{ count: N }] per row; flatten to a
+  // plain number so CardRow stays simple for components to consume.
+  const one = <T,>(v: T | T[] | null | undefined): T | null =>
+    Array.isArray(v) ? (v[0] ?? null) : (v ?? null)
+  function withCounts(rawCards: unknown[]): CardRow[] {
+    return (rawCards ?? []).map((raw) => {
+      const c = raw as Record<string, unknown>
+      const att = one(c.attachments as unknown) as { count: number } | null
+      const com = one(c.comments as unknown) as { count: number } | null
+      return {
+        ...(c as unknown as CardRow),
+        attachment_count: att?.count ?? 0,
+        comment_count: com?.count ?? 0,
+      }
+    })
+  }
 
   // members_read RLS returns every member of the board, so scope to the caller
   // (otherwise .single() breaks once a board has more than one member).
@@ -111,12 +130,15 @@ export async function loadBoard(
     wsRole = wm?.role ?? null
   }
 
-  const cols: ColumnRow[] = (columns ?? []).map((c) => ({
-    ...(c as ColumnRow),
-    cards: [...((c as ColumnRow).cards ?? [])].sort(
-      (a, b) => a.position - b.position,
-    ),
-  }))
+  const cols: ColumnRow[] = (columns ?? []).map((c) => {
+    const raw = c as { id: string; title: string; position: number; cards?: unknown[] }
+    return {
+      id: raw.id,
+      title: raw.title,
+      position: raw.position,
+      cards: withCounts(raw.cards ?? []).sort((a, b) => a.position - b.position),
+    }
+  })
 
   const role = membership?.role ?? wsRole ?? 'client'
 

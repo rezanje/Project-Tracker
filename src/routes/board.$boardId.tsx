@@ -34,7 +34,7 @@ import { isDoneColumn, localDateStr } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
 export type BoardMeta = {
-  members: { id: string; name: string }[]
+  members: { id: string; name: string; avatar_url: string | null }[]
   labels: { id: string; name: string; color: string }[]
 }
 
@@ -153,7 +153,7 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     const { supabase } = await requireUser(getRequest(), headers)
     const { data: members, error: mErr } = await supabase
       .from('board_members')
-      .select('user_id, profiles(id,name)')
+      .select('user_id, profiles(id,name,avatar_url)')
       .eq('board_id', data.boardId)
     if (mErr) throw mErr
     const { data: labels, error: lErr } = await supabase
@@ -164,8 +164,8 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     flush(headers)
     return {
       members: (members ?? []).map((m) => {
-        const p = (m.profiles as unknown) as { id: string; name: string } | null
-        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown' }
+        const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
+        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
       }),
       labels: (labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
     }
@@ -629,11 +629,18 @@ function BoardView() {
               isOwner={canEdit}
               onAddCard={onAddCard}
               onCardClick={openCardDetail}
+              members={boardMeta?.members}
             />
           ))
         : categoryColumns.map((col) => (
             // Read-only view: no owner tools / drag in category mode.
-            <Column key={col.id} column={col} isOwner={false} onCardClick={openCardDetail} />
+            <Column
+              key={col.id}
+              column={col}
+              isOwner={false}
+              onCardClick={openCardDetail}
+              members={boardMeta?.members}
+            />
           ))}
     </div>
   )
