@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { X } from 'lucide-react'
 import { updateNoteFn } from '#/lib/actions'
 
@@ -17,6 +17,7 @@ export default function NoteDetail({
   onSaved: () => void
   onDelete: () => void
 }) {
+  const categoryListId = useId()
   const [body, setBody] = useState(note.body)
   const [category, setCategory] = useState(note.category ?? '')
   const [saving, setSaving] = useState(false)
@@ -63,13 +64,13 @@ export default function NoteDetail({
           />
           <div>
             <input
-              list="note-detail-categories"
+              list={categoryListId}
               placeholder="Category (optional)"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="field"
             />
-            <datalist id="note-detail-categories">
+            <datalist id={categoryListId}>
               {categorySuggestions.map((c) => (
                 <option key={c} value={c} />
               ))}
