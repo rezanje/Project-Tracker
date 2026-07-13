@@ -2,8 +2,15 @@ import { useState } from 'react'
 import { StickyNote } from 'lucide-react'
 import { createNoteFn } from '#/lib/actions'
 
-export default function QuickNoteForm({ onDone }: { onDone: () => void }) {
+export default function QuickNoteForm({
+  onDone,
+  categorySuggestions,
+}: {
+  onDone: () => void
+  categorySuggestions: string[]
+}) {
   const [body, setBody] = useState('')
+  const [category, setCategory] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -13,7 +20,7 @@ export default function QuickNoteForm({ onDone }: { onDone: () => void }) {
     setSaving(true)
     setError(null)
     try {
-      await createNoteFn({ data: { body } })
+      await createNoteFn({ data: { body, category: category.trim() || undefined } })
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save note')
@@ -35,6 +42,18 @@ export default function QuickNoteForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setBody(e.target.value)}
         className="field mb-2 resize-none"
       />
+      <input
+        list="note-categories"
+        placeholder="Category (optional)"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        className="field mb-2"
+      />
+      <datalist id="note-categories">
+        {categorySuggestions.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
       {error && <p className="mb-2 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
       <button type="submit" disabled={saving || !body.trim()} className="btn btn-primary btn-square w-full">
         {saving ? 'Saving…' : 'Save note'}
