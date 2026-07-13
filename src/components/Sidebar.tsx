@@ -118,7 +118,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`sticky top-0 z-10 hidden h-dvh shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--line)] bg-[var(--card)] py-4 md:flex ${
+      className={`sticky top-0 z-10 hidden h-dvh shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--line)] bg-[var(--bg)] py-4 md:flex ${
         collapsed ? 'w-14 px-2' : 'w-60 px-3'
       }`}
     >
@@ -283,14 +283,6 @@ export default function Sidebar() {
       </Link>
 
       <div className="mt-auto flex flex-col gap-2">
-        {!collapsed && (
-          <div
-            className="-mx-3 h-36 bg-cover bg-bottom"
-            style={{ backgroundImage: "url('/meadow.png')" }}
-            aria-hidden="true"
-          />
-        )}
-
         {email && (
           <div
             className={`flex shrink-0 flex-col gap-2 border-t border-[var(--line)] pt-3 ${

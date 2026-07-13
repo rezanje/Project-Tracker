@@ -1,24 +1,33 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400..700&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Rakit's 8bit display face — self-hosted (public/fonts), see
+   public/fonts/OFL.txt for the license. Single weight (400) only. */
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("/fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Pixelify Sans", "Hanken Grotesk", sans-serif;
+  --font-display: "Press Start 2P", "Hanken Grotesk", sans-serif;
 }
 
 /* Rakit "meadow" design tokens — light + dark, CSS-variable driven so the
    theme toggle keeps working. Light values come straight from the redesign
    comp; dark is an authored counterpart that holds AA contrast. */
 :root {
-  --bg: #eef4ef;
+  --bg: #f7f4ec;
   --card: #ffffff;
-  --col: #e7efe8;
+  --col: #efece1;
   --ink: #14241c;
   --ink2: #586a60;
   --ink3: #8a978f;
-  --line: #dfe8e1;
+  --line: #e6e1d3;
   --accent: #1f9d55;
   --accent-ink: #137a3f;
   --accent-soft: #dcf3e5;
@@ -94,7 +103,9 @@ a {
 
 .display-title {
   font-family: var(--font-display);
+  font-weight: 400;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Product component classes ---- */

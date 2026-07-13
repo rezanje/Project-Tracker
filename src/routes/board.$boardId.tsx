@@ -385,10 +385,26 @@ function BoardView() {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
   const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
-  // Sync back from server whenever the loader re-runs (e.g. after router.invalidate)
+  // Deferred delete + undo: hide the card immediately, but only commit the DB
+  // delete after a grace window. Undo re-syncs from the server, where the card
+  // still exists — so nothing (comments/labels/attachments) is ever lost.
+  const [pendingDelete, setPendingDelete] = useState<CardRow | null>(null)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Sync back from server whenever the loader re-runs (e.g. after router.invalidate).
+  // While a card is mid-grace-period (see handleDeleteCard below), it still exists
+  // server-side, so a resync triggered by an unrelated action (drag, edit, invite,
+  // ...) must keep hiding it too — otherwise it flickers back until the deferred
+  // delete finally lands.
   useEffect(() => {
-    setColumns(initialBoard.columns)
-  }, [initialBoard])
+    setColumns(
+      pendingDelete
+        ? initialBoard.columns.map((col) => ({
+            ...col,
+            cards: col.cards.filter((c) => c.id !== pendingDelete.id),
+          }))
+        : initialBoard.columns,
+    )
+  }, [initialBoard, pendingDelete])
   // Load members/labels on mount so the Add-task assignee list is ready.
   useEffect(() => {
     if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
@@ -413,12 +429,6 @@ function BoardView() {
     setSelectedCard(null)
   }
 
-  // Deferred delete + undo: hide the card immediately, but only commit the DB
-  // delete after a grace window. Undo re-syncs from the server, where the card
-  // still exists — so nothing (comments/labels/attachments) is ever lost.
-  const [pendingDelete, setPendingDelete] = useState<CardRow | null>(null)
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   function handleDeleteCard(card: CardRow) {
     const columnId = findColumnId(card.id)
     if (!columnId) return
@@ -430,10 +440,13 @@ function BoardView() {
     )
     if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
     setPendingDelete(card)
-    deleteTimerRef.current = setTimeout(() => {
-      deleteCardFn({ data: { cardId: card.id } }).then(() => router.invalidate())
+    deleteTimerRef.current = setTimeout(async () => {
       deleteTimerRef.current = null
+      // Keep pendingDelete set (still filtering the card out of resyncs) until
+      // the delete has actually landed server-side.
+      await deleteCardFn({ data: { cardId: card.id } })
       setPendingDelete(null)
+      router.invalidate()
     }, 5000)
   }
 

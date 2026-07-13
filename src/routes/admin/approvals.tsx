@@ -10,6 +10,7 @@ import {
   listAllBoards,
   listAllWorkspaces,
   listPendingProfiles,
+  rejectProfile,
   type BoardOption,
   type PendingProfile,
   type WorkspaceOption,
@@ -68,6 +69,19 @@ const approveBoardFn = createServerFn({ method: 'POST' })
     flush(headers)
   })
 
+const rejectFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { userId } = (d ?? {}) as { userId?: unknown }
+    if (typeof userId !== 'string') throw new Error('userId required')
+    return { userId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    await requireSuperAdmin(getRequest(), headers)
+    await rejectProfile(getServiceSupabase(), data.userId)
+    flush(headers)
+  })
+
 export const Route = createFileRoute('/admin/approvals')({
   component: Approvals,
   loader: async () => await fetchApprovals(),
@@ -116,6 +130,20 @@ function ApprovalRow({
     }
   }
 
+  async function onReject() {
+    if (!confirm(`Reject ${applicant.email ?? applicant.name ?? 'this signup'}?`)) return
+    setBusy(true)
+    setErr(null)
+    try {
+      await rejectFn({ data: { userId: applicant.id } })
+      onApproved()
+    } catch {
+      setErr('Reject failed. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const options = target === 'workspace' ? workspaces : boards
   const roleOptions = target === 'workspace' ? ['owner', 'member'] : ['member', 'client']
 
@@ -155,6 +183,9 @@ function ApprovalRow({
         className="btn btn-primary btn-square"
       >
         {busy ? 'Approving…' : 'Approve'}
+      </button>
+      <button type="button" onClick={onReject} disabled={busy} className="btn btn-danger btn-square">
+        Reject
       </button>
       {err && (
         <p className="w-full text-[13px] font-semibold text-[var(--danger)]">{err}</p>

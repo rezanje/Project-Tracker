@@ -58,6 +58,12 @@ export async function approveToWorkspace(
   if (pErr) throw pErr
 }
 
+/** Reject a pending signup. */
+export async function rejectProfile(svc: SupabaseClient, userId: string): Promise<void> {
+  const { error } = await svc.from('profiles').update({ status: 'rejected' }).eq('id', userId)
+  if (error) throw error
+}
+
 /** Grant a pending user a board role and approve their profile. */
 export async function approveToBoard(
   svc: SupabaseClient,
