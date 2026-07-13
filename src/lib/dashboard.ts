@@ -43,7 +43,7 @@ export type DashboardData = {
   today: DashTask[]
   projectProgress: { total: number; completed: number; inProgress: number }
   revenue: number
-  notes: Array<{ id: string; body: string }>
+  notes: Array<{ id: string; body: string; category: string | null; created_at: string }>
   announcements: Array<{ id: string; body: string; author: string | null }>
 }
 
@@ -74,7 +74,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
           .from('boards')
           .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date))')
           .neq('status', 'archived'),
-        supabase.from('notes').select('id,body,created_at').order('created_at', { ascending: false }).limit(6),
+        supabase.from('notes').select('id,body,category,created_at').order('created_at', { ascending: false }).limit(50),
         supabase
           .from('announcements')
           .select('id,body,created_at,profiles:author_id(name)')
@@ -184,7 +184,12 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       today: today_.slice(0, 6),
       projectProgress: { total: (boards ?? []).length, completed: pDone, inProgress: pInProgress },
       revenue,
-      notes: (notes ?? []).map((n) => ({ id: n.id as string, body: n.body as string })),
+      notes: (notes ?? []).map((n) => ({
+        id: n.id as string,
+        body: n.body as string,
+        category: (n.category as string | null) ?? null,
+        created_at: n.created_at as string,
+      })),
       announcements: (anns ?? []).map((a) => {
         const raw = (a as { profiles: unknown }).profiles
         const p = (Array.isArray(raw) ? raw[0] : raw) as { name: string | null } | null
