@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
-import { createNote, deleteNote } from './notes'
+import { createNote, deleteNote, updateNote } from './notes'
 import { createWorkspace } from './workspaces'
 import { createBoard } from './boards'
 import { createCard } from './cards'
@@ -14,14 +14,31 @@ function flush(headers: Headers) {
 
 export const createNoteFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const body = (d as { body?: unknown })?.body
+    const { body, category } = (d ?? {}) as { body?: unknown; category?: unknown }
     if (typeof body !== 'string' || !body.trim()) throw new Error('body required')
-    return { body: body.trim() }
+    const cat = typeof category === 'string' && category.trim() ? category.trim() : null
+    return { body: body.trim(), category: cat }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    await createNote(supabase, user.id, data.body)
+    await createNote(supabase, user.id, data.body, data.category)
+    flush(headers)
+    return { ok: true }
+  })
+
+export const updateNoteFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { id, body, category } = (d ?? {}) as { id?: unknown; body?: unknown; category?: unknown }
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    if (typeof body !== 'string' || !body.trim()) throw new Error('body required')
+    const cat = typeof category === 'string' && category.trim() ? category.trim() : null
+    return { id, body: body.trim(), category: cat }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    await updateNote(supabase, data.id, data.body, data.category)
     flush(headers)
     return { ok: true }
   })
