@@ -631,8 +631,8 @@ function PixelHome() {
                   value={noteSort}
                   onChange={(e) => setNoteSort(e.target.value as typeof noteSort)}
                   aria-label="Sort notes"
-                  className="field w-auto"
-                  style={{ padding: '0.3rem 0.5rem', fontSize: '11px' }}
+                  className="field"
+                  style={{ width: 'auto', padding: '0.3rem 0.5rem', fontSize: '11px' }}
                 >
                   <option value="newest">Newest</option>
                   <option value="oldest">Oldest</option>
@@ -670,12 +670,18 @@ function PixelHome() {
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedNote(n)}
-                  onKeyDown={(e) => e.key === 'Enter' && setSelectedNote(n)}
+                  onKeyDown={(e) => {
+                    // Only react when the card itself is focused — otherwise Enter on
+                    // the nested delete button bubbles here too, opening a note that
+                    // may have just been deleted (stopPropagation on click doesn't
+                    // stop the keydown that already ran this handler).
+                    if (e.target === e.currentTarget && e.key === 'Enter') setSelectedNote(n)
+                  }}
                   className="flex cursor-pointer items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
-                    {n.category && <span className="chip mt-1 inline-flex">{n.category}</span>}
+                    {n.category && <span className="chip mt-1">{n.category}</span>}
                   </div>
                   <button
                     type="button"
