@@ -25,7 +25,7 @@ import ThemeToggle from './ThemeToggle'
 const COLLAPSE_KEY = 'sidebar-collapsed'
 
 const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function accentFor(id: string): string {
+export function accentFor(id: string): string {
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
   return ACCENTS[h % ACCENTS.length]
