@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { StickyNote } from 'lucide-react'
 import { createNoteFn } from '#/lib/actions'
 
@@ -9,6 +9,9 @@ export default function QuickNoteForm({
   onDone: () => void
   categorySuggestions: string[]
 }) {
+  // This form can be mounted twice at once (Quick Actions tile + Notes
+  // section popover) — a static datalist id would collide between them.
+  const categoryListId = useId()
   const [body, setBody] = useState('')
   const [category, setCategory] = useState('')
   const [saving, setSaving] = useState(false)
@@ -43,13 +46,13 @@ export default function QuickNoteForm({
         className="field mb-2 resize-none"
       />
       <input
-        list="note-categories"
+        list={categoryListId}
         placeholder="Category (optional)"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
         className="field mb-2"
       />
-      <datalist id="note-categories">
+      <datalist id={categoryListId}>
         {categorySuggestions.map((c) => (
           <option key={c} value={c} />
         ))}
