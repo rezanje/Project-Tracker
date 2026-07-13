@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import {
   AlarmClock,
@@ -35,6 +35,7 @@ import QuickTaskForm from '#/components/QuickTaskForm'
 import QuickProjectForm from '#/components/QuickProjectForm'
 import QuickNoteForm from '#/components/QuickNoteForm'
 import QuickReminderForm from '#/components/QuickReminderForm'
+import NoteDetail from '#/components/NoteDetail'
 
 // ponytail: Pixel Home wires the schema-backed data (today tasks, active
 // projects, KPI headline numbers, project progress, announcements, notes).
@@ -330,6 +331,25 @@ function PixelHome() {
     router.invalidate()
   }
 
+  const [noteSort, setNoteSort] = useState<'newest' | 'oldest' | 'category'>('newest')
+  const [selectedNote, setSelectedNote] = useState<DashboardData['notes'][number] | null>(null)
+
+  const noteCategories = useMemo(
+    () => Array.from(new Set(d.notes.map((n) => n.category).filter((c): c is string => !!c))).sort(),
+    [d.notes],
+  )
+
+  const sortedNotes = useMemo(() => {
+    const arr = [...d.notes]
+    if (noteSort === 'oldest') arr.sort((a, b) => a.created_at.localeCompare(b.created_at))
+    else if (noteSort === 'category')
+      arr.sort(
+        (a, b) => (a.category ?? '').localeCompare(b.category ?? '') || b.created_at.localeCompare(a.created_at),
+      )
+    else arr.sort((a, b) => b.created_at.localeCompare(a.created_at))
+    return arr
+  }, [d.notes, noteSort])
+
   async function onCheckinKpi(kpiId: string, proposedValue: number, note: string) {
     await submitKpiCheckinFn({ data: { kpiId, proposedValue, note } })
     router.invalidate()
@@ -526,6 +546,7 @@ function PixelHome() {
                 tint="#7c3aed"
                 panel={(close) => (
                   <QuickNoteForm
+                    categorySuggestions={noteCategories}
                     onDone={() => {
                       close()
                       router.invalidate()
@@ -601,43 +622,67 @@ function PixelHome() {
 
           {/* NOTES */}
           <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
                 📝 Notes
               </h3>
-              <Popover
-                align="left"
-                panelClassName="w-64"
-                renderTrigger={(_open, toggle) => (
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
-                  >
-                    <Plus size={12} /> New Note
-                  </button>
-                )}
-                renderPanel={(close) => (
-                  <QuickNoteForm
-                    onDone={() => {
-                      close()
-                      router.invalidate()
-                    }}
-                  />
-                )}
-              />
+              <div className="flex items-center gap-3">
+                <select
+                  value={noteSort}
+                  onChange={(e) => setNoteSort(e.target.value as typeof noteSort)}
+                  aria-label="Sort notes"
+                  className="field w-auto"
+                  style={{ padding: '0.3rem 0.5rem', fontSize: '11px' }}
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="category">Category (A–Z)</option>
+                </select>
+                <Popover
+                  align="left"
+                  panelClassName="w-64"
+                  renderTrigger={(_open, toggle) => (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+                    >
+                      <Plus size={12} /> New Note
+                    </button>
+                  )}
+                  renderPanel={(close) => (
+                    <QuickNoteForm
+                      categorySuggestions={noteCategories}
+                      onDone={() => {
+                        close()
+                        router.invalidate()
+                      }}
+                    />
+                  )}
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
-              {d.notes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
-              {d.notes.map((n) => (
+              {sortedNotes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
+              {sortedNotes.map((n) => (
                 <div
                   key={n.id}
-                  className="flex items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedNote(n)}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedNote(n)}
+                  className="flex cursor-pointer items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
                 >
-                  <p className="min-w-0 flex-1 text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
+                    {n.category && <span className="chip mt-1 inline-flex">{n.category}</span>}
+                  </div>
                   <button
                     type="button"
-                    onClick={() => removeNote(n.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeNote(n.id)
+                    }}
                     aria-label="Delete note"
                     className="shrink-0 text-[var(--pop-ink)] hover:text-[var(--danger)]"
                   >
@@ -647,6 +692,22 @@ function PixelHome() {
               ))}
             </div>
           </section>
+
+          {selectedNote && (
+            <NoteDetail
+              note={selectedNote}
+              categorySuggestions={noteCategories}
+              onClose={() => setSelectedNote(null)}
+              onSaved={() => {
+                setSelectedNote(null)
+                router.invalidate()
+              }}
+              onDelete={async () => {
+                await removeNote(selectedNote.id)
+                setSelectedNote(null)
+              }}
+            />
+          )}
         </div>
       </div>
     </main>
