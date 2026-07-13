@@ -248,6 +248,10 @@ function NotificationsBell() {
 
   async function onItemClick(n: Notification, close: () => void) {
     close()
+    if (n.kind === 'approval') {
+      navigate({ to: '/admin/approvals' })
+      return
+    }
     if (!n.read) {
       await markNotificationReadFn({ data: { id: n.id, kind: n.kind } }).catch(() => {})
       setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, read: true } : i)))

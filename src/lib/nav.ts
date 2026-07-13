@@ -11,14 +11,17 @@ export type NavBoard = { id: string; title: string; workspaceId: string | null }
 export const fetchNav = createServerFn({ method: 'GET' }).handler(async () => {
   const headers = new Headers()
   try {
-    const { supabase } = await requireUser(getRequest(), headers)
-    const [{ data: workspaces }, { data: boards }] = await Promise.all([
+    const { supabase, profile } = await requireUser(getRequest(), headers)
+    const [{ data: workspaces }, { data: boards }, pendingCount] = await Promise.all([
       supabase.from('workspaces').select('id,name').order('created_at'),
       supabase
         .from('boards')
         .select('id,title,workspace_id')
         .neq('status', 'archived')
         .order('created_at'),
+      profile.is_super_admin
+        ? supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+        : Promise.resolve({ count: 0 }),
     ])
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
     return {
@@ -28,8 +31,15 @@ export const fetchNav = createServerFn({ method: 'GET' }).handler(async () => {
         title: b.title as string,
         workspaceId: (b.workspace_id as string | null) ?? null,
       })),
+      isSuperAdmin: profile.is_super_admin,
+      pendingApprovalsCount: pendingCount.count ?? 0,
     }
   } catch {
-    return { workspaces: [] as NavWorkspace[], boards: [] as NavBoard[] }
+    return {
+      workspaces: [] as NavWorkspace[],
+      boards: [] as NavBoard[],
+      isSuperAdmin: false,
+      pendingApprovalsCount: 0,
+    }
   }
 })

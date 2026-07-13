@@ -15,6 +15,7 @@ import {
   Plus,
   Settings,
   Star,
+  UserCheck,
 } from 'lucide-react'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { createWorkspaceFn } from '#/lib/actions'
@@ -60,11 +61,15 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [favOpen, setFavOpen] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [pendingApprovals, setPendingApprovals] = useState(0)
 
   useEffect(() => {
     fetchNav().then((nav) => {
       setWorkspaces(nav.workspaces)
       setBoards(nav.boards)
+      setIsSuperAdmin(nav.isSuperAdmin)
+      setPendingApprovals(nav.pendingApprovalsCount)
     })
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
 
@@ -158,6 +163,27 @@ export default function Sidebar() {
             </Link>
           )
         })}
+        {isSuperAdmin && (
+          <Link
+            to="/admin/approvals"
+            title="Approvals"
+            className={`flex items-center gap-2 rounded-lg py-1.5 text-[13px] font-bold no-underline ${
+              collapsed ? 'justify-center px-0' : 'px-2.5'
+            } ${
+              pathname === '/admin/approvals'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]'
+                : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+            }`}
+          >
+            <UserCheck size={16} className="shrink-0" aria-hidden="true" />
+            {!collapsed && <span className="flex-1 truncate">Approvals</span>}
+            {!collapsed && pendingApprovals > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                {pendingApprovals}
+              </span>
+            )}
+          </Link>
+        )}
       </nav>
       {!collapsed && workspaces.length > 0 && (
         <p className="mb-1 mt-1 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">

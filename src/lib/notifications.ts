@@ -4,7 +4,7 @@ import { requireUser } from './auth'
 
 export type Notification = {
   id: string
-  kind: 'assignment' | 'reminder'
+  kind: 'assignment' | 'reminder' | 'approval'
   message: string
   boardId: string | null
   read: boolean
@@ -21,9 +21,9 @@ function flush(headers: Headers) {
 export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<Notification[]> => {
     const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
+    const { supabase, profile } = await requireUser(getRequest(), headers)
     const nowIso = new Date().toISOString()
-    const [{ data: notifs }, { data: reminders }] = await Promise.all([
+    const [{ data: notifs }, { data: reminders }, { data: pending }] = await Promise.all([
       supabase
         .from('notifications')
         .select('id,message,board_id,read_at,created_at')
@@ -36,6 +36,13 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
         .lte('remind_at', nowIso)
         .order('remind_at', { ascending: false })
         .limit(20),
+      profile.is_super_admin
+        ? supabase
+            .from('profiles')
+            .select('id,name,created_at')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
     ])
     flush(headers)
 
@@ -67,7 +74,20 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
       createdAt: r.remind_at,
     }))
 
-    return [...fromNotifs, ...fromReminders]
+    const fromApprovals: Notification[] = ((pending ?? []) as Array<{
+      id: string
+      name: string | null
+      created_at: string
+    }>).map((p) => ({
+      id: p.id,
+      kind: 'approval',
+      message: `${p.name ?? 'Someone'} wants to join — approve their request`,
+      boardId: null,
+      read: false,
+      createdAt: p.created_at,
+    }))
+
+    return [...fromNotifs, ...fromReminders, ...fromApprovals]
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
       .slice(0, 20)
   },
