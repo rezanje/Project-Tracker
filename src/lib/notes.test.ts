@@ -80,3 +80,20 @@ test('updateNote edits body and category for the owning user (RLS path)', async 
     await admin.auth.admin.deleteUser(uid)
   }
 }, 25000)
+
+test('updateNote clears an existing category back to null', async () => {
+  const { uid, userClient } = await makeSignedInUser('note-clearcat')
+  try {
+    await createNote(userClient, uid, 'Tagged note', 'Work')
+    const { data: created } = await admin.from('notes').select('id').eq('user_id', uid).single()
+
+    await updateNote(userClient, created!.id as string, 'Tagged note', null)
+
+    const { data: rows } = await admin.from('notes').select('category').eq('id', created!.id)
+    expect(rows).toHaveLength(1)
+    expect(rows![0].category).toBeNull()
+  } finally {
+    await admin.from('notes').delete().eq('user_id', uid)
+    await admin.auth.admin.deleteUser(uid)
+  }
+}, 25000)
