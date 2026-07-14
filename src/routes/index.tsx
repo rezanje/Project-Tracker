@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   AlertTriangle,
   Banknote,
@@ -10,17 +10,24 @@ import {
   Star,
   TrendingUp,
   Truck,
+  X,
 } from 'lucide-react'
 import { Building2, Clock, Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import { fetchTodayEventsFn, type EventItem } from '#/lib/events'
+import { fetchPendingApprovalsFn, resolveApprovalFn, type ApprovalRequest, type ApprovalKind } from '#/lib/approval-requests'
 
-// ponytail: Command Center wires the data the schema can back (stats, workspace
-// health, priority radar, project radar, portfolio). Timeline (event times),
-// approvals list, weekly-progress history and the workload heatmap stay static —
-// no source yet. AI Summary is a Coming Soon shell.
+type CommandCenterData = Omit<DashboardData, 'approvals'> & { events: EventItem[]; approvals: ApprovalRequest[] }
 
 export const Route = createFileRoute('/')({
-  loader: async () => await fetchDashboard(),
+  loader: async (): Promise<CommandCenterData> => {
+    const [dashboard, events, approvals] = await Promise.all([
+      fetchDashboard(),
+      fetchTodayEventsFn(),
+      fetchPendingApprovalsFn(),
+    ])
+    return { ...dashboard, events, approvals }
+  },
   component: CommandCenter,
 })
 
@@ -71,27 +78,11 @@ const TYPE_COLORS: Record<string, string> = {
   Review: '#d97706',
   Content: '#db2777',
 }
-const TIMELINE = [
-  { time: '09:00', title: 'Meeting Produksi', sub: 'Gentanala', type: 'Meeting', people: 3 },
-  { time: '11:00', title: 'Approve Budget Q3', sub: 'Disma Fresh', type: 'Approval', people: 1 },
-  { time: '13:30', title: 'Call with Client A', sub: 'Konsultan', type: 'Call', people: 2 },
-  { time: '15:00', title: 'Review Design Sistem', sub: 'Gentanala • Website', type: 'Review', people: 1 },
-  { time: '17:00', title: 'Upload Konten IG', sub: 'Gentanala • Marketing', type: 'Content', people: 1 },
-]
-const APPROVALS = [
-  { icon: Banknote, title: 'Budget Production Q3', sub: 'Gentanala', meta: 'Rp 2.300.000', action: 'Review' },
-  { icon: FileText, title: 'Cuti Karyawan - Dimas', sub: 'Disma Fresh', meta: '12 - 14 July', action: 'Approve' },
-  { icon: ImageIcon, title: 'Konten Campaign Juli', sub: 'Gentanala • Marketing', meta: '8 Konten', action: 'Review' },
-]
-const WEEK = [
-  { d: 'Mon', v: 55 },
-  { d: 'Tue', v: 48 },
-  { d: 'Wed', v: 62 },
-  { d: 'Thu', v: 58 },
-  { d: 'Fri', v: 95 },
-  { d: 'Sat', v: 30 },
-  { d: 'Sun', v: 22 },
-]
+const APPROVAL_ICON: Record<ApprovalKind, typeof Banknote> = {
+  budget: Banknote,
+  leave: FileText,
+  content: ImageIcon,
+}
 const SPARK = [4, 6, 5, 8, 7, 9, 11]
 
 function CardHead({ title, action }: { title: string; action?: string }) {
@@ -150,7 +141,12 @@ function Meter({ pct, color }: { pct: number; color: string }) {
 }
 
 function CommandCenter() {
-  const d = Route.useLoaderData() as DashboardData
+  const d = Route.useLoaderData() as CommandCenterData
+  const router = useRouter()
+  async function handleResolve(id: string, decision: 'approved' | 'rejected') {
+    await resolveApprovalFn({ data: { id, decision } })
+    router.invalidate()
+  }
 
   return (
     <main className="min-w-0 flex-1 p-4 sm:p-6">
@@ -312,8 +308,11 @@ function CommandCenter() {
           <section className="card p-4 lg:col-span-5">
             <CardHead title="Today's Timeline" action="View calendar" />
             <div className="flex flex-col">
-              {TIMELINE.map((t) => (
-                <div key={t.time} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
+              {d.events.length === 0 && (
+                <p className="py-4 text-center text-sm text-[var(--ink3)]">Nothing scheduled today 🎉</p>
+              )}
+              {d.events.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
                   <span className="w-11 shrink-0 text-[12px] font-bold tabular-nums text-[var(--ink2)]">{t.time}</span>
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLORS[t.type] }} />
                   <div className="min-w-0 flex-1">
@@ -338,25 +337,46 @@ function CommandCenter() {
 
           <section className="card p-4 lg:col-span-3">
             <CardHead title="Need Approval" action="View all" />
-            <div className="flex flex-col gap-2">
-              {APPROVALS.map((a) => (
-                <div key={a.title} className="rounded-[10px] border-2 border-[var(--line)] p-2.5">
-                  <div className="flex items-center gap-2">
-                    <a.icon size={16} className="shrink-0 text-[var(--ink2)]" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-bold text-[var(--ink)]">{a.title}</p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">{a.sub}</p>
+            {d.approvals.length === 0 ? (
+              <p className="py-4 text-center text-sm text-[var(--ink3)]">No approvals pending 🎉</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {d.approvals.map((a) => {
+                  const Icon = APPROVAL_ICON[a.kind]
+                  return (
+                    <div key={a.id} className="rounded-[10px] border-2 border-[var(--line)] p-2.5">
+                      <div className="flex items-center gap-2">
+                        <Icon size={16} className="shrink-0 text-[var(--ink2)]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12px] font-bold text-[var(--ink)]">{a.title}</p>
+                          <p className="truncate text-[11px] text-[var(--ink3)]">{a.sub}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-[12px] font-bold text-[var(--ink)]">{a.meta}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="btn btn-primary px-3 py-1 text-[12px]"
+                            onClick={() => handleResolve(a.id, 'approved')}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Reject"
+                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--line)] text-[var(--ink2)] hover:border-[var(--danger)] hover:text-[var(--danger)]"
+                            onClick={() => handleResolve(a.id, 'rejected')}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[12px] font-bold text-[var(--ink)]">{a.meta}</span>
-                    <button type="button" className="btn btn-primary px-3 py-1 text-[12px]">
-                      {a.action}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </section>
         </div>
 
@@ -383,21 +403,18 @@ function CommandCenter() {
           </section>
 
           <section className="card p-4">
-            <CardHead title="Workload Heatmap (July)" />
+            <CardHead title={`Workload Heatmap (${d.monthLabel})`} />
             <div className="flex flex-col gap-1.5">
               {['W1', 'W2', 'W3', 'W4', 'W5'].map((w, r) => (
                 <div key={w} className="flex items-center gap-1.5">
                   <span className="w-6 text-[10px] font-bold text-[var(--ink3)]">{w}</span>
-                  {Array.from({ length: 7 }).map((_, c) => {
-                    const lvl = (r * 3 + c * 2) % 5
-                    return (
-                      <span
-                        key={c}
-                        className="h-4 flex-1 rounded-[3px] border border-[var(--line)]"
-                        style={{ background: `color-mix(in oklab, var(--accent) ${lvl * 22}%, var(--col))` }}
-                      />
-                    )
-                  })}
+                  {d.heatmap[r].map((intensity, c) => (
+                    <span
+                      key={c}
+                      className="h-4 flex-1 rounded-[3px] border border-[var(--line)]"
+                      style={{ background: `color-mix(in oklab, var(--accent) ${intensity}%, var(--col))` }}
+                    />
+                  ))}
                 </div>
               ))}
             </div>
@@ -441,7 +458,7 @@ function CommandCenter() {
           <section className="card p-4">
             <CardHead title="Weekly Progress" action="This week" />
             <div className="mb-3 flex h-28 items-end gap-1.5">
-              {WEEK.map((b) => (
+              {d.weekProgress.map((b) => (
                 <div key={b.d} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                   <div
                     className="w-full rounded-t-[4px] border-2 border-[var(--ink)]"
