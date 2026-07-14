@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { BarChart3, CheckCircle2, Clock, ListChecks } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
+import { BarChart3, Clock, ListChecks } from '@/components/pixel-icons'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 
 // ponytail: Reports reuses the dashboard aggregation — everything here is real

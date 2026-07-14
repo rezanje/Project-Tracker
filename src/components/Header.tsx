@@ -3,16 +3,14 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   Bell,
   Bot,
-  CalendarDays,
   CheckSquare,
   ChevronDown,
-  Clock,
-  FolderKanban,
   LogOut,
   Plus,
   Search,
   Settings,
 } from 'lucide-react'
+import { CalendarDays, Clock, FolderKanban } from '@/components/pixel-icons'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { searchFn, type SearchResults } from '#/lib/search'
 import {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlarmClock } from 'lucide-react'
+import { AlarmClock } from '@/components/pixel-icons'
 import { createReminderFn } from '#/lib/reminders'
 
 // Default the picker to an hour from now, formatted for <input type="datetime-local">.

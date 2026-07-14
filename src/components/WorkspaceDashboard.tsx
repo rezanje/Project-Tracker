@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Award, Bot, Flame, FolderKanban, ListChecks, Plus, Sparkles, Trophy, Users } from 'lucide-react'
+import { Award, Bot, Plus, Sparkles, Trophy, Users } from 'lucide-react'
+import { Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
 
 // ponytail: presentational workspace dashboard matching the mockup. Real data
 // is passed in by the route (stats, projects, schedule, members, status
@@ -344,7 +345,7 @@ export default function WorkspaceDashboard({
   )
 }
 
-function OverviewStat({ icon: Icon, n, label, tint }: { icon: typeof Flame; n: number; label: string; tint: string }) {
+function OverviewStat({ icon: Icon, n, label, tint }: { icon: ComponentType<{ size?: number; className?: string }>; n: number; label: string; tint: string }) {
   return (
     <div className="flex items-center gap-2.5">
       <span

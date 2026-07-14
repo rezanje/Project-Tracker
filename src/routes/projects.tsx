@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { FolderKanban, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import { FolderKanban } from '@/components/pixel-icons'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { segFill } from '#/lib/progress'
 

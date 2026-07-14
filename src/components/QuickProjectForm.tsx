@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { FolderPlus } from 'lucide-react'
+import { FolderPlus } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { createBoardFn } from '#/lib/actions'
 

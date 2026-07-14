@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
-  BarChart3,
-  Calendar,
   CheckSquare,
   ChevronDown,
   Home,
@@ -17,6 +15,7 @@ import {
   Star,
   UserCheck,
 } from 'lucide-react'
+import { BarChart3, Calendar } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
@@ -41,7 +40,7 @@ function initials(email: string): string {
 
 const MAIN_NAV: Array<{
   label: string
-  icon: typeof Home
+  icon: ComponentType<{ size?: number; className?: string }>
   to: '/home' | '/' | '/coming-soon' | '/my-tasks' | '/calendar' | '/reports'
   badge?: number
 }> = [

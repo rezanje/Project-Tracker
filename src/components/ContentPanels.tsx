@@ -1,4 +1,5 @@
-import { CalendarClock, FileEdit, Film, Lightbulb, Palette, Rocket, ScrollText, Sparkles } from 'lucide-react'
+import { FileEdit, Lightbulb, Palette, ScrollText, Sparkles } from 'lucide-react'
+import { CalendarClock, Film, Rocket } from '@/components/pixel-icons'
 
 // ponytail: Content Calendar chrome around the real CalendarView. Stats, Today
 // and completion% are real (from card content_status / due_date). The 6-stage

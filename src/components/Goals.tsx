@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Check, Clock } from 'lucide-react'
+import { X, Check } from 'lucide-react'
+import { Clock } from '@/components/pixel-icons'
 import type { Kpi, Kr, Objective, AssignedKpi, AssignedObjective } from '#/lib/goals'
 
 const pct = (c: number, t: number) => (t ? Math.min(100, Math.round((c / t) * 100)) : 0)

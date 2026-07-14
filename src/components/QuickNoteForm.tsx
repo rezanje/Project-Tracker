@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { StickyNote } from 'lucide-react'
+import { StickyNote } from '@/components/pixel-icons'
 import { createNoteFn } from '#/lib/actions'
 
 export default function QuickNoteForm({

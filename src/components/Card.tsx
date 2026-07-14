@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Calendar, MessageSquare, Paperclip, Tag } from 'lucide-react'
+import { MessageSquare, Paperclip, Tag } from 'lucide-react'
+import { Calendar } from '@/components/pixel-icons'
 import type { CardRow } from '#/lib/board-data'
 
 export type CardAssignee = { id: string; name: string; avatar_url: string | null }

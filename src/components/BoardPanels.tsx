@@ -1,15 +1,13 @@
 import {
   Activity,
   CheckCircle2,
-  Clock,
   Flag,
   FileText,
-  Flame,
-  ListChecks,
   Sparkles,
   Users,
   Wallet,
 } from 'lucide-react'
+import { Clock, Flame, ListChecks } from '@/components/pixel-icons'
 
 // ponytail: board chrome around the real kanban. Stats + Team + Budget value are
 // real (passed from the route); Activity feed, Files list, roadmap dates and the

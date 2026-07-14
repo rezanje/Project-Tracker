@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
-  BarChart3,
-  Calendar,
   CheckSquare,
   Home,
   Inbox,
@@ -15,6 +13,7 @@ import {
   UserCheck,
   X,
 } from 'lucide-react'
+import { BarChart3, Calendar } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
@@ -23,7 +22,7 @@ import ThemeToggle from './ThemeToggle'
 
 const BAR_NAV: Array<{
   label: string
-  icon: typeof Home
+  icon: ComponentType<{ size?: number; className?: string }>
   to: '/home' | '/' | '/my-tasks' | '/calendar'
 }> = [
   { label: 'Home', icon: Home, to: '/home' },

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, ChevronRight } from 'lucide-react'
+import { Lock, Eye, EyeOff, ShieldCheck, ChevronRight } from 'lucide-react'
+import { Mail } from '@/components/pixel-icons'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import AuthShell from '#/components/AuthShell'
 
