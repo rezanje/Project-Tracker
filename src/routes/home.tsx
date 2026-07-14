@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import {
-  AlarmClock,
   CheckSquare,
-  Flame,
-  FolderPlus,
   Megaphone,
   MoreVertical,
   Music2,
@@ -14,10 +11,10 @@ import {
   Settings,
   SkipBack,
   SkipForward,
-  StickyNote,
   Target,
   Volume2,
 } from 'lucide-react'
+import { AlarmClock, Flame, FolderPlus, StickyNote } from '@/components/pixel-icons'
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { deleteNoteFn } from '#/lib/actions'
@@ -57,7 +54,7 @@ function QuickTile({
   panel,
 }: {
   label: string
-  icon: typeof CheckSquare
+  icon: ComponentType<{ size?: number; className?: string }>
   tint: string
   panel: (close: () => void) => React.ReactNode
 }) {
@@ -359,8 +356,8 @@ function PixelHome() {
     router.invalidate()
   }
 
-  const total = d.stats.totalTasks
-  const overallPct = total ? Math.round((d.stats.completed / total) * 100) : 0
+  const total = d.myStats.total
+  const overallPct = total ? Math.round((d.myStats.completed / total) * 100) : 0
   const pp = d.projectProgress
   const ppPct = pp.total ? Math.round((pp.completed / pp.total) * 100) : 0
 
@@ -384,18 +381,18 @@ function PixelHome() {
             </div>
             <div className="mb-3 flex flex-wrap items-center gap-4 border-b-2 border-[var(--line)] pb-3">
               <Stat n={String(total)} label="Tasks" />
-              <Stat n={String(d.stats.overdue)} label="Overdue" tint="var(--danger)" />
-              <Stat n={String(d.stats.dueToday)} label="Due today" tint="#d97706" />
+              <Stat n={String(d.myStats.overdue)} label="Overdue" tint="var(--danger)" />
+              <Stat n={String(d.myStats.dueToday)} label="Due today" tint="#d97706" />
               <div className="ml-auto flex items-center gap-2">
                 <SegBar pct={overallPct} color="var(--accent)" />
                 <span className="whitespace-nowrap text-sm font-extrabold text-[var(--accent-ink)]">{overallPct}%</span>
               </div>
             </div>
             <div className="flex flex-col">
-              {d.today.length === 0 && (
+              {d.myToday.length === 0 && (
                 <p className="py-3 text-sm text-[var(--ink3)]">Nothing due today 🎉</p>
               )}
-              {d.today.map((t) => (
+              {d.myToday.map((t) => (
                 <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
                   <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
                   <div className="min-w-0 flex-1">

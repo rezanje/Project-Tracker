@@ -18,22 +18,26 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
   const headers = new Headers()
   // requireUser redirects unauthenticated/unapproved users — keep it outside the
   // try so the redirect is not swallowed by the empty-list fallback.
-  const { supabase } = await requireUser(getRequest(), headers)
+  const { user, supabase } = await requireUser(getRequest(), headers)
   try {
     const { data: boards } = await supabase
       .from('boards')
-      .select('id,title,columns(title,cards(id,title,due_date))')
+      .select('id,title,columns(title,cards(id,title,due_date,assignee_id))')
       .neq('status', 'archived')
 
     const tasks: Task[] = []
     for (const b of (boards ?? []) as Array<{
       id: string
       title: string
-      columns?: Array<{ title: string; cards?: Array<{ id: string; title: string; due_date: string | null }> }>
+      columns?: Array<{
+        title: string
+        cards?: Array<{ id: string; title: string; due_date: string | null; assignee_id: string | null }>
+      }>
     }>) {
       for (const col of b.columns ?? []) {
         if (isDoneColumn(col.title)) continue
         for (const c of col.cards ?? []) {
+          if (c.assignee_id !== user.id) continue
           tasks.push({ id: c.id, title: c.title, boardId: b.id, boardTitle: b.title, colTitle: col.title, due: c.due_date })
         }
       }

@@ -2,20 +2,16 @@ import { createFileRoute } from '@tanstack/react-router'
 import {
   AlertTriangle,
   Banknote,
-  Building2,
-  Clock,
   FileText,
-  Flame,
-  FolderKanban,
   Image as ImageIcon,
   Info,
   Lightbulb,
-  ListChecks,
   Sparkles,
   Star,
   TrendingUp,
   Truck,
 } from 'lucide-react'
+import { Building2, Clock, Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 
 // ponytail: Command Center wires the data the schema can back (stats, workspace
@@ -283,11 +279,11 @@ function CommandCenter() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <section className="card p-4 lg:col-span-4">
             <CardHead title="Priority Radar" action="View all" />
-            {d.priority.length === 0 ? (
+            {d.myPriority.length === 0 ? (
               <p className="py-4 text-center text-sm text-[var(--ink3)]">Nothing urgent 🎉</p>
             ) : (
               <div className="flex flex-col">
-                {d.priority.map((p) => (
+                {d.myPriority.map((p) => (
                   <div key={p.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
                     <span className="h-8 w-1 shrink-0 rounded-full" style={{ background: DUE_COLORS[p.bucket] }} />
                     <div className="min-w-0 flex-1">

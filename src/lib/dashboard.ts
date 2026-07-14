@@ -37,10 +37,18 @@ export type DashboardData = {
     overdue: number
     completed: number
   }
+  myStats: {
+    total: number
+    dueToday: number
+    overdue: number
+    completed: number
+  }
   workspaces: DashWorkspace[]
   projects: DashProject[]
   priority: DashPriority[]
+  myPriority: DashPriority[]
   today: DashTask[]
+  myToday: DashTask[]
   weekProgress: Array<{ d: string; v: number }>
   heatmap: number[][]
   monthLabel: string
@@ -117,7 +125,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         supabase.from('workspaces').select('id,name').order('created_at'),
         supabase
           .from('boards')
-          .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date))')
+          .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date,assignee_id))')
           .neq('status', 'archived'),
         supabase.from('notes').select('id,body,category,created_at').order('created_at', { ascending: false }).limit(50),
         supabase
@@ -146,9 +154,15 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
     let doneTasks = 0
     let dueToday = 0
     let overdue = 0
+    let myTotal = 0
+    let myDone = 0
+    let myDueToday = 0
+    let myOverdue = 0
     const projects: DashProject[] = []
     const priority: DashPriority[] = []
+    const myPriority: DashPriority[] = []
     const today_: DashTask[] = []
+    const myToday_: DashTask[] = []
     const allCards: Array<{ due_date: string | null; done: boolean }> = []
     let pDone = 0
     let pInProgress = 0
@@ -168,13 +182,21 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       let bDone = 0
       for (const col of (b.columns ?? []) as Array<{ title: string; cards?: unknown[] }>) {
         const isDone = isDoneColumn(col.title)
-        for (const c of (col.cards ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
+        for (const c of (col.cards ?? []) as Array<{
+          id: string
+          title: string
+          due_date: string | null
+          assignee_id: string | null
+        }>) {
           totalTasks++
           bTotal++
           allCards.push({ due_date: c.due_date, done: isDone })
+          const mine = c.assignee_id === user.id
+          if (mine) myTotal++
           if (isDone) {
             doneTasks++
             bDone++
+            if (mine) myDone++
           }
           if (s) {
             s.total++
@@ -184,15 +206,28 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
             const d = dayDiff(c.due_date, today)
             if (d < 0) {
               overdue++
-              priority.push({ id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Overdue' })
+              if (mine) myOverdue++
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Overdue' }
+              priority.push(p)
+              if (mine) myPriority.push(p)
             } else if (d === 0) {
               dueToday++
               today_.push({ id: c.id, title: c.title, boardTitle: b.title })
-              priority.push({ id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due today' })
+              if (mine) {
+                myDueToday++
+                myToday_.push({ id: c.id, title: c.title, boardTitle: b.title })
+              }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due today' }
+              priority.push(p)
+              if (mine) myPriority.push(p)
             } else if (d === 1) {
-              priority.push({ id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due tomorrow' })
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due tomorrow' }
+              priority.push(p)
+              if (mine) myPriority.push(p)
             } else if (d <= 5) {
-              priority.push({ id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due soon' })
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due soon' }
+              priority.push(p)
+              if (mine) myPriority.push(p)
             }
           }
         }
@@ -212,6 +247,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
 
     const bucketRank = { Overdue: 0, 'Due today': 1, 'Due tomorrow': 2, 'Due soon': 3 }
     priority.sort((a, b) => bucketRank[a.bucket] - bucketRank[b.bucket])
+    myPriority.sort((a, b) => bucketRank[a.bucket] - bucketRank[b.bucket])
 
     const weekProgress = computeWeekProgress(allCards, today)
     const heatmap = computeHeatmap(allCards, today)
@@ -229,10 +265,18 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         overdue,
         completed: doneTasks,
       },
+      myStats: {
+        total: myTotal,
+        dueToday: myDueToday,
+        overdue: myOverdue,
+        completed: myDone,
+      },
       workspaces: wsList,
       projects: projects.sort((a, b) => b.progress - a.progress),
       priority: priority.slice(0, 6),
+      myPriority: myPriority.slice(0, 6),
       today: today_.slice(0, 6),
+      myToday: myToday_.slice(0, 6),
       weekProgress,
       heatmap,
       monthLabel,
@@ -255,10 +299,13 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       name: null,
       approvals: 0,
       stats: { workspaces: 0, projects: 0, totalTasks: 0, dueToday: 0, overdue: 0, completed: 0 },
+      myStats: { total: 0, dueToday: 0, overdue: 0, completed: 0 },
       workspaces: [],
       projects: [],
       priority: [],
+      myPriority: [],
       today: [],
+      myToday: [],
       weekProgress: WEEKDAY_LABELS.map((d) => ({ d, v: 0 })),
       heatmap: Array.from({ length: 5 }, () => Array(7).fill(0)),
       monthLabel: '',
