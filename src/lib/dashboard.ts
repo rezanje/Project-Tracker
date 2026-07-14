@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
-import { isDoneColumn, localDateStr } from './home'
+import { isDoneColumn, localDateStr, weekdayIndex, weekRange } from './home'
 
 // One aggregation feeding both dashboards (Command Center + Pixel Home). Panels
 // that need history or event data we don't store (timeline times, sparkline
@@ -41,6 +41,9 @@ export type DashboardData = {
   projects: DashProject[]
   priority: DashPriority[]
   today: DashTask[]
+  weekProgress: Array<{ d: string; v: number }>
+  heatmap: number[][]
+  monthLabel: string
   projectProgress: { total: number; completed: number; inProgress: number }
   revenue: number
   notes: Array<{ id: string; body: string; category: string | null; created_at: string }>
@@ -57,6 +60,48 @@ function dayDiff(due: string, today: string): number {
   const a = Date.parse(due + 'T00:00:00Z')
   const b = Date.parse(today + 'T00:00:00Z')
   return Math.round((a - b) / 86_400_000)
+}
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** % of cards due each weekday (Mon..Sun) of the week containing `todayStr` that are done. */
+export function computeWeekProgress(
+  cards: Array<{ due_date: string | null; done: boolean }>,
+  todayStr: string,
+): Array<{ d: string; v: number }> {
+  const days = weekRange(todayStr)
+  const totals = days.map(() => ({ total: 0, done: 0 }))
+  const indexOf = new Map(days.map((d, i) => [d, i]))
+  for (const c of cards) {
+    if (!c.due_date) continue
+    const i = indexOf.get(c.due_date)
+    if (i === undefined) continue
+    totals[i].total++
+    if (c.done) totals[i].done++
+  }
+  return totals.map((t, i) => ({ d: WEEKDAY_LABELS[i], v: t.total ? Math.round((t.done / t.total) * 100) : 0 }))
+}
+
+/** Task volume per day of the month containing `todayStr`, grouped into Mon-start
+ *  week rows (`grid[week][weekday]`), intensity 0-100 relative to the busiest day. */
+export function computeHeatmap(cards: Array<{ due_date: string | null }>, todayStr: string): number[][] {
+  const [y, m] = todayStr.split('-').map(Number)
+  const daysInMonth = new Date(y, m, 0).getDate()
+  const counts = new Map<string, number>()
+  const monthPrefix = todayStr.slice(0, 7)
+  for (const c of cards) {
+    if (!c.due_date || !c.due_date.startsWith(monthPrefix)) continue
+    counts.set(c.due_date, (counts.get(c.due_date) ?? 0) + 1)
+  }
+  const max = Math.max(1, ...counts.values())
+  const grid: number[][] = Array.from({ length: 5 }, () => Array(7).fill(0))
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`
+    const count = counts.get(dateStr) ?? 0
+    const week = Math.ceil(day / 7) - 1
+    grid[week][weekdayIndex(dateStr)] = Math.round((count / max) * 100)
+  }
+  return grid
 }
 
 export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async (): Promise<DashboardData> => {
@@ -104,6 +149,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
     const projects: DashProject[] = []
     const priority: DashPriority[] = []
     const today_: DashTask[] = []
+    const allCards: Array<{ due_date: string | null; done: boolean }> = []
     let pDone = 0
     let pInProgress = 0
 
@@ -125,6 +171,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         for (const c of (col.cards ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
           totalTasks++
           bTotal++
+          allCards.push({ due_date: c.due_date, done: isDone })
           if (isDone) {
             doneTasks++
             bDone++
@@ -166,6 +213,10 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
     const bucketRank = { Overdue: 0, 'Due today': 1, 'Due tomorrow': 2, 'Due soon': 3 }
     priority.sort((a, b) => bucketRank[a.bucket] - bucketRank[b.bucket])
 
+    const weekProgress = computeWeekProgress(allCards, today)
+    const heatmap = computeHeatmap(allCards, today)
+    const monthLabel = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' })
+
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
     return {
       name: (me?.name as string | null) ?? null,
@@ -182,6 +233,9 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       projects: projects.sort((a, b) => b.progress - a.progress),
       priority: priority.slice(0, 6),
       today: today_.slice(0, 6),
+      weekProgress,
+      heatmap,
+      monthLabel,
       projectProgress: { total: (boards ?? []).length, completed: pDone, inProgress: pInProgress },
       revenue,
       notes: (notes ?? []).map((n) => ({
@@ -205,6 +259,9 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       projects: [],
       priority: [],
       today: [],
+      weekProgress: WEEKDAY_LABELS.map((d) => ({ d, v: 0 })),
+      heatmap: Array.from({ length: 5 }, () => Array(7).fill(0)),
+      monthLabel: '',
       projectProgress: { total: 0, completed: 0, inProgress: 0 },
       revenue: 0,
       notes: [],
