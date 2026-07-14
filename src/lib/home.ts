@@ -11,6 +11,24 @@ export function localDateStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/** Monday-start weekday index (0=Mon..6=Sun) for a local `YYYY-MM-DD` date string. */
+export function weekdayIndex(dateStr: string): number {
+  const d = new Date(dateStr + 'T00:00:00')
+  return (d.getDay() + 6) % 7
+}
+
+/** Local `YYYY-MM-DD` dates for the Monday..Sunday week containing `dateStr`. */
+export function weekRange(dateStr: string): string[] {
+  const d = new Date(dateStr + 'T00:00:00')
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - weekdayIndex(dateStr))
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(monday)
+    day.setDate(monday.getDate() + i)
+    return localDateStr(day)
+  })
+}
+
 /** Aggregate card counts across a user's columns. active = total - done. */
 export function computeStats(
   columns: { title: string; cards: { id: string }[] }[],
