@@ -2,8 +2,9 @@
 
 **Date:** 2026-07-14
 **Files:** new migration `0028_events_approvals.sql`, `src/lib/dashboard.ts`
-(extend), `src/lib/events.ts` (new), `src/lib/approvals.ts` (new),
-`src/routes/index.tsx` (swap 4 static panels for real data).
+(extend), `src/lib/events.ts` (new), `src/lib/approval-requests.ts` (new —
+`src/lib/approvals.ts` already exists for the unrelated signup-approval
+feature), `src/routes/index.tsx` (swap 4 static panels for real data).
 
 ## Goal
 
@@ -92,7 +93,7 @@ create policy approval_requests_resolve on approval_requests for update
   using (is_workspace_owner(workspace_id)) with check (is_workspace_owner(workspace_id));
 ```
 
-`src/lib/approvals.ts` exports:
+`src/lib/approval-requests.ts` exports:
 - `fetchPendingApprovals()` (server fn) — pending requests across workspaces
   where the current user is owner. Naturally personal: only shows what this
   user is authorized to act on.
@@ -117,10 +118,10 @@ create policy approval_requests_resolve on approval_requests for update
 
 ## Testing
 
-- `src/lib/dashboard.test.ts` (existing file) gets cases for `weekProgress`
-  and `heatmap` math against a small fixture.
-- `src/lib/approvals.test.ts` (new, integration against real Supabase per
-  this repo's convention) — insert a pending request, resolve it as owner,
+- `src/lib/dashboard.test.ts` (new — no test file exists for this module yet)
+  gets cases for `weekProgress` and `heatmap` math against a small fixture.
+- `src/lib/approval-requests.test.ts` (new, integration against real Supabase
+  per this repo's convention) — insert a pending request, resolve it as owner,
   assert status/resolved_by/resolved_at; assert a non-owner resolve is
   rejected by RLS.
 - Manual: seed one `events` row and one `approval_requests` row via SQL
