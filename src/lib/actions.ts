@@ -62,10 +62,10 @@ export const deleteNoteFn = createServerFn({ method: 'POST' })
 // pick one.
 export const quickCreateTaskFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const { boardId, title } = (d ?? {}) as { boardId?: unknown; title?: unknown }
+    const { boardId, title, assigneeId } = (d ?? {}) as { boardId?: unknown; title?: unknown; assigneeId?: unknown }
     if (typeof boardId !== 'string' || !boardId) throw new Error('boardId required')
     if (typeof title !== 'string' || !title.trim()) throw new Error('title required')
-    return { boardId, title: title.trim() }
+    return { boardId, title: title.trim(), assigneeId: typeof assigneeId === 'string' && assigneeId ? assigneeId : null }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
@@ -79,7 +79,7 @@ export const quickCreateTaskFn = createServerFn({ method: 'POST' })
       .maybeSingle()
     if (colErr) throw colErr
     if (!col) throw new Error('Board has no columns yet')
-    const card = await createCard(supabase, col.id as string, data.title)
+    const card = await createCard(supabase, col.id as string, data.title, { assignee_id: data.assigneeId })
     flush(headers)
     return { cardId: card.id, boardId: data.boardId }
   })

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { CheckSquare } from 'lucide-react'
-import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchNav, fetchBoardAssigneesFn, type NavBoard, type NavWorkspace, type BoardAssignee } from '#/lib/nav'
 import { quickCreateTaskFn } from '#/lib/actions'
 
 // Boards live inside one workspace each — a board picked from workspace A
@@ -26,6 +26,9 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
   const [workspaceId, setWorkspaceId] = useState('')
   const [boardId, setBoardId] = useState('')
   const [title, setTitle] = useState('')
+  const [assignees, setAssignees] = useState<BoardAssignee[]>([])
+  const [meId, setMeId] = useState('')
+  const [assigneeId, setAssigneeId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,6 +42,18 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!boardId) {
+      setAssignees([])
+      return
+    }
+    fetchBoardAssigneesFn({ data: { boardId } }).then(({ meId: id, members }) => {
+      setMeId(id)
+      setAssignees(members)
+      setAssigneeId(id)
+    })
+  }, [boardId])
 
   const lockedWorkspaceId = routeWorkspaceId(pathname, boards)
   const boardsInWorkspace = boards.filter((b) => b.workspaceId === workspaceId)
@@ -54,7 +69,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
     setSaving(true)
     setError(null)
     try {
-      const { boardId: bId } = await quickCreateTaskFn({ data: { boardId, title } })
+      const { boardId: bId } = await quickCreateTaskFn({ data: { boardId, title, assigneeId } })
       onDone()
       navigate({ to: '/board/$boardId', params: { boardId: bId } })
     } catch (err) {
@@ -95,6 +110,16 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         </select>
       ) : (
         <p className="mb-2 text-[12px] text-[var(--ink3)]">No boards in this workspace yet — create one first.</p>
+      )}
+      {assignees.length > 0 && (
+        <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="field mb-2">
+          <option value="">Unassigned</option>
+          {assignees.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.id === meId ? 'Me' : m.name}
+            </option>
+          ))}
+        </select>
       )}
       {error && <p className="mb-2 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
       <button type="submit" disabled={saving || !boardId} className="btn btn-primary btn-square w-full">
