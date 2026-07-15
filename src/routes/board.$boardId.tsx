@@ -35,9 +35,12 @@ import ContentViews, { type ContentView } from '#/components/ContentViews'
 import { isDoneColumn, localDateStr } from '#/lib/home'
 import type { CardRow } from '#/lib/board-data'
 
+export type Milestone = { id: string; label: string; start_date: string; end_date: string }
+
 export type BoardMeta = {
   members: { id: string; name: string; avatar_url: string | null }[]
   labels: { id: string; name: string; color: string }[]
+  milestones: Milestone[]
 }
 
 function flush(headers: Headers) {
@@ -163,6 +166,12 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
       .select('id,name,color')
       .eq('board_id', data.boardId)
     if (lErr) throw lErr
+    const { data: milestones, error: msErr } = await supabase
+      .from('board_milestones')
+      .select('id,label,start_date,end_date')
+      .eq('board_id', data.boardId)
+      .order('start_date')
+    if (msErr) throw msErr
     const memberList = (members ?? []).map((m) => {
       const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
       return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
@@ -178,7 +187,44 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     return {
       members: memberList,
       labels: (labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
+      milestones: (milestones ?? []) as Milestone[],
     }
+  })
+
+const createMilestoneFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const f = (d ?? {}) as Record<string, unknown>
+    const boardId = typeof f.boardId === 'string' ? f.boardId : ''
+    const label = typeof f.label === 'string' ? f.label.trim() : ''
+    const startDate = typeof f.startDate === 'string' ? f.startDate : ''
+    const endDate = typeof f.endDate === 'string' ? f.endDate : ''
+    if (!boardId || !label || !startDate || !endDate) throw new Error('boardId, label, startDate, endDate required')
+    return { boardId, label, startDate, endDate }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('board_milestones').insert({
+      board_id: data.boardId, label: data.label, start_date: data.startDate, end_date: data.endDate,
+    })
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
+const deleteMilestoneFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { error } = await supabase.from('board_milestones').delete().eq('id', data.id)
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
   })
 
 const updateCardFn = createServerFn({ method: 'POST' })
@@ -432,6 +478,16 @@ function BoardView() {
       const meta = await fetchBoardMeta({ data: { boardId: board.id } })
       setBoardMeta(meta)
     }
+  }
+
+  async function addMilestone(label: string, startDate: string, endDate: string) {
+    await createMilestoneFn({ data: { boardId: board.id, label, startDate, endDate } })
+    setBoardMeta(await fetchBoardMeta({ data: { boardId: board.id } }))
+  }
+
+  async function deleteMilestone(id: string) {
+    await deleteMilestoneFn({ data: { id } })
+    setBoardMeta(await fetchBoardMeta({ data: { boardId: board.id } }))
   }
 
   function closeCardDetail() {
@@ -1067,13 +1123,20 @@ function BoardView() {
         </div>
       )}
 
-      {!isContent && board.columns.length > 0 && <BoardRoadmap />}
+      {!isContent && board.columns.length > 0 && (
+        <BoardRoadmap
+          milestones={boardMeta?.milestones ?? []}
+          isOwner={isOwner}
+          onAdd={addMilestone}
+          onDelete={deleteMilestone}
+        />
+      )}
 
       {selectedCard && (
         <CardDetail
           card={selectedCard}
           boardId={board.id}
-          meta={boardMeta ?? { members: [], labels: [] }}
+          meta={boardMeta ?? { members: [], labels: [], milestones: [] }}
           isOwner={canEdit}
           onClose={closeCardDetail}
           onSaved={() => {
@@ -1093,7 +1156,7 @@ function BoardView() {
       {addingTask && (
         <TaskCreate
           columns={columns.map((c) => ({ id: c.id, title: c.title }))}
-          members={(boardMeta ?? { members: [], labels: [] }).members}
+          members={(boardMeta ?? { members: [], labels: [], milestones: [] }).members}
           categorySuggestions={distinctCategories(columns.flatMap((c) => c.cards))}
           isContent={isContent}
           pillars={board.pillars}

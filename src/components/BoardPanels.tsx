@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Activity,
   CheckCircle2,
@@ -8,10 +9,12 @@ import {
   Wallet,
 } from 'lucide-react'
 import { Clock, Flame, ListChecks } from '@/components/pixel-icons'
+import { localDateStr } from '#/lib/home'
 
 // ponytail: board chrome around the real kanban. Stats + Team + Budget value are
-// real (passed from the route); Activity feed, Files list, roadmap dates and the
-// spent-% are static mockup placeholders until those data sources exist. AI panel
+// real (passed from the route); roadmap milestones are real too (board_milestones,
+// owner-managed). Activity feed, Files list, and the spent-% are still static
+// mockup placeholders until those data sources exist. AI panel
 // is a Coming Soon shell.
 
 type Member = { id?: string | null; name?: string | null; email?: string | null; role?: string | null }
@@ -205,44 +208,120 @@ export function BoardRail({
   )
 }
 
-const MILESTONES = [
-  { label: 'Research', range: 'Jun 10 – Jun 15', done: true },
-  { label: 'Prototype', range: 'Jun 16 – Jun 25', done: true },
-  { label: 'Production', range: 'Jun 26 – Jul 15', done: false, active: true },
-  { label: 'Launch', range: 'Jul 16 – Jul 25', done: false },
-]
+export type BoardMilestone = { id: string; label: string; start_date: string; end_date: string }
 
-export function BoardRoadmap() {
+function fmtRange(start: string, end: string): string {
+  const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(start)} – ${fmt(end)}`
+}
+
+export function BoardRoadmap({
+  milestones,
+  isOwner,
+  onAdd,
+  onDelete,
+}: {
+  milestones: BoardMilestone[]
+  isOwner: boolean
+  onAdd: (label: string, startDate: string, endDate: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [adding, setAdding] = useState(false)
+  const [label, setLabel] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [saving, setSaving] = useState(false)
+  const today = localDateStr()
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!label.trim() || !startDate || !endDate) return
+    setSaving(true)
+    try {
+      await onAdd(label.trim(), startDate, endDate)
+      setLabel('')
+      setStartDate('')
+      setEndDate('')
+      setAdding(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="card mx-auto mt-5 max-w-[1400px] p-4">
-      <h3 className="mb-4 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-        <Flag size={13} /> Roadmap / Milestone
-      </h3>
-      <div className="flex items-start gap-2 overflow-x-auto">
-        {MILESTONES.map((m, i) => (
-          <div key={m.label} className="flex flex-1 items-start gap-2">
-            <div className="flex min-w-[120px] flex-col items-center gap-1.5 text-center">
-              <span
-                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--ink)] text-[12px] font-bold"
-                style={
-                  m.done
-                    ? { background: 'var(--accent)', color: '#fff' }
-                    : m.active
-                      ? { background: 'var(--pop)', color: 'var(--pop-ink)' }
-                      : { background: 'var(--col)', color: 'var(--ink3)' }
-                }
-              >
-                {m.done ? '✓' : i + 1}
-              </span>
-              <p className="text-[12px] font-bold text-[var(--ink)]">{m.label}</p>
-              <p className="text-[10px] text-[var(--ink3)]">{m.range}</p>
-            </div>
-            {i < MILESTONES.length - 1 && (
-              <span className="mt-4 h-0.5 flex-1 bg-[var(--line)]" aria-hidden="true" />
-            )}
-          </div>
-        ))}
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+          <Flag size={13} /> Roadmap / Milestone
+        </h3>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => setAdding((a) => !a)}
+            className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+          >
+            {adding ? 'Cancel' : '+ Add milestone'}
+          </button>
+        )}
       </div>
+      {adding && (
+        <form onSubmit={submit} className="mb-4 flex flex-wrap items-end gap-2">
+          <input
+            autoFocus
+            placeholder="Label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="field w-40"
+          />
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field" />
+          <button type="submit" disabled={saving} className="btn btn-primary px-3 py-1.5 text-[12px]">
+            {saving ? 'Adding…' : 'Add'}
+          </button>
+        </form>
+      )}
+      {milestones.length === 0 ? (
+        <p className="text-[12px] text-[var(--ink3)]">No milestones yet.</p>
+      ) : (
+        <div className="flex items-start gap-2 overflow-x-auto">
+          {milestones.map((m, i) => {
+            const done = m.end_date < today
+            const active = !done && m.start_date <= today
+            return (
+              <div key={m.id} className="group flex flex-1 items-start gap-2">
+                <div className="flex min-w-[120px] flex-col items-center gap-1.5 text-center">
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--ink)] text-[12px] font-bold"
+                    style={
+                      done
+                        ? { background: 'var(--accent)', color: '#fff' }
+                        : active
+                          ? { background: 'var(--pop)', color: 'var(--pop-ink)' }
+                          : { background: 'var(--col)', color: 'var(--ink3)' }
+                    }
+                  >
+                    {done ? '✓' : i + 1}
+                  </span>
+                  <p className="text-[12px] font-bold text-[var(--ink)]">{m.label}</p>
+                  <p className="text-[10px] text-[var(--ink3)]">{fmtRange(m.start_date, m.end_date)}</p>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(m.id)}
+                      className="text-[10px] font-semibold text-[var(--danger)] opacity-0 group-hover:opacity-100"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {i < milestones.length - 1 && (
+                  <span className="mt-4 h-0.5 flex-1 bg-[var(--line)]" aria-hidden="true" />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
