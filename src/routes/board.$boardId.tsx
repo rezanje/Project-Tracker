@@ -152,7 +152,7 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
   })
   .handler(async ({ data }): Promise<BoardMeta> => {
     const headers = new Headers()
-    const { supabase } = await requireUser(getRequest(), headers)
+    const { user, supabase } = await requireUser(getRequest(), headers)
     const { data: members, error: mErr } = await supabase
       .from('board_members')
       .select('user_id, profiles(id,name,avatar_url)')
@@ -163,12 +163,20 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
       .select('id,name,color')
       .eq('board_id', data.boardId)
     if (lErr) throw lErr
+    const memberList = (members ?? []).map((m) => {
+      const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
+      return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
+    })
+    // The caller may see/edit this board via workspace membership alone,
+    // without an explicit board_members row — make sure "assign to me" is
+    // always offered even then.
+    if (!memberList.some((m) => m.id === user.id)) {
+      const { data: me } = await supabase.from('profiles').select('name,avatar_url').eq('id', user.id).single()
+      memberList.unshift({ id: user.id, name: me?.name ?? 'Me', avatar_url: me?.avatar_url ?? null })
+    }
     flush(headers)
     return {
-      members: (members ?? []).map((m) => {
-        const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
-        return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
-      }),
+      members: memberList,
       labels: (labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
     }
   })
