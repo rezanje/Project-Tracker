@@ -458,7 +458,7 @@ function PixelHome() {
 
           {/* KPI + PROJECT PROGRESS */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <section className="card p-4">
+            <a href="#my-goals" className="card block p-4 no-underline hover:bg-[var(--col)]">
               <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
                 📊 KPI Overview
               </h3>
@@ -473,7 +473,7 @@ function PixelHome() {
                   </div>
                 ))}
               </div>
-            </section>
+            </a>
 
             <section className="card p-4">
               <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
@@ -490,7 +490,7 @@ function PixelHome() {
             </section>
           </div>
 
-          <div>
+          <div id="my-goals" className="scroll-mt-4">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">My Goals</h3>
               <Popover

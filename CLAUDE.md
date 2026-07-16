@@ -50,3 +50,31 @@ TanStack Start (React) + Supabase (Postgres + RLS), deployed to Cloudflare Worke
   KPIs/Objectives to members with periods; assignee self-checks-in; owner approves before the
   `current` value moves (via the `approve_*_checkin` security-definer RPCs). Design +
   implementation notes in `docs/superpowers/specs/2026-07-12-smart-kpi-design.md`.
+
+---
+
+# Productivity Memory
+
+(Working memory for the productivity plugin — people, terms, projects. Separate from the
+project instructions above. Bootstrap pending: see `memory/` dir and `TASKS.md`.)
+
+## Me
+
+
+## People
+
+| Who | Role |
+|-----|------|
+
+## Terms
+
+| Term | Meaning |
+|------|---------|
+
+## Projects
+
+| Name | What |
+|------|------|
+
+## Preferences
+
