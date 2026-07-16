@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { BarChart3, Calendar } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { accentFor } from './Sidebar'
@@ -40,6 +41,7 @@ export default function MobileNav() {
   const [email, setEmail] = useState<string | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
+  const [inboxUnread, setInboxUnread] = useState(0)
 
   useEffect(() => {
     fetchNav().then((nav) => {
@@ -48,6 +50,7 @@ export default function MobileNav() {
       setIsSuperAdmin(nav.isSuperAdmin)
       setPendingApprovals(nav.pendingApprovalsCount)
     })
+    fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     const supabase = getBrowserSupabase()
     supabase.auth
       .getUser()
@@ -84,7 +87,7 @@ export default function MobileNav() {
     boards.find((b) => b.id === pathname.match(/^\/board\/([^/]+)/)?.[1])?.workspaceId ??
     null
   const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1] ?? null
-  const morePages = ['/reports', '/coming-soon', '/admin/approvals']
+  const morePages = ['/reports', '/inbox', '/admin/approvals']
   const moreActive = morePages.includes(pathname) || pathname.startsWith('/workspace/') || pathname.startsWith('/board/')
 
   return (
@@ -150,11 +153,16 @@ export default function MobileNav() {
               Reports
             </Link>
             <Link
-              to="/coming-soon"
+              to="/inbox"
               className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
             >
               <Inbox size={17} className="shrink-0" aria-hidden="true" />
-              Inbox
+              <span className="flex-1">Inbox</span>
+              {inboxUnread > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                  {inboxUnread}
+                </span>
+              )}
             </Link>
             {isSuperAdmin && (
               <Link
