@@ -1,4 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createServerFn } from '@tanstack/react-start'
+import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
+import { requireUser } from './auth'
 
 export type Thread = {
   id: string
@@ -216,3 +219,109 @@ export async function listMessageableMembers(
   }
   return [...seen].map(([id, name]) => ({ id, name }))
 }
+
+function flush(headers: Headers) {
+  for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
+}
+
+export const fetchThreadsFn = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<Thread[]> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const threads = await listThreads(supabase, user.id)
+    flush(headers)
+    return threads
+  },
+)
+
+export const fetchInboxUnreadFn = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<number> => {
+    const headers = new Headers()
+    try {
+      const { user, supabase } = await requireUser(getRequest(), headers)
+      const n = await countInboxUnread(supabase, user.id)
+      flush(headers)
+      return n
+    } catch {
+      return 0
+    }
+  },
+)
+
+export const fetchMessageableMembersFn = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<MessageableMember[]> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const members = await listMessageableMembers(supabase, user.id)
+    flush(headers)
+    return members
+  },
+)
+
+export const openDmFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const otherUserId = (d as { otherUserId?: unknown })?.otherUserId
+    if (typeof otherUserId !== 'string' || !otherUserId) throw new Error('otherUserId required')
+    return { otherUserId }
+  })
+  .handler(async ({ data }): Promise<{ threadId: string }> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const threadId = await openDm(supabase, user.id, data.otherUserId)
+    flush(headers)
+    return { threadId }
+  })
+
+export const fetchMessagesFn = createServerFn({ method: 'GET' })
+  .validator((d: unknown) => {
+    const threadId = (d as { threadId?: unknown })?.threadId
+    if (typeof threadId !== 'string' || !threadId) throw new Error('threadId required')
+    return { threadId }
+  })
+  .handler(async ({ data }): Promise<Message[]> => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { data: rows } = await supabase
+      .from('messages')
+      .select('id,thread_id,sender_id,body,created_at, profiles(name)')
+      .eq('thread_id', data.threadId)
+      .order('created_at', { ascending: true })
+    flush(headers)
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      threadId: r.thread_id as string,
+      senderId: r.sender_id as string,
+      senderName: ((r.profiles as { name?: string } | null)?.name) ?? 'Unknown',
+      body: r.body as string,
+      createdAt: r.created_at as string,
+    }))
+  })
+
+export const sendMessageFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { threadId, body } = (d ?? {}) as { threadId?: unknown; body?: unknown }
+    if (typeof threadId !== 'string' || !threadId) throw new Error('threadId required')
+    if (typeof body !== 'string' || !body.trim()) throw new Error('body required')
+    return { threadId, body: body.trim() }
+  })
+  .handler(async ({ data }): Promise<{ id: string }> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const id = await sendMessage(supabase, data.threadId, user.id, data.body)
+    flush(headers)
+    return { id }
+  })
+
+export const markThreadReadFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const threadId = (d as { threadId?: unknown })?.threadId
+    if (typeof threadId !== 'string' || !threadId) throw new Error('threadId required')
+    return { threadId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await markThreadRead(supabase, data.threadId, user.id)
+    flush(headers)
+    return { ok: true }
+  })
