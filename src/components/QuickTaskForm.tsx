@@ -3,6 +3,8 @@ import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { CheckSquare } from 'lucide-react'
 import { fetchNav, fetchBoardAssigneesFn, type NavBoard, type NavWorkspace, type BoardAssignee } from '#/lib/nav'
 import { quickCreateTaskFn } from '#/lib/actions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // Boards live inside one workspace each — a board picked from workspace A
 // can't take a task meant for workspace B, so the workspace is inferred from
@@ -84,12 +86,12 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
       <p className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
         <CheckSquare size={14} aria-hidden="true" /> New task
       </p>
-      <input
+      <Input
         autoFocus
         placeholder="Task title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="field mb-2"
+        className="mb-2"
       />
       {!lockedWorkspaceId && workspaces.length > 1 && (
         <select value={workspaceId} onChange={(e) => onWorkspaceChange(e.target.value)} className="field mb-2">
@@ -122,9 +124,9 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         </select>
       )}
       {error && <p className="mb-2 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
-      <button type="submit" disabled={saving || !boardId} className="btn btn-primary btn-square w-full">
+      <Button type="submit" disabled={saving || !boardId} className="w-full">
         {saving ? 'Creating…' : 'Create task'}
-      </button>
+      </Button>
     </form>
   )
 }
