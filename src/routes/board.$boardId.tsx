@@ -1189,7 +1189,7 @@ function BoardView() {
           }}
           onDelete={async () => {
             await deleteBoardFn({ data: { boardId: board.id } })
-            router.navigate({ to: '/' })
+            router.navigate({ to: '/workspace/$workspaceId', params: { workspaceId: board.workspaceId ?? '' } })
           }}
         />
       )}
