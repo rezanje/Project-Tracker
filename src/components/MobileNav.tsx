@@ -84,7 +84,7 @@ export default function MobileNav() {
     boards.find((b) => b.id === pathname.match(/^\/board\/([^/]+)/)?.[1])?.workspaceId ??
     null
   const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1] ?? null
-  const morePages = ['/reports', '/coming-soon', '/admin/approvals']
+  const morePages = ['/reports', '/inbox', '/admin/approvals']
   const moreActive = morePages.includes(pathname) || pathname.startsWith('/workspace/') || pathname.startsWith('/board/')
 
   return (
@@ -150,7 +150,7 @@ export default function MobileNav() {
               Reports
             </Link>
             <Link
-              to="/coming-soon"
+              to="/inbox"
               className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
             >
               <Inbox size={17} className="shrink-0" aria-hidden="true" />

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { BarChart3, Calendar } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import ThemeToggle from './ThemeToggle'
@@ -41,12 +42,12 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  to: '/home' | '/' | '/coming-soon' | '/my-tasks' | '/calendar' | '/reports'
+  to: '/home' | '/' | '/inbox' | '/my-tasks' | '/calendar' | '/reports'
   badge?: number
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
   { label: 'Command Center', icon: LayoutDashboard, to: '/' },
-  { label: 'Inbox', icon: Inbox, to: '/coming-soon', badge: 8 },
+  { label: 'Inbox', icon: Inbox, to: '/inbox' },
   { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Calendar', icon: Calendar, to: '/calendar' },
   { label: 'Reports', icon: BarChart3, to: '/reports' },
@@ -62,6 +63,7 @@ export default function Sidebar() {
   const [email, setEmail] = useState<string | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
+  const [inboxUnread, setInboxUnread] = useState(0)
 
   useEffect(() => {
     fetchNav().then((nav) => {
@@ -70,6 +72,7 @@ export default function Sidebar() {
       setIsSuperAdmin(nav.isSuperAdmin)
       setPendingApprovals(nav.pendingApprovalsCount)
     })
+    fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
 
     const supabase = getBrowserSupabase()
@@ -143,6 +146,7 @@ export default function Sidebar() {
       <nav className="mb-2 flex flex-col gap-0.5">
         {MAIN_NAV.map(({ label, icon: Icon, to, badge }) => {
           const active = pathname === to
+          const count = label === 'Inbox' ? inboxUnread : badge
           return (
             <Link
               key={label}
@@ -154,9 +158,9 @@ export default function Sidebar() {
             >
               <Icon size={16} className="shrink-0" aria-hidden="true" />
               {!collapsed && <span className="flex-1 truncate">{label}</span>}
-              {!collapsed && badge != null && (
+              {!collapsed && count != null && count > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
-                  {badge}
+                  {count}
                 </span>
               )}
             </Link>
