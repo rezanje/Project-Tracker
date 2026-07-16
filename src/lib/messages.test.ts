@@ -122,6 +122,23 @@ test('RLS: a non-participant cannot read a thread\'s messages', async () => {
   }
 }, 30000)
 
+test('a non-creator recipient can mark their own thread read', async () => {
+  const a = await makeSignedInUser('recip-a')
+  const b = await makeSignedInUser('recip-b')
+  const wsId = await sharedWorkspace(a.uid, b.uid)
+  try {
+    // a creates the DM (a is created_by), a sends a message to b.
+    const tid = await openDm(a.userClient, a.uid, b.uid)
+    await sendMessage(a.userClient, tid, a.uid, 'hey b')
+    // b (the NON-creator) has 1 unread, then clears it via markThreadRead.
+    expect(await countInboxUnread(b.userClient, b.uid)).toBe(1)
+    await markThreadRead(b.userClient, tid, b.uid)
+    expect(await countInboxUnread(b.userClient, b.uid)).toBe(0)
+  } finally {
+    await cleanup(wsId, a.uid, b.uid)
+  }
+}, 30000)
+
 test('openDm throws when the two users share no workspace', async () => {
   const a = await makeSignedInUser('nows-a')
   const b = await makeSignedInUser('nows-b')
