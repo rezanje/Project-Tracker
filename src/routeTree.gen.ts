@@ -16,6 +16,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as ForgotRouteImport } from './routes/forgot'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
@@ -60,6 +61,11 @@ const MyTasksRoute = MyTasksRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRoute = HomeRouteImport.update({
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/coming-soon': typeof ComingSoonRoute
   '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/coming-soon': typeof ComingSoonRoute
   '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/coming-soon': typeof ComingSoonRoute
   '/forgot': typeof ForgotRoute
   '/home': typeof HomeRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-tasks': typeof MyTasksRoute
   '/pending': typeof PendingRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/forgot'
     | '/home'
+    | '/inbox'
     | '/login'
     | '/my-tasks'
     | '/pending'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/forgot'
     | '/home'
+    | '/inbox'
     | '/login'
     | '/my-tasks'
     | '/pending'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/forgot'
     | '/home'
+    | '/inbox'
     | '/login'
     | '/my-tasks'
     | '/pending'
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   ComingSoonRoute: typeof ComingSoonRoute
   ForgotRoute: typeof ForgotRoute
   HomeRoute: typeof HomeRoute
+  InboxRoute: typeof InboxRoute
   LoginRoute: typeof LoginRoute
   MyTasksRoute: typeof MyTasksRoute
   PendingRoute: typeof PendingRoute
@@ -300,6 +313,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -381,6 +401,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComingSoonRoute: ComingSoonRoute,
   ForgotRoute: ForgotRoute,
   HomeRoute: HomeRoute,
+  InboxRoute: InboxRoute,
   LoginRoute: LoginRoute,
   MyTasksRoute: MyTasksRoute,
   PendingRoute: PendingRoute,
