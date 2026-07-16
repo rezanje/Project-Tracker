@@ -180,7 +180,9 @@ export async function listThreads(
       lastAt: lastMsg.get(t.id as string)?.created_at ?? null,
       unread: unread.get(t.id as string) ?? 0,
     }))
-    .sort((a, b) => ((a.lastAt ?? '') < (b.lastAt ?? '') ? 1 : -1))
+    .sort((a, b) =>
+      (a.lastAt ?? '') < (b.lastAt ?? '') ? 1 : (a.lastAt ?? '') > (b.lastAt ?? '') ? -1 : 0,
+    )
 }
 
 export async function countInboxUnread(
@@ -191,7 +193,7 @@ export async function countInboxUnread(
   return threads.reduce((n, t) => n + t.unread, 0)
 }
 
-/** Distinct approved members across the caller's workspaces, excluding self. */
+/** Distinct members across the caller's workspaces, excluding self. */
 export async function listMessageableMembers(
   supabase: SupabaseClient,
   userId: string,
