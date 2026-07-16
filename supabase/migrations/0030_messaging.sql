@@ -55,6 +55,11 @@ create policy tp_write on thread_participants for all
                  where t.id = thread_id and t.created_by = auth.uid()))
   with check (exists (select 1 from message_threads t
                       where t.id = thread_id and t.created_by = auth.uid()));
+-- Any participant may update their OWN row (e.g. mark-read via last_read_at).
+-- Without this, only the thread creator could clear their unread count.
+create policy tp_self_update on thread_participants for update
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 -- Messages: read if participant; insert your own into threads you're in. Immutable.
 create policy msg_read on messages for select
