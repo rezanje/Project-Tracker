@@ -30,6 +30,7 @@ function InboxPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [meId, setMeId] = useState('')
+  const meIdRef = useRef('')
   const [picking, setPicking] = useState(false)
   const [members, setMembers] = useState<MessageableMember[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,11 @@ function InboxPage() {
   useEffect(() => {
     getBrowserSupabase()
       .auth.getUser()
-      .then((res: { data: { user: { id: string } | null } }) => setMeId(res.data.user?.id ?? ''))
+      .then((res: { data: { user: { id: string } | null } }) => {
+        const id = res.data.user?.id ?? ''
+        setMeId(id)
+        meIdRef.current = id
+      })
     fetchThreadsFn().then(setThreads).catch(() => {})
   }, [])
 
@@ -48,6 +53,7 @@ function InboxPage() {
   useEffect(() => {
     if (!activeId) return
     let alive = true
+    setMessages([])
     fetchMessagesFn({ data: { threadId: activeId } }).then((m) => {
       if (alive) setMessages(m)
     })
@@ -71,13 +77,13 @@ function InboxPage() {
                 id: row.id,
                 threadId: activeId,
                 senderId: row.sender_id,
-                senderName: row.sender_id === meId ? 'Me' : otherName,
+                senderName: row.sender_id === meIdRef.current ? 'Me' : otherName,
                 body: row.body,
                 createdAt: row.created_at,
               },
             ]
           })
-          if (row.sender_id !== meId) markThreadReadFn({ data: { threadId: activeId } }).catch(() => {})
+          if (row.sender_id !== meIdRef.current) markThreadReadFn({ data: { threadId: activeId } }).catch(() => {})
         },
       )
       .subscribe()
@@ -86,12 +92,24 @@ function InboxPage() {
       alive = false
       supabase.removeChannel(channel)
     }
+    // meId is read via meIdRef inside the realtime handler, so it is intentionally
+    // omitted from deps to avoid tearing down/re-subscribing the channel when it resolves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, meId])
+  }, [activeId])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Close the member picker on Escape.
+  useEffect(() => {
+    if (!picking) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPicking(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [picking])
 
   async function send() {
     const body = draft.trim()
@@ -121,6 +139,7 @@ function InboxPage() {
 
   function openPicker() {
     setPicking(true)
+    setMembers([])
     fetchMessageableMembersFn().then(setMembers).catch(() => {})
   }
 
@@ -210,7 +229,13 @@ function InboxPage() {
       {/* Member picker */}
       {picking && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={() => setPicking(false)}>
-          <div className="card w-full max-w-sm p-3" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="card w-full max-w-sm p-3"
+            role="dialog"
+            aria-modal="true"
+            aria-label="New message"
+            onClick={(e) => e.stopPropagation()}
+          >
             <p className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">New message</p>
             {members.length === 0 && (
               <p className="px-2 py-4 text-center text-[12px] text-[var(--ink3)]">No members to message.</p>
