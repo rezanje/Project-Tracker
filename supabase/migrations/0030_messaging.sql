@@ -40,9 +40,10 @@ alter table message_threads    enable row level security;
 alter table thread_participants enable row level security;
 alter table messages            enable row level security;
 
--- Threads: read if participant; create if a workspace member creating your own.
+-- Threads: read if participant OR the creator (the creator must be able to read
+-- back the row via INSERT ... RETURNING before participant rows are inserted).
 create policy mt_read on message_threads for select
-  using (is_thread_participant(id));
+  using (is_thread_participant(id) or created_by = auth.uid());
 create policy mt_insert on message_threads for insert
   with check (is_workspace_member(workspace_id) and created_by = auth.uid());
 
