@@ -8,7 +8,6 @@ import {
   Play,
   Plus,
   RotateCcw,
-  Settings,
   SkipBack,
   SkipForward,
   Target,
@@ -16,7 +15,7 @@ import {
 } from 'lucide-react'
 import { AlarmClock, Flame, FolderPlus, StickyNote } from '@/components/pixel-icons'
 import { segFill } from '#/lib/progress'
-import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
 import { deleteNoteFn } from '#/lib/actions'
 import {
   fetchMyGoalsFn,
@@ -150,7 +149,6 @@ function Pomodoro() {
         <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
           🍅 Pomodoro
         </h3>
-        <Settings size={14} className="text-[var(--ink3)]" aria-hidden="true" />
       </div>
       <div className="lcd-screen mb-3">
         <p className="lcd-digits text-center text-5xl font-bold">
@@ -207,13 +205,37 @@ function Donut({ pct }: { pct: number }) {
   )
 }
 
-function Avatar({ i }: { i: number }) {
+const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+function accentFor(id: string): string {
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return ACCENTS[h % ACCENTS.length]
+}
+
+function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
+  if (members.length === 0) return null
+  const shown = members.slice(0, 3)
   return (
-    <span
-      className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
-      style={{ background: ['#7c3aed', '#2563eb', '#db2777', '#0891b2'][i % 4] }}
-    >
-      {String.fromCharCode(65 + i)}
+    <span className="avatar-stack">
+      {shown.map((m) => (
+        <span
+          key={m.id}
+          title={m.name}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
+          style={{ background: accentFor(m.id) }}
+        >
+          {m.avatar_url ? (
+            <img src={m.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+          ) : (
+            (m.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()
+          )}
+        </span>
+      ))}
+      {members.length > 3 && (
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--col)] text-[9px] font-bold text-[var(--ink2)]">
+          +{members.length - 3}
+        </span>
+      )}
     </span>
   )
 }
@@ -402,7 +424,6 @@ function PixelHome() {
                   <span className="chip shrink-0" style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}>
                     Due today
                   </span>
-                  <Avatar i={0} />
                 </div>
               ))}
             </div>
@@ -444,10 +465,7 @@ function PixelHome() {
                         <span className="text-[11px] font-semibold text-[var(--ink3)]">
                           {p.done} / {p.total} tasks
                         </span>
-                        <span className="avatar-stack">
-                          <Avatar i={0} />
-                          <Avatar i={1} />
-                        </span>
+                        <ProjectAvatars members={p.members} />
                       </div>
                     </Link>
                   )
@@ -605,9 +623,14 @@ function PixelHome() {
             </div>
             <div className="flex flex-col gap-2">
               {d.announcements.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No announcements.</p>}
-              {d.announcements.map((a, i) => (
+              {d.announcements.map((a) => (
                 <div key={a.id} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
-                  <Avatar i={i} />
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                    style={{ background: accentFor(a.author ?? 'Team') }}
+                  >
+                    {(a.author ?? 'Team').trim().split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-[var(--ink)]">{a.author ?? 'Team'}</p>
                     <p className="text-[12px] text-[var(--ink2)]">{a.body}</p>

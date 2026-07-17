@@ -16,7 +16,16 @@ export type DashWorkspace = {
   progress: number
   status: 'Healthy' | 'Need attention' | 'Behind schedule'
 }
-export type DashProject = { id: string; title: string; wsName: string; progress: number; done: number; total: number }
+export type DashProjectMember = { id: string; name: string; avatar_url: string | null }
+export type DashProject = {
+  id: string
+  title: string
+  wsName: string
+  progress: number
+  done: number
+  total: number
+  members: DashProjectMember[]
+}
 export type DashPriority = {
   id: string
   title: string
@@ -141,6 +150,21 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       0,
     )
 
+    // Project-card avatars: real board members (not task assignees), matching
+    // the board detail page's "who's on this project" meaning.
+    const boardIds = (boards ?? []).map((b) => b.id as string)
+    const { data: boardMembers } = boardIds.length
+      ? await supabase.from('board_members').select('board_id, profiles(id,name,avatar_url)').in('board_id', boardIds)
+      : { data: [] as Array<{ board_id: string; profiles: unknown }> }
+    const membersByBoard = new Map<string, DashProjectMember[]>()
+    for (const m of (boardMembers ?? []) as Array<{ board_id: string; profiles: unknown }>) {
+      const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
+      if (!p) continue
+      const list = membersByBoard.get(m.board_id) ?? []
+      list.push({ id: p.id, name: p.name, avatar_url: p.avatar_url })
+      membersByBoard.set(m.board_id, list)
+    }
+
     const isSuperAdmin = me?.is_super_admin === true
     const approvals = isSuperAdmin
       ? ((await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending')).count ?? 0)
@@ -234,7 +258,15 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       }
       if (ws && s) wsStat.set(ws, s)
       const bProgress = bTotal ? Math.round((bDone / bTotal) * 100) : 0
-      projects.push({ id: b.id, title: b.title, wsName: (ws && wsName.get(ws)) || '', progress: bProgress, done: bDone, total: bTotal })
+      projects.push({
+        id: b.id,
+        title: b.title,
+        wsName: (ws && wsName.get(ws)) || '',
+        progress: bProgress,
+        done: bDone,
+        total: bTotal,
+        members: membersByBoard.get(b.id) ?? [],
+      })
       if (bTotal > 0 && bDone === bTotal) pDone++
       else if (bDone > 0) pInProgress++
     }
