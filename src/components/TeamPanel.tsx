@@ -20,6 +20,11 @@ interface Props {
   onDeleteObjective: (id: string) => void
   onAssignObjective: (assigneeId: string, title: string, startDate: string, endDate: string) => void
   onAddKeyResult: (objectiveId: string, title: string, target: number) => void
+  inviteEmail: string
+  onInviteEmailChange: (email: string) => void
+  onInvite: () => void
+  inviteMessage: string | null
+  inviteLink: string | null
 }
 
 function initials(name: string | null, email: string | null): string {
@@ -124,7 +129,9 @@ export default function TeamPanel({
   members, meId, busy, onSetRole, onRemove, onClose,
   assignedKpis, assignedObjectives, onAssignKpi, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective,
   onAssignObjective, onAddKeyResult,
+  inviteEmail, onInviteEmailChange, onInvite, inviteMessage, inviteLink,
 }: Props) {
+  const isOwner = members.find((m) => m.user_id === meId)?.role === 'owner'
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
@@ -184,6 +191,35 @@ export default function TeamPanel({
             <li className="py-6 text-center text-sm text-[var(--ink3)]">No members yet.</li>
           )}
         </ul>
+
+        {isOwner && (
+          <div className="mb-4 border-t border-[var(--line)] pt-4">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+              Invite member
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="email…"
+                value={inviteEmail}
+                onChange={(e) => onInviteEmailChange(e.target.value)}
+                className="field flex-1 text-[13px]"
+              />
+              <button type="button" onClick={onInvite} className="btn btn-ghost btn-square px-3 text-xs">
+                Invite
+              </button>
+            </div>
+            {inviteMessage && <p className="mt-1 text-xs font-semibold text-[var(--accent-ink)]">{inviteMessage}</p>}
+            {inviteLink && (
+              <input
+                readOnly
+                value={inviteLink}
+                onFocus={(e) => e.target.select()}
+                className="field mt-1 w-full text-[11px]"
+              />
+            )}
+          </div>
+        )}
 
         <div className="border-t border-[var(--line)] pt-4">
           <h3 className="display-title mb-2 text-[15px] font-bold text-[var(--ink)]">KPIs</h3>

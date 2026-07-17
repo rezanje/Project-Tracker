@@ -499,6 +499,11 @@ function Home() {
           onDeleteObjective={onDeleteObjective}
           onAssignObjective={onAssignObjective}
           onAddKeyResult={onAddKeyResult}
+          inviteEmail={invEmail}
+          onInviteEmailChange={setInvEmail}
+          onInvite={onInviteTeam}
+          inviteMessage={invMsg}
+          inviteLink={invLink}
         />
       )}
 
