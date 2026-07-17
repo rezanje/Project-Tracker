@@ -13,6 +13,7 @@ import {
   type Message,
   type MessageableMember,
 } from '#/lib/messages'
+import { fetchNotificationsFn, type Notification } from '#/lib/notifications'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -25,6 +26,8 @@ function timeAgo(iso: string): string {
 }
 
 function InboxPage() {
+  const [tab, setTab] = useState<'messages' | 'mentions'>('messages')
+  const [mentions, setMentions] = useState<Notification[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -48,6 +51,13 @@ function InboxPage() {
       })
     fetchThreadsFn().then(setThreads).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (tab !== 'mentions') return
+    fetchNotificationsFn()
+      .then((items) => setMentions(items.filter((n) => n.kind === 'mention')))
+      .catch(() => {})
+  }, [tab])
 
   // Load messages + realtime for the active thread.
   useEffect(() => {
@@ -144,87 +154,125 @@ function InboxPage() {
   }
 
   return (
-    <div className="page-wrap grid gap-4 py-6 md:grid-cols-[280px_1fr]">
-      {/* Thread list */}
-      <aside className="card p-2">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">Messages</p>
-          <Button size="sm" variant="secondary" onClick={openPicker}>New</Button>
-        </div>
-        {threads.length === 0 && (
-          <p className="px-2 py-4 text-center text-[12px] text-[var(--ink3)]">No conversations yet.</p>
-        )}
-        {threads.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setActiveId(t.id)}
-            className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--col)] ${
-              t.id === activeId ? 'bg-[var(--accent-soft)]' : ''
-            }`}
-          >
-            <span className="flex w-full items-center justify-between">
-              <span className={`text-[13px] ${t.unread ? 'font-extrabold text-[var(--ink)]' : 'font-semibold text-[var(--ink)]'}`}>
-                {t.title}
-              </span>
-              {t.unread > 0 && (
-                <span className="ml-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white">
-                  {t.unread}
-                </span>
-              )}
-            </span>
-            {t.lastMessage && <span className="truncate text-[11px] text-[var(--ink3)]">{t.lastMessage}</span>}
-          </button>
-        ))}
-      </aside>
+    <div className="page-wrap py-6">
+      <div className="mb-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('messages')}
+          className={`btn ${tab === 'messages' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          Messages
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('mentions')}
+          className={`btn ${tab === 'mentions' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          Mentions
+        </button>
+      </div>
 
-      {/* Conversation */}
-      <section className="card flex min-h-[60vh] flex-col p-0">
-        {!active ? (
-          <div className="grid flex-1 place-items-center text-[13px] text-[var(--ink3)]">
-            Pick a conversation, or start a new one.
-          </div>
-        ) : (
-          <>
-            <div className="border-b-2 border-[var(--ink)] px-4 py-2.5">
-              <p className="display-title text-lg font-extrabold text-[var(--ink)]">{active.title}</p>
+      {tab === 'mentions' ? (
+        <div className="card p-2">
+          {mentions.length === 0 ? (
+            <p className="px-2 py-4 text-center text-[12px] text-[var(--ink3)]">No mentions yet.</p>
+          ) : (
+            mentions.map((n) => (
+              <a
+                key={n.id}
+                href={n.boardId ? `/board/${n.boardId}` : '#'}
+                className="flex flex-col gap-0.5 rounded-lg px-2.5 py-2 no-underline hover:bg-[var(--col)]"
+              >
+                <span className="text-[13px] font-semibold text-[var(--ink)]">{n.message}</span>
+                <span className="text-[11px] text-[var(--ink3)]">{timeAgo(n.createdAt)}</span>
+              </a>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+          {/* Thread list */}
+          <aside className="card p-2">
+            <div className="mb-2 flex items-center justify-between px-1">
+              <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">Messages</p>
+              <Button size="sm" variant="secondary" onClick={openPicker}>New</Button>
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
-              {messages.map((m) => (
-                <div key={m.id} className={`flex flex-col ${m.senderId === meId ? 'items-end' : 'items-start'}`}>
-                  <div
-                    className={`max-w-[75%] rounded-lg border-2 border-[var(--ink)] px-3 py-1.5 text-[13px] ${
-                      m.senderId === meId ? 'bg-[var(--accent-soft)]' : 'bg-[var(--card)]'
-                    }`}
-                  >
-                    {m.body}
-                  </div>
-                  <span className="mt-0.5 text-[10px] text-[var(--ink3)]">{timeAgo(m.createdAt)}</span>
+            {threads.length === 0 && (
+              <p className="px-2 py-4 text-center text-[12px] text-[var(--ink3)]">No conversations yet.</p>
+            )}
+            {threads.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveId(t.id)}
+                className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--col)] ${
+                  t.id === activeId ? 'bg-[var(--accent-soft)]' : ''
+                }`}
+              >
+                <span className="flex w-full items-center justify-between">
+                  <span className={`text-[13px] ${t.unread ? 'font-extrabold text-[var(--ink)]' : 'font-semibold text-[var(--ink)]'}`}>
+                    {t.title}
+                  </span>
+                  {t.unread > 0 && (
+                    <span className="ml-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white">
+                      {t.unread}
+                    </span>
+                  )}
+                </span>
+                {t.lastMessage && <span className="truncate text-[11px] text-[var(--ink3)]">{t.lastMessage}</span>}
+              </button>
+            ))}
+          </aside>
+
+          {/* Conversation */}
+          <section className="card flex min-h-[60vh] flex-col p-0">
+            {!active ? (
+              <div className="grid flex-1 place-items-center text-[13px] text-[var(--ink3)]">
+                Pick a conversation, or start a new one.
+              </div>
+            ) : (
+              <>
+                <div className="border-b-2 border-[var(--ink)] px-4 py-2.5">
+                  <p className="display-title text-lg font-extrabold text-[var(--ink)]">{active.title}</p>
                 </div>
-              ))}
-              <div ref={endRef} />
-            </div>
-            {error && <p className="px-4 pb-1 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                send()
-              }}
-              className="flex gap-2 border-t-2 border-[var(--ink)] p-3"
-            >
-              <Input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Type a message"
-                className="flex-1"
-              />
-              <Button type="submit" size="icon" disabled={!draft.trim()} aria-label="Send">
-                <Send size={16} />
-              </Button>
-            </form>
-          </>
-        )}
-      </section>
+                <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
+                  {messages.map((m) => (
+                    <div key={m.id} className={`flex flex-col ${m.senderId === meId ? 'items-end' : 'items-start'}`}>
+                      <div
+                        className={`max-w-[75%] rounded-lg border-2 border-[var(--ink)] px-3 py-1.5 text-[13px] ${
+                          m.senderId === meId ? 'bg-[var(--accent-soft)]' : 'bg-[var(--card)]'
+                        }`}
+                      >
+                        {m.body}
+                      </div>
+                      <span className="mt-0.5 text-[10px] text-[var(--ink3)]">{timeAgo(m.createdAt)}</span>
+                    </div>
+                  ))}
+                  <div ref={endRef} />
+                </div>
+                {error && <p className="px-4 pb-1 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    send()
+                  }}
+                  className="flex gap-2 border-t-2 border-[var(--ink)] p-3"
+                >
+                  <Input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Type a message"
+                    className="flex-1"
+                  />
+                  <Button type="submit" size="icon" disabled={!draft.trim()} aria-label="Send">
+                    <Send size={16} />
+                  </Button>
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      )}
 
       {/* Member picker */}
       {picking && (
