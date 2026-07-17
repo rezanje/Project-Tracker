@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import type { TeamMember } from '#/lib/workspaces'
+import type { TeamMember, AddableAccount } from '#/lib/workspaces'
 import type { AssignedKpi, AssignedObjective } from '#/lib/goals'
 import { AssignedGoalsCard } from './Goals'
 
@@ -25,6 +25,8 @@ interface Props {
   onInvite: () => void
   inviteMessage: string | null
   inviteLink: string | null
+  onSearchAccounts: (query: string) => Promise<AddableAccount[]>
+  onAddMember: (userId: string) => Promise<void>
 }
 
 function initials(name: string | null, email: string | null): string {
@@ -130,8 +132,39 @@ export default function TeamPanel({
   assignedKpis, assignedObjectives, onAssignKpi, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective,
   onAssignObjective, onAddKeyResult,
   inviteEmail, onInviteEmailChange, onInvite, inviteMessage, inviteLink,
+  onSearchAccounts, onAddMember,
 }: Props) {
   const isOwner = members.find((m) => m.user_id === meId)?.role === 'owner'
+  const [searchResults, setSearchResults] = useState<AddableAccount[]>([])
+  const [searching, setSearching] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const q = inviteEmail.trim()
+    if (q.length < 2) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    debounceRef.current = setTimeout(async () => {
+      const results = await onSearchAccounts(q)
+      setSearchResults(results)
+      setSearching(false)
+    }, 250)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inviteEmail])
+
+  async function handleAdd(userId: string) {
+    await onAddMember(userId)
+    onInviteEmailChange('')
+    setSearchResults([])
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
@@ -197,17 +230,39 @@ export default function TeamPanel({
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
               Invite member
             </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="email…"
-                value={inviteEmail}
-                onChange={(e) => onInviteEmailChange(e.target.value)}
-                className="field flex-1 text-[13px]"
-              />
-              <button type="button" onClick={onInvite} className="btn btn-ghost btn-square px-3 text-xs">
-                Invite
-              </button>
+            <div className="relative">
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="name or email…"
+                  value={inviteEmail}
+                  onChange={(e) => onInviteEmailChange(e.target.value)}
+                  className="field flex-1 text-[13px]"
+                />
+                <button type="button" onClick={onInvite} className="btn btn-ghost btn-square px-3 text-xs">
+                  Invite
+                </button>
+              </div>
+              {(searching || searchResults.length > 0) && (
+                <div className="absolute left-0 right-[86px] top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[var(--card)] shadow-[0_12px_30px_-10px_rgba(16,28,22,0.35)]">
+                  {searching && (
+                    <p className="px-3 py-2 text-xs text-[var(--ink3)]">Searching…</p>
+                  )}
+                  {!searching && searchResults.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => handleAdd(a.id)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--col)]"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                        {initials(a.name, null)}
+                      </span>
+                      <span className="truncate">{a.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {inviteMessage && <p className="mt-1 text-xs font-semibold text-[var(--accent-ink)]">{inviteMessage}</p>}
             {inviteLink && (
