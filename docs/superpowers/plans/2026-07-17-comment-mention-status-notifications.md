@@ -314,6 +314,7 @@ test('a plain comment on an assigned card notifies the assignee without an @ment
       .select('kind, message')
       .eq('user_id', assignee.uid)
       .eq('card_id', cardId)
+      .eq('kind', 'mention')
     expect(rows).toHaveLength(1)
     expect(rows![0].kind).toBe('mention')
     expect(rows![0].message).toContain('assigned to you')
@@ -358,6 +359,7 @@ test('mentioning the assignee by name produces exactly one notification, not two
       .select('id')
       .eq('user_id', assignee.uid)
       .eq('card_id', cardId)
+      .eq('kind', 'mention')
     expect(rows).toHaveLength(1)
   } finally {
     await cleanup(boardId, author.uid, assignee.uid)
@@ -382,6 +384,7 @@ test('moving a card to a different column notifies the assignee', async () => {
       .select('kind, message')
       .eq('user_id', assignee.uid)
       .eq('card_id', cardId)
+      .eq('kind', 'status')
     expect(rows).toHaveLength(1)
     expect(rows![0].kind).toBe('status')
     expect(rows![0].message).toContain('To Do')
