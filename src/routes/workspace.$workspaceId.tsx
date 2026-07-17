@@ -10,7 +10,10 @@ import {
   listWorkspaceMembers,
   setWorkspaceMemberRole,
   removeWorkspaceMember,
+  searchAddableAccounts,
+  addExistingWorkspaceMember,
   type TeamMember,
+  type AddableAccount,
 } from '#/lib/workspaces'
 import TeamPanel from '#/components/TeamPanel'
 import {
@@ -70,6 +73,50 @@ const inviteTeamFn = createServerFn({ method: 'POST' })
     const res = await inviteWorkspaceMember(getServiceSupabase(), data.workspaceId, data.email)
     flush(headers)
     return res
+  })
+
+const searchAccountsFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, query } = (d ?? {}) as { workspaceId?: unknown; query?: unknown }
+    if (typeof workspaceId !== 'string' || typeof query !== 'string')
+      throw new Error('workspaceId and query required')
+    return { workspaceId, query }
+  })
+  .handler(async ({ data }): Promise<AddableAccount[]> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { data: wm } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', data.workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (wm?.role !== 'owner') throw new Error('forbidden')
+    const results = await searchAddableAccounts(getServiceSupabase(), data.workspaceId, data.query)
+    flush(headers)
+    return results
+  })
+
+const addMemberFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { workspaceId, userId } = (d ?? {}) as { workspaceId?: unknown; userId?: unknown }
+    if (typeof workspaceId !== 'string' || typeof userId !== 'string')
+      throw new Error('workspaceId and userId required')
+    return { workspaceId, userId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const { data: wm } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', data.workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (wm?.role !== 'owner') throw new Error('forbidden')
+    await addExistingWorkspaceMember(getServiceSupabase(), data.workspaceId, data.userId)
+    flush(headers)
+    return { ok: true }
   })
 
 const fetchTeamFn = createServerFn({ method: 'POST' })
@@ -339,6 +386,18 @@ function Home() {
       setTeamBusy(false)
     }
   }
+  async function onAddMember(userId: string) {
+    setTeamBusy(true)
+    try {
+      await addMemberFn({ data: { workspaceId, userId } })
+      await refreshTeam()
+    } finally {
+      setTeamBusy(false)
+    }
+  }
+  async function onSearchAccounts(query: string): Promise<AddableAccount[]> {
+    return searchAccountsFn({ data: { workspaceId, query } })
+  }
   async function onAssignKpi(assigneeId: string, name: string, target: number, unit: string, startDate: string, endDate: string) {
     await assignKpiFn({ data: { assigneeId, workspaceId, name, target, unit, startDate, endDate } })
     await refreshGoals()
@@ -504,6 +563,8 @@ function Home() {
           onInvite={onInviteTeam}
           inviteMessage={invMsg}
           inviteLink={invLink}
+          onSearchAccounts={onSearchAccounts}
+          onAddMember={onAddMember}
         />
       )}
 
