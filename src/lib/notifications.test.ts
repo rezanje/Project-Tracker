@@ -221,3 +221,38 @@ test('no status notification when the assignee moves their own card', async () =
     await cleanup(boardId, owner.uid)
   }
 }, 25000)
+
+// fetchNotificationsFn (src/lib/notifications.ts) is a createServerFn handler,
+// so it can't be invoked directly from a plain Vitest test — there's no server
+// request context to run it in. Instead this exercises the exact same query
+// it issues (.select('id,message,board_id,read_at,created_at,kind') on
+// `notifications`), through the target user's own authenticated client (the
+// notifications_read RLS policy allows user_id = auth.uid()), to prove the
+// `kind` column actually round-trips through that select shape rather than
+// silently coming back undefined if `kind` were ever dropped from the string.
+test('fetchNotificationsFn query shape round-trips the kind column for a mention', async () => {
+  const author = await makeSignedInUser('kind-roundtrip-author')
+  const target = await makeSignedInUser('kind-roundtrip-target')
+  const { boardId, cardId } = await boardWithCard(author.uid, null)
+  await addMember(boardId, target.uid)
+  try {
+    await author.userClient
+      .from('comments')
+      .insert({ card_id: cardId, author_id: author.uid, body: `@kind-roundtrip-target check this out` })
+
+    const { data: rows, error } = await target.userClient
+      .from('notifications')
+      .select('id,message,board_id,read_at,created_at,kind')
+      .eq('card_id', cardId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    expect(error).toBeNull()
+    expect(rows).toHaveLength(1)
+    expect(rows![0].kind).toBe('mention')
+    expect(rows![0].kind).not.toBeUndefined()
+    expect(rows![0].message).toContain('mentioned you')
+  } finally {
+    await cleanup(boardId, author.uid, target.uid)
+  }
+}, 25000)
