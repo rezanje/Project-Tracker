@@ -4,7 +4,7 @@ import { requireUser } from './auth'
 
 export type Notification = {
   id: string
-  kind: 'assignment' | 'reminder' | 'approval'
+  kind: 'assignment' | 'reminder' | 'approval' | 'mention' | 'status'
   message: string
   boardId: string | null
   read: boolean
@@ -26,7 +26,7 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
     const [{ data: notifs }, { data: reminders }, { data: pending }] = await Promise.all([
       supabase
         .from('notifications')
-        .select('id,message,board_id,read_at,created_at')
+        .select('id,message,board_id,read_at,created_at,kind')
         .order('created_at', { ascending: false })
         .limit(20),
       supabase
@@ -52,9 +52,10 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
       board_id: string | null
       read_at: string | null
       created_at: string
+      kind: 'assignment' | 'mention' | 'status'
     }>).map((n) => ({
       id: n.id,
-      kind: 'assignment',
+      kind: n.kind,
       message: n.message,
       boardId: n.board_id,
       read: n.read_at != null,

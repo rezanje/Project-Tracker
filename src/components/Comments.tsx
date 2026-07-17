@@ -37,7 +37,11 @@ export default function Comments({ cardId, members }: CommentsProps) {
   const [body, setBody] = useState('')
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mentionOpen, setMentionOpen] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionStart, setMentionStart] = useState<number | null>(null)
   const currentUserId = useRef<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Resolve an author's display name from the board members list, falling back
   // to "You" for the current user or a generic label.
@@ -124,6 +128,47 @@ export default function Comments({ cardId, members }: CommentsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId])
 
+  function onBodyChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    const cursor = e.target.selectionStart ?? value.length
+    setBody(value)
+
+    const upToCursor = value.slice(0, cursor)
+    const at = upToCursor.lastIndexOf('@')
+    if (at === -1 || /\s/.test(upToCursor.slice(at + 1))) {
+      setMentionOpen(false)
+      return
+    }
+    setMentionStart(at)
+    setMentionQuery(upToCursor.slice(at + 1))
+    setMentionOpen(true)
+  }
+
+  function selectMention(name: string) {
+    if (mentionStart === null) return
+    const cursor = inputRef.current?.selectionStart ?? body.length
+    const before = body.slice(0, mentionStart)
+    const after = body.slice(cursor)
+
+    // Only add space separator if 'after' is empty or doesn't already start with whitespace
+    const separator = after && /^\s/.test(after) ? '' : ' '
+    const next = `${before}@${name}${separator}${after}`
+
+    setBody(next)
+    setMentionOpen(false)
+    setMentionStart(null)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      // Cursor positioned right after the mention name
+      const pos = before.length + 1 + name.length
+      inputRef.current?.setSelectionRange(pos, pos)
+    })
+  }
+
+  const mentionMatches = mentionOpen
+    ? members.filter((m) => m.name.toLowerCase().startsWith(mentionQuery.toLowerCase())).slice(0, 5)
+    : []
+
   async function handlePost(e: React.FormEvent) {
     e.preventDefault()
     const text = body.trim()
@@ -179,13 +224,33 @@ export default function Comments({ cardId, members }: CommentsProps) {
       </div>
 
       <form onSubmit={handlePost} className="flex items-center gap-2">
-        <input
-          type="text"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Write a comment…"
-          className="field flex-1"
-        />
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            value={body}
+            onChange={onBodyChange}
+            onBlur={() => {
+              setTimeout(() => setMentionOpen(false), 150)
+            }}
+            placeholder="Write a comment… (@ to mention)"
+            className="field w-full"
+          />
+          {mentionOpen && mentionMatches.length > 0 && (
+            <div className="absolute bottom-full left-0 z-10 mb-1 w-48 rounded-lg border border-[var(--line)] bg-[var(--card)] p-1 shadow-lg">
+              {mentionMatches.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => selectMention(m.name)}
+                  className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--col)]"
+                >
+                  {m.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           type="submit"
           disabled={posting || !body.trim()}
