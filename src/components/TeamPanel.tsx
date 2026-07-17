@@ -137,21 +137,32 @@ export default function TeamPanel({
   const isOwner = members.find((m) => m.user_id === meId)?.role === 'owner'
   const [searchResults, setSearchResults] = useState<AddableAccount[]>([])
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestQueryRef = useRef('')
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const q = inviteEmail.trim()
+    setSearchError(null)
     if (q.length < 2) {
       setSearchResults([])
       setSearching(false)
       return
     }
+    latestQueryRef.current = q
     setSearching(true)
     debounceRef.current = setTimeout(async () => {
-      const results = await onSearchAccounts(q)
-      setSearchResults(results)
-      setSearching(false)
+      try {
+        const results = await onSearchAccounts(q)
+        if (latestQueryRef.current === q) {
+          setSearchResults(results)
+        }
+      } catch {
+        setSearchError('Search failed.')
+      } finally {
+        setSearching(false)
+      }
     }, 250)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -160,9 +171,13 @@ export default function TeamPanel({
   }, [inviteEmail])
 
   async function handleAdd(userId: string) {
-    await onAddMember(userId)
-    onInviteEmailChange('')
-    setSearchResults([])
+    try {
+      await onAddMember(userId)
+      onInviteEmailChange('')
+      setSearchResults([])
+    } catch {
+      setSearchError('Could not add member — try again.')
+    }
   }
 
   return (
@@ -233,7 +248,7 @@ export default function TeamPanel({
             <div className="relative">
               <div className="flex gap-2">
                 <input
-                  type="email"
+                  type="text"
                   placeholder="name or email…"
                   value={inviteEmail}
                   onChange={(e) => onInviteEmailChange(e.target.value)}
@@ -264,6 +279,7 @@ export default function TeamPanel({
                 </div>
               )}
             </div>
+            {searchError && <p className="mt-1 text-xs font-semibold text-[var(--danger)]">{searchError}</p>}
             {inviteMessage && <p className="mt-1 text-xs font-semibold text-[var(--accent-ink)]">{inviteMessage}</p>}
             {inviteLink && (
               <input
