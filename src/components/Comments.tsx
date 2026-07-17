@@ -149,13 +149,18 @@ export default function Comments({ cardId, members }: CommentsProps) {
     const cursor = inputRef.current?.selectionStart ?? body.length
     const before = body.slice(0, mentionStart)
     const after = body.slice(cursor)
-    const next = `${before}@${name} ${after}`
+
+    // Only add space separator if 'after' is empty or doesn't already start with whitespace
+    const separator = after && /^\s/.test(after) ? '' : ' '
+    const next = `${before}@${name}${separator}${after}`
+
     setBody(next)
     setMentionOpen(false)
     setMentionStart(null)
     requestAnimationFrame(() => {
       inputRef.current?.focus()
-      const pos = before.length + name.length + 2
+      // Cursor positioned right after the mention name
+      const pos = before.length + 1 + name.length
       inputRef.current?.setSelectionRange(pos, pos)
     })
   }
@@ -225,6 +230,9 @@ export default function Comments({ cardId, members }: CommentsProps) {
             type="text"
             value={body}
             onChange={onBodyChange}
+            onBlur={() => {
+              setTimeout(() => setMentionOpen(false), 150)
+            }}
             placeholder="Write a comment… (@ to mention)"
             className="field w-full"
           />
