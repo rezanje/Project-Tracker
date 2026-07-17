@@ -134,6 +134,37 @@ test('searchAddableAccounts returns [] for a 1-character query', async () => {
   }
 }, 30000)
 
+test('searchAddableAccounts finds an approved user by partial email match', async () => {
+  const owner = await makeApprovedUser('email-owner', 'Email Owner')
+  const target = await makeApprovedUser('zzzemailmatch', 'Regular Name')
+  const wsId = await makeWorkspace(owner.uid)
+  try {
+    const results = await searchAddableAccounts(admin, wsId, 'zzzemailmatch')
+    expect(results.some((r) => r.id === target.uid)).toBe(true)
+  } finally {
+    await cleanup(wsId, owner.uid, target.uid)
+  }
+}, 30000)
+
+test('searchAddableAccounts excludes a non-approved (pending) profile even if the name matches', async () => {
+  const owner = await makeApprovedUser('pending-owner', 'Pending Owner')
+  const wsId = await makeWorkspace(owner.uid)
+  const email = `pending-search.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@gmail.com`
+  const { data: u } = await admin.auth.admin.createUser({
+    email,
+    password: 'Babikeguling1!',
+    email_confirm: true,
+    user_metadata: { name: 'ZzzPendingUser Testerson' },
+  })
+  const pendingUid = u.user!.id
+  try {
+    const results = await searchAddableAccounts(admin, wsId, 'zzzpendinguser')
+    expect(results.some((r) => r.id === pendingUid)).toBe(false)
+  } finally {
+    await cleanup(wsId, owner.uid, pendingUid)
+  }
+}, 30000)
+
 test('addExistingWorkspaceMember inserts a workspace_members row with role member', async () => {
   const owner = await makeApprovedUser('add-owner', 'Add Owner')
   const target = await makeApprovedUser('add-target', 'Add Target')
