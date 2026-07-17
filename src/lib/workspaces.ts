@@ -117,6 +117,72 @@ export async function removeWorkspaceMember(
   if (error) throw error
 }
 
+export type AddableAccount = { id: string; name: string; avatar_url: string | null }
+
+/**
+ * Approved accounts matching `query` by name or email, excluding anyone already
+ * a member of `workspaceId`. Needs a service-role client (email lives in Auth,
+ * not `profiles`, same as `inviteWorkspaceMember`/`listWorkspaceMembers`).
+ * ponytail: auth.admin.listUsers() scans every account for the email match —
+ * fine at this app's user count; paginate or add a server-side email index if
+ * it ever gets slow.
+ */
+export async function searchAddableAccounts(
+  svc: SupabaseClient,
+  workspaceId: string,
+  query: string,
+): Promise<AddableAccount[]> {
+  const q = query.trim()
+  if (q.length < 2) return []
+
+  const { data: memberRows } = await svc
+    .from('workspace_members')
+    .select('user_id')
+    .eq('workspace_id', workspaceId)
+  const existingIds = new Set((memberRows ?? []).map((m) => m.user_id as string))
+
+  const { data: byName } = await svc
+    .from('profiles')
+    .select('id,name,avatar_url')
+    .eq('status', 'approved')
+    .ilike('name', `%${q}%`)
+    .limit(8)
+
+  const { data: users } = await svc.auth.admin.listUsers()
+  const emailMatchIds = users.users
+    .filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()))
+    .map((u) => u.id)
+  const { data: byEmail } = emailMatchIds.length
+    ? await svc
+        .from('profiles')
+        .select('id,name,avatar_url')
+        .eq('status', 'approved')
+        .in('id', emailMatchIds)
+        .limit(8)
+    : { data: [] as Array<{ id: string; name: string | null; avatar_url: string | null }> }
+
+  const merged = new Map<string, AddableAccount>()
+  for (const p of [...(byName ?? []), ...(byEmail ?? [])]) {
+    if (existingIds.has(p.id as string)) continue
+    if (!merged.has(p.id as string)) {
+      merged.set(p.id as string, { id: p.id as string, name: (p.name as string | null) ?? 'Unknown', avatar_url: (p.avatar_url as string | null) ?? null })
+    }
+  }
+  return [...merged.values()].slice(0, 8)
+}
+
+/** Add an existing account straight into a workspace (no token/email round-trip). */
+export async function addExistingWorkspaceMember(
+  svc: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await svc
+    .from('workspace_members')
+    .insert({ workspace_id: workspaceId, user_id: userId, role: 'member' })
+  if (error) throw error
+}
+
 /** Convert a pending workspace invite into a member row. */
 export async function acceptWorkspaceInvite(
   svc: SupabaseClient,
