@@ -15,7 +15,7 @@ import {
   Star,
   UserCheck,
 } from 'lucide-react'
-import { BarChart3, Calendar } from '@/components/pixel-icons'
+import { BarChart3, Calendar, FolderKanban } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
@@ -42,13 +42,14 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  to: '/home' | '/' | '/inbox' | '/my-tasks' | '/calendar' | '/reports'
+  to: '/home' | '/' | '/inbox' | '/my-tasks' | '/projects' | '/calendar' | '/reports'
   badge?: number
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
   { label: 'Command Center', icon: LayoutDashboard, to: '/' },
   { label: 'Inbox', icon: Inbox, to: '/inbox' },
   { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
+  { label: 'Projects', icon: FolderKanban, to: '/projects' },
   { label: 'Calendar', icon: Calendar, to: '/calendar' },
   { label: 'Reports', icon: BarChart3, to: '/reports' },
 ]
