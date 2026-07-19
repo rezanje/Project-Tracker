@@ -59,6 +59,86 @@ export type BoardWithColumns = ProjectMeta & {
   workspaceId: string | null
   columns: ColumnRow[]
   pillars: Pillar[]
+  activity: ActivityItem[]
+  files: FileItem[]
+}
+
+export type ActivityItem = {
+  id: string
+  cardId: string
+  authorName: string
+  text: string
+  createdAt: string
+}
+
+export type FileItem = {
+  id: string
+  cardId: string
+  filename: string
+  createdAt: string
+}
+
+/** Recent comments + attachment uploads across a board's cards, merged and
+ * sorted newest-first. No move-history exists yet, so card moves aren't
+ * included. Attachment rows are also returned as `files`, board-wide. */
+async function fetchBoardActivity(
+  supabase: SupabaseClient,
+  cardIds: string[],
+  cardTitleById: Map<string, string>,
+  limit = 8,
+): Promise<{ activity: ActivityItem[]; files: FileItem[] }> {
+  if (cardIds.length === 0) return { activity: [], files: [] }
+
+  const [{ data: comments }, { data: attachments }] = await Promise.all([
+    supabase
+      .from('comments')
+      .select('id,card_id,created_at,profiles(name)')
+      .in('card_id', cardIds)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('attachments')
+      .select('id,card_id,filename,created_at,profiles(name)')
+      .in('card_id', cardIds)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+  ])
+
+  const authorName = (row: { profiles?: { name?: string | null } | { name?: string | null }[] | null }): string => {
+    const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+    return p?.name ?? 'Someone'
+  }
+  const cardTitle = (cardId: string) => cardTitleById.get(cardId) ?? 'a card'
+
+  const fromComments: ActivityItem[] = (comments ?? []).map((c) => ({
+    id: `comment:${c.id as string}`,
+    cardId: c.card_id as string,
+    authorName: authorName(c as { profiles?: { name?: string | null } | null }),
+    text: `commented on "${cardTitle(c.card_id as string)}"`,
+    createdAt: c.created_at as string,
+  }))
+  const fromAttachments: ActivityItem[] = (attachments ?? []).map((a) => ({
+    id: `attachment:${a.id as string}`,
+    cardId: a.card_id as string,
+    authorName: authorName(a as { profiles?: { name?: string | null } | null }),
+    text: `uploaded ${a.filename as string} to "${cardTitle(a.card_id as string)}"`,
+    createdAt: a.created_at as string,
+  }))
+
+  const activity = [...fromComments, ...fromAttachments]
+    .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())
+    .slice(0, limit)
+
+  const files: FileItem[] = (attachments ?? [])
+    .map((a) => ({
+      id: a.id as string,
+      cardId: a.card_id as string,
+      filename: a.filename as string,
+      createdAt: a.created_at as string,
+    }))
+    .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())
+
+  return { activity, files }
 }
 
 /**
@@ -166,6 +246,14 @@ export async function loadBoard(
     pillars = (pl ?? []) as Pillar[]
   }
 
+  const cardTitleById = new Map(cols.flatMap((c) => c.cards.map((card) => [card.id, card.title] as const)))
+  const { activity, files } = await fetchBoardActivity(
+    supabase,
+    [...cardTitleById.keys()],
+    cardTitleById,
+    50,
+  )
+
   const b = board as Record<string, unknown>
   return {
     id: board.id,
@@ -184,6 +272,8 @@ export async function loadBoard(
     priority: (b.priority as string | null) ?? null,
     value_idr,
     columns: cols,
+    activity,
+    files,
   }
 }
 

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { BarChart3, Calendar, FolderKanban } from '@/components/pixel-icons'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
@@ -207,12 +208,20 @@ export default function Sidebar() {
                 collapsed ? 'justify-center px-0' : 'px-2.5'
               } ${isActiveWs ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'}`}
             >
-              <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold text-white"
-                style={{ background: accentFor(w.id) }}
-              >
-                {w.name.slice(0, 1).toUpperCase()}
-              </span>
+              {workspaceLogoFor(w.name) ? (
+                <img
+                  src={workspaceLogoFor(w.name) as string}
+                  alt=""
+                  className="h-5 w-5 shrink-0 rounded-md object-cover"
+                />
+              ) : (
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold text-white"
+                  style={{ background: accentFor(w.id) }}
+                >
+                  {w.name.slice(0, 1).toUpperCase()}
+                </span>
+              )}
               {!collapsed && <span className="truncate">{w.name}</span>}
             </Link>
             {!collapsed && isActiveWs && wsBoards.length > 0 && (

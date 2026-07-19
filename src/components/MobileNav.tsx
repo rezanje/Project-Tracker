@@ -18,6 +18,7 @@ import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
+import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { accentFor } from './Sidebar'
 import ThemeToggle from './ThemeToggle'
 
@@ -196,12 +197,20 @@ export default function MobileNav() {
                       isActiveWs ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
                     }`}
                   >
-                    <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold text-white"
-                      style={{ background: accentFor(w.id) }}
-                    >
-                      {w.name.slice(0, 1).toUpperCase()}
-                    </span>
+                    {workspaceLogoFor(w.name) ? (
+                      <img
+                        src={workspaceLogoFor(w.name) as string}
+                        alt=""
+                        className="h-5 w-5 shrink-0 rounded-md object-cover"
+                      />
+                    ) : (
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold text-white"
+                        style={{ background: accentFor(w.id) }}
+                      >
+                        {w.name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
                     <span className="truncate">{w.name}</span>
                   </Link>
                   {isActiveWs && wsBoards.length > 0 && (

@@ -16,6 +16,7 @@ import { Building2, Clock, Flame, FolderKanban, ListChecks } from '@/components/
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { fetchTodayEventsFn, type EventItem } from '#/lib/events'
 import { fetchPendingApprovalsFn, resolveApprovalFn, type ApprovalRequest, type ApprovalKind } from '#/lib/approval-requests'
+import { workspaceLogoFor } from '#/lib/workspace-logos'
 
 type CommandCenterData = Omit<DashboardData, 'approvals'> & { events: EventItem[]; approvals: ApprovalRequest[] }
 
@@ -194,12 +195,20 @@ function CommandCenter() {
                 {d.workspaces.slice(0, 4).map((w) => (
                   <div key={w.id} className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span
-                        className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                        style={{ background: accentFor(w.id) }}
-                      >
-                        {w.name.slice(0, 1).toUpperCase()}
-                      </span>
+                      {workspaceLogoFor(w.name) ? (
+                        <img
+                          src={workspaceLogoFor(w.name) as string}
+                          alt=""
+                          className="h-7 w-7 rounded-[7px] object-cover"
+                        />
+                      ) : (
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
+                          style={{ background: accentFor(w.id) }}
+                        >
+                          {w.name.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       <Star
                         size={14}
                         className={w.progress >= 80 ? 'fill-[#f5c451] text-[#f5c451]' : 'text-[var(--ink3)]'}
@@ -436,12 +445,20 @@ function CommandCenter() {
             <div className="flex flex-col">
               {d.workspaces.slice(0, 4).map((w) => (
                 <div key={w.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
-                  <span
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                    style={{ background: accentFor(w.id) }}
-                  >
-                    {w.name.slice(0, 1).toUpperCase()}
-                  </span>
+                  {workspaceLogoFor(w.name) ? (
+                    <img
+                      src={workspaceLogoFor(w.name) as string}
+                      alt=""
+                      className="h-7 w-7 shrink-0 rounded-[7px] object-cover"
+                    />
+                  ) : (
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
+                      style={{ background: accentFor(w.id) }}
+                    >
+                      {w.name.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-bold text-[var(--ink)]">{w.name}</p>
                     <p className="truncate text-[10px] text-[var(--ink3)]">

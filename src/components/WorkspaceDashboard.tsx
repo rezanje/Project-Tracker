@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Award, Bot, Plus, Sparkles, Trophy, Users } from 'lucide-react'
 import { Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
+import { workspaceLogoFor } from '#/lib/workspace-logos'
 
 // ponytail: presentational workspace dashboard matching the mockup. Real data
 // is passed in by the route (stats, projects, schedule, members, status
@@ -157,12 +158,20 @@ export default function WorkspaceDashboard({
           <Link to="/" className="text-[12px] font-semibold text-[var(--ink3)] no-underline hover:text-[var(--ink)]">
             ← Workspaces
           </Link>
-          <span
-            className="flex h-11 w-11 items-center justify-center rounded-[10px] border-2 border-[var(--ink)] text-lg font-extrabold text-white"
-            style={{ background: accentFor(workspaceId) }}
-          >
-            {name.slice(0, 1).toUpperCase()}
-          </span>
+          {workspaceLogoFor(name) ? (
+            <img
+              src={workspaceLogoFor(name) as string}
+              alt=""
+              className="h-11 w-11 rounded-[10px] border-2 border-[var(--ink)] object-cover"
+            />
+          ) : (
+            <span
+              className="flex h-11 w-11 items-center justify-center rounded-[10px] border-2 border-[var(--ink)] text-lg font-extrabold text-white"
+              style={{ background: accentFor(workspaceId) }}
+            >
+              {name.slice(0, 1).toUpperCase()}
+            </span>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <h1 className="display-title text-2xl font-extrabold text-[var(--ink)]">{name}</h1>

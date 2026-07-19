@@ -480,6 +480,11 @@ function BoardView() {
     }
   }
 
+  function openCardDetailById(cardId: string) {
+    const card = board.columns.flatMap((c) => c.cards).find((c) => c.id === cardId)
+    if (card) openCardDetail(card)
+  }
+
   async function addMilestone(label: string, startDate: string, endDate: string) {
     await createMilestoneFn({ data: { boardId: board.id, label, startDate, endDate } })
     setBoardMeta(await fetchBoardMeta({ data: { boardId: board.id } }))
@@ -1119,6 +1124,10 @@ function BoardView() {
           <BoardRail
             members={boardMeta?.members ?? []}
             budgetIdr={board.value_idr ?? null}
+            activity={board.activity ?? []}
+            onActivityClick={openCardDetailById}
+            files={board.files ?? []}
+            onFileClick={openCardDetailById}
           />
         </div>
       )}

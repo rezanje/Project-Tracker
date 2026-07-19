@@ -20,6 +20,7 @@ import {
   type Notification,
 } from '#/lib/notifications'
 import Popover from './Popover'
+import QuickProjectForm from './QuickProjectForm'
 import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
 
@@ -107,15 +108,49 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
 }
 
 function NewMenu() {
+  const [tab, setTab] = useState<'task' | 'project'>('task')
+
   return (
     <Popover
       renderTrigger={(_open, toggle) => (
-        <button type="button" aria-label="New" onClick={toggle} className="btn btn-primary">
+        <button
+          type="button"
+          aria-label="New"
+          onClick={() => {
+            setTab('task')
+            toggle()
+          }}
+          className="btn btn-primary"
+        >
           <Plus size={16} aria-hidden="true" />
           <span className="hidden sm:inline">New</span>
         </button>
       )}
-      renderPanel={(close) => <QuickTaskForm onDone={close} />}
+      renderPanel={(close) => (
+        <>
+          <div className="mb-2 flex gap-1 rounded-lg bg-[var(--col)] p-1">
+            <button
+              type="button"
+              onClick={() => setTab('task')}
+              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
+                tab === 'task' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
+              }`}
+            >
+              Task
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('project')}
+              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
+                tab === 'project' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
+              }`}
+            >
+              Project
+            </button>
+          </div>
+          {tab === 'task' ? <QuickTaskForm onDone={close} /> : <QuickProjectForm onDone={close} />}
+        </>
+      )}
     />
   )
 }

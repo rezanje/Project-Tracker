@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity,
   CheckCircle2,
@@ -10,12 +10,22 @@ import {
 } from 'lucide-react'
 import { Clock, Flame, ListChecks } from '@/components/pixel-icons'
 import { localDateStr } from '#/lib/home'
+import type { ActivityItem, FileItem } from '#/lib/board-data'
 
 // ponytail: board chrome around the real kanban. Stats + Team + Budget value are
 // real (passed from the route); roadmap milestones are real too (board_milestones,
-// owner-managed). Activity feed, Files list, and the spent-% are still static
-// mockup placeholders until those data sources exist. AI panel
-// is a Coming Soon shell.
+// owner-managed). Activity feed and Files list are real too (comments +
+// attachment uploads, merged by time — card moves aren't included, no
+// move-history table exists). The spent-% is still a static mockup
+// placeholder until that data source exists. AI panel is a Coming Soon shell.
+
+function timeAgo(iso: string): string {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (secs < 60) return 'just now'
+  if (secs < 3600) return `${Math.floor(secs / 60)} min ago`
+  if (secs < 86400) return `${Math.floor(secs / 3600)} hour${secs < 7200 ? '' : 's'} ago`
+  return `${Math.floor(secs / 86400)} day${secs < 172800 ? '' : 's'} ago`
+}
 
 type Member = { id?: string | null; name?: string | null; email?: string | null; role?: string | null }
 
@@ -88,41 +98,156 @@ export function BoardStats({
 function RailCard({
   icon: Icon,
   title,
+  action,
   children,
 }: {
   icon: typeof Activity
   title: string
+  action?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <section className="card p-3.5">
-      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-        <Icon size={13} /> {title}
-      </h3>
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+          <Icon size={13} /> {title}
+        </h3>
+        {action}
+      </div>
       {children}
     </section>
   )
 }
 
-const ACTIVITY = [
-  { who: 'Reza Rahman', what: 'moved Packaging box', when: '2 min ago' },
-  { who: 'Dimas Ardi', what: 'uploaded logo.ai', when: '15 min ago' },
-  { who: 'Nadia Putri', what: 'commented on Pengujian kualitas', when: '1 hour ago' },
-]
-const FILES = [
-  { name: 'logo.ai', size: '2.4 MB' },
-  { name: 'spec_produksi.pdf', size: '1.2 MB' },
-  { name: 'budget.xlsx', size: '28 KB' },
-  { name: 'brand_guide.psd', size: '18 MB' },
-]
+function ActivityList({
+  items,
+  onItemClick,
+}: {
+  items: ActivityItem[]
+  onItemClick: (cardId: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((a) => (
+        <button
+          key={a.id}
+          type="button"
+          onClick={() => onItemClick(a.cardId)}
+          className="flex gap-2 rounded-lg p-1 -m-1 text-left hover:bg-[var(--col)]"
+        >
+          <span
+            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+            style={{ background: AVATAR_TINTS[a.authorName.length % AVATAR_TINTS.length] }}
+          >
+            {a.authorName.split(' ').map((s) => s[0]).join('').slice(0, 2)}
+          </span>
+          <p className="text-[12px] leading-snug text-[var(--ink2)]">
+            <b className="text-[var(--ink)]">{a.authorName}</b> {a.text}
+            <span className="block text-[10px] text-[var(--ink3)]">{timeAgo(a.createdAt)}</span>
+          </p>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function LogModal({
+  icon: Icon,
+  title,
+  onClose,
+  children,
+}: {
+  icon: typeof Activity
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="card flex max-h-[80vh] w-full max-w-md flex-col p-3.5"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+            <Icon size={13} /> {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-[11px] font-bold text-[var(--ink3)] hover:text-[var(--ink)]"
+          >
+            Close
+          </button>
+        </div>
+        <div className="overflow-y-auto pr-1">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function FilesList({
+  items,
+  onItemClick,
+}: {
+  items: FileItem[]
+  onItemClick: (cardId: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {items.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          onClick={() => onItemClick(f.cardId)}
+          className="flex w-full items-center gap-2 rounded-lg p-1 -m-1 text-left hover:bg-[var(--col)]"
+        >
+          <FileText size={14} className="shrink-0 text-[var(--ink3)]" />
+          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--ink)]">
+            {f.filename}
+          </span>
+          <span className="shrink-0 text-[10px] text-[var(--ink3)]">{timeAgo(f.createdAt)}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function BoardRail({
   members,
   budgetIdr,
+  activity,
+  onActivityClick,
+  files,
+  onFileClick,
 }: {
   members: Member[]
   budgetIdr: number | null
+  activity: ActivityItem[]
+  onActivityClick: (cardId: string) => void
+  files: FileItem[]
+  onFileClick: (cardId: string) => void
 }) {
+  const [logOpen, setLogOpen] = useState(false)
+  const [filesOpen, setFilesOpen] = useState(false)
+  const preview = activity.slice(0, 8)
+  const filesPreview = files.slice(0, 5)
+
   return (
     <aside className="hidden w-72 shrink-0 flex-col gap-4 xl:flex">
       {/* AI assistant — Coming Soon */}
@@ -145,36 +270,73 @@ export function BoardRail({
         </div>
       </section>
 
-      <RailCard icon={Activity} title="Activity Feed">
-        <div className="flex flex-col gap-2">
-          {ACTIVITY.map((a) => (
-            <div key={a.what} className="flex gap-2">
-              <span
-                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                style={{ background: AVATAR_TINTS[a.who.length % AVATAR_TINTS.length] }}
-              >
-                {a.who.split(' ').map((s) => s[0]).join('').slice(0, 2)}
-              </span>
-              <p className="text-[12px] leading-snug text-[var(--ink2)]">
-                <b className="text-[var(--ink)]">{a.who}</b> {a.what}
-                <span className="block text-[10px] text-[var(--ink3)]">{a.when}</span>
-              </p>
-            </div>
-          ))}
-        </div>
+      <RailCard
+        icon={Activity}
+        title="Activity Feed"
+        action={
+          activity.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setLogOpen(true)}
+              className="shrink-0 text-[10px] font-bold text-[var(--accent-ink)] hover:underline"
+            >
+              View all
+            </button>
+          )
+        }
+      >
+        {activity.length === 0 ? (
+          <p className="text-[12px] text-[var(--ink3)]">No activity yet.</p>
+        ) : (
+          <ActivityList items={preview} onItemClick={onActivityClick} />
+        )}
       </RailCard>
 
-      <RailCard icon={FileText} title="Files">
-        <div className="flex flex-col gap-1.5">
-          {FILES.map((f) => (
-            <div key={f.name} className="flex items-center gap-2">
-              <FileText size={14} className="shrink-0 text-[var(--ink3)]" />
-              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--ink)]">{f.name}</span>
-              <span className="shrink-0 text-[10px] text-[var(--ink3)]">{f.size}</span>
-            </div>
-          ))}
-        </div>
+      {logOpen && (
+        <LogModal icon={Activity} title="Activity log" onClose={() => setLogOpen(false)}>
+          <ActivityList
+            items={activity}
+            onItemClick={(cardId) => {
+              setLogOpen(false)
+              onActivityClick(cardId)
+            }}
+          />
+        </LogModal>
+      )}
+
+      <RailCard
+        icon={FileText}
+        title="Files"
+        action={
+          files.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilesOpen(true)}
+              className="shrink-0 text-[10px] font-bold text-[var(--accent-ink)] hover:underline"
+            >
+              View all
+            </button>
+          )
+        }
+      >
+        {files.length === 0 ? (
+          <p className="text-[12px] text-[var(--ink3)]">No files yet.</p>
+        ) : (
+          <FilesList items={filesPreview} onItemClick={onFileClick} />
+        )}
       </RailCard>
+
+      {filesOpen && (
+        <LogModal icon={FileText} title="Files" onClose={() => setFilesOpen(false)}>
+          <FilesList
+            items={files}
+            onItemClick={(cardId) => {
+              setFilesOpen(false)
+              onFileClick(cardId)
+            }}
+          />
+        </LogModal>
+      )}
 
       {budgetIdr != null && (
         <RailCard icon={Wallet} title="Budget">
