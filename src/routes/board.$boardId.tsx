@@ -32,7 +32,8 @@ import PillarManager from '#/components/PillarManager'
 import { BoardStats, BoardRail, BoardRoadmap } from '#/components/BoardPanels'
 import { ContentStats, ContentPipeline, ContentRail } from '#/components/ContentPanels'
 import ContentViews, { type ContentView } from '#/components/ContentViews'
-import { isDoneColumn, localDateStr } from '#/lib/home'
+import { isDoneColumn, isInProgressColumn, localDateStr } from '#/lib/home'
+import SwipeableListRow, { type SwipeAction } from '#/components/SwipeableListRow'
 import type { CardRow } from '#/lib/board-data'
 
 export type Milestone = { id: string; label: string; start_date: string; end_date: string }
@@ -439,6 +440,8 @@ function BoardView() {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
+  // Which list-view row (if any) currently has its swipe-action tray open.
+  const [openListRowId, setOpenListRowId] = useState<string | null>(null)
   const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
   // Deferred delete + undo: hide the card immediately, but only commit the DB
   // delete after a grace window. Undo re-syncs from the server, where the card
@@ -684,7 +687,7 @@ function BoardView() {
     (!filterCat || card.category === filterCat) &&
     (!q || card.title.toLowerCase().includes(q))
   const listCards = board.columns
-    .flatMap((c) => c.cards.filter(keep).map((card) => ({ card, colTitle: c.title })))
+    .flatMap((c) => c.cards.filter(keep).map((card) => ({ card, colId: c.id, colTitle: c.title })))
     .sort((a, b) => {
       if (sortBy === 'title') return a.card.title.localeCompare(b.card.title)
       if (sortBy === 'due') {
@@ -694,6 +697,33 @@ function BoardView() {
       }
       return 0
     })
+  // Quick-status-change targets for the mobile swipe actions in list view.
+  // Column sets are per-board/custom, so these are resolved once per board via
+  // the same title heuristics used for stats (isDoneColumn) rather than a
+  // fixed status field.
+  const inProgressColumn = board.columns.find((c) => isInProgressColumn(c.title))
+  const doneColumn = board.columns.find((c) => isDoneColumn(c.title))
+
+  function moveListCard(cardId: string, fromColId: string, toColumnId: string) {
+    const fromCol = columns.find((c) => c.id === fromColId)
+    const toCol = columns.find((c) => c.id === toColumnId)
+    if (!fromCol || !toCol || fromColId === toColumnId) return
+    const destOrderedIds = [...toCol.cards.map((c) => c.id), cardId]
+    const sourceOrderedIds = fromCol.cards.filter((c) => c.id !== cardId).map((c) => c.id)
+    setColumns((prev) =>
+      prev.map((col) => {
+        if (col.id === fromColId) return { ...col, cards: col.cards.filter((c) => c.id !== cardId) }
+        if (col.id === toColumnId) {
+          const card = fromCol.cards.find((c) => c.id === cardId)
+          return card ? { ...col, cards: [...col.cards, card] } : col
+        }
+        return col
+      }),
+    )
+    moveCardFn({ data: { cardId, toColumnId, orderedIds: destOrderedIds, sourceOrderedIds } }).catch(() => {
+      router.invalidate()
+    })
+  }
   const phaseColumns: ColumnRow[] = board.columns.map((c) => ({
     ...c,
     cards: c.cards.filter(keep),
@@ -1078,29 +1108,73 @@ function BoardView() {
               <p className="p-6 text-center text-sm text-[var(--ink3)]">No matching tasks.</p>
             ) : (
               <div className="flex flex-col">
-                {listCards.map(({ card, colTitle }) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => openCardDetail(card)}
-                    className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
-                  >
-                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{card.title}</p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">
-                        {colTitle}
-                        {card.category ? ` · ${card.category}` : ''}
-                      </p>
-                    </div>
-                    {card.due_date && (
-                      <span className="shrink-0 text-[11px] font-bold tabular-nums text-[var(--ink2)]">
-                        {new Date(card.due_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                      </span>
-                    )}
-                    <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
-                  </button>
-                ))}
+                {listCards.map(({ card, colId, colTitle }) => {
+                  const rowContent = (
+                    <>
+                      <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-bold text-[var(--ink)]">{card.title}</p>
+                        <p className="truncate text-[11px] text-[var(--ink3)]">
+                          {colTitle}
+                          {card.category ? ` · ${card.category}` : ''}
+                        </p>
+                      </div>
+                      {card.due_date && (
+                        <span className="shrink-0 text-[11px] font-bold tabular-nums text-[var(--ink2)]">
+                          {new Date(card.due_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                      <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                    </>
+                  )
+
+                  const actions: SwipeAction[] = []
+                  if (inProgressColumn && inProgressColumn.id !== colId) {
+                    actions.push({
+                      key: 'in-progress',
+                      label: 'In Progress',
+                      bg: 'var(--pop-soft)',
+                      ink: 'var(--pop-ink)',
+                      onCommit: () => moveListCard(card.id, colId, inProgressColumn.id),
+                    })
+                  }
+                  if (doneColumn && doneColumn.id !== colId) {
+                    actions.push({
+                      key: 'done',
+                      label: 'Done',
+                      bg: 'var(--accent-soft)',
+                      ink: 'var(--accent-ink)',
+                      onCommit: () => moveListCard(card.id, colId, doneColumn.id),
+                    })
+                  }
+
+                  if (!canEdit || actions.length === 0) {
+                    return (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => openCardDetail(card)}
+                        className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                      >
+                        {rowContent}
+                      </button>
+                    )
+                  }
+
+                  return (
+                    <SwipeableListRow
+                      key={card.id}
+                      actions={actions}
+                      isOpen={openListRowId === card.id}
+                      hasOtherOpen={openListRowId !== null && openListRowId !== card.id}
+                      onOpenChange={(open) => setOpenListRowId(open ? card.id : null)}
+                      onCollapseOther={() => setOpenListRowId(null)}
+                      onOpenDetail={() => openCardDetail(card)}
+                    >
+                      {rowContent}
+                    </SwipeableListRow>
+                  )
+                })}
               </div>
             )}
           </div>
