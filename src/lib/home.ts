@@ -3,6 +3,11 @@ export function isDoneColumn(title: string): boolean {
   return /done|complete/i.test(title)
 }
 
+/** A column counts as "in progress" when its title reads like an active/doing state. */
+export function isInProgressColumn(title: string): boolean {
+  return /in.?progress|doing|active/i.test(title)
+}
+
 /** Local (not UTC) calendar date as YYYY-MM-DD. Due dates are stored as plain
  *  calendar dates, so comparisons must use the local day — `toISOString()` would
  *  return the UTC day and mis-bucket tasks for non-UTC users up to ~half a day. */
