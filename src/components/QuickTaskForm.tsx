@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { CheckSquare } from 'lucide-react'
 import { fetchNav, fetchBoardAssigneesFn, type NavBoard, type NavWorkspace, type BoardAssignee } from '#/lib/nav'
 import { quickCreateTaskFn, createStandaloneTaskFn } from '#/lib/actions'
@@ -24,6 +24,7 @@ function routeWorkspaceId(pathname: string, boards: NavBoard[]): string | null {
  * the Home "Add Task" quick action. */
 export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
   const [boards, setBoards] = useState<NavBoard[]>([])
@@ -76,6 +77,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
     try {
       if (boardId === NO_PROJECT) {
         await createStandaloneTaskFn({ data: { title, dueDate: dueDate || null } })
+        router.invalidate()
         onDone()
         return
       }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -95,9 +95,43 @@ function fmtDue(due: string | null): string {
   return new Date(due + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
+/** Shared row content for both the board-task (Link) and standalone-task
+ * (button) variants below — only the outer element, its props, the subtitle
+ * text, and the trailing chevron differ between them. */
+function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: boolean; showChevron: boolean }) {
+  return (
+    <>
+      <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-bold text-[var(--ink)]">{task.title}</p>
+        <p className="truncate text-[11px] text-[var(--ink3)]">
+          {task.boardId ? `${task.boardTitle} · ${task.colTitle}` : task.boardTitle}
+        </p>
+      </div>
+      {task.due && (
+        <span
+          className="shrink-0 text-[11px] font-bold tabular-nums"
+          style={{ color: overdue ? 'var(--danger)' : 'var(--ink2)' }}
+        >
+          {fmtDue(task.due)}
+        </span>
+      )}
+      {showChevron && <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />}
+    </>
+  )
+}
+
 function MyTasks() {
   const initialTasks = Route.useLoaderData() as Task[]
   const [tasks, setTasks] = useState(initialTasks)
+  // Re-sync from the loader whenever it re-runs (e.g. after QuickTaskForm's
+  // router.invalidate() on standalone-task create). Only fires when
+  // initialTasks itself changes, so the optimistic removal in
+  // completeStandalone below (which doesn't invalidate the router) is
+  // unaffected.
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
   const buckets = bucketize(tasks)
 
   async function completeStandalone(task: Task) {
@@ -141,22 +175,7 @@ function MyTasks() {
                     params={{ boardId: t.boardId }}
                     className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 no-underline last:border-0 hover:bg-[var(--col)]"
                   >
-                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{t.title}</p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">
-                        {t.boardTitle} · {t.colTitle}
-                      </p>
-                    </div>
-                    {t.due && (
-                      <span
-                        className="shrink-0 text-[11px] font-bold tabular-nums"
-                        style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink2)' }}
-                      >
-                        {fmtDue(t.due)}
-                      </span>
-                    )}
-                    <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                    <TaskRowContent task={t} overdue={b.key === 'overdue'} showChevron />
                   </Link>
                 ) : (
                   <button
@@ -165,19 +184,7 @@ function MyTasks() {
                     onClick={() => completeStandalone(t)}
                     className="flex w-full items-center gap-3 border-b border-[var(--line)] py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
                   >
-                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{t.title}</p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">Personal</p>
-                    </div>
-                    {t.due && (
-                      <span
-                        className="shrink-0 text-[11px] font-bold tabular-nums"
-                        style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink2)' }}
-                      >
-                        {fmtDue(t.due)}
-                      </span>
-                    )}
+                    <TaskRowContent task={t} overdue={b.key === 'overdue'} showChevron={false} />
                   </button>
                 ),
               )}
