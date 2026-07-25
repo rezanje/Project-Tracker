@@ -1,14 +1,16 @@
+import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { CheckSquare, ChevronRight } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn, localDateStr } from '#/lib/home'
+import { completeStandaloneTaskFn } from '#/lib/actions'
 
 type Task = {
   id: string
   title: string
-  boardId: string
+  boardId: string | null
   boardTitle: string
   colTitle: string
   due: string | null
@@ -20,10 +22,17 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
   // try so the redirect is not swallowed by the empty-list fallback.
   const { user, supabase } = await requireUser(getRequest(), headers)
   try {
-    const { data: boards } = await supabase
-      .from('boards')
-      .select('id,title,columns(title,cards(id,title,due_date,assignee_id))')
-      .neq('status', 'archived')
+    const [{ data: boards }, { data: standalone }] = await Promise.all([
+      supabase
+        .from('boards')
+        .select('id,title,columns(title,cards(id,title,due_date,assignee_id))')
+        .neq('status', 'archived'),
+      supabase
+        .from('standalone_tasks')
+        .select('id,title,due_date')
+        .eq('user_id', user.id)
+        .eq('done', false),
+    ])
 
     const tasks: Task[] = []
     for (const b of (boards ?? []) as Array<{
@@ -41,6 +50,9 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
           tasks.push({ id: c.id, title: c.title, boardId: b.id, boardTitle: b.title, colTitle: col.title, due: c.due_date })
         }
       }
+    }
+    for (const s of (standalone ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
+      tasks.push({ id: s.id, title: s.title, boardId: null, boardTitle: 'Personal', colTitle: '', due: s.due_date })
     }
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
     return tasks
@@ -84,8 +96,18 @@ function fmtDue(due: string | null): string {
 }
 
 function MyTasks() {
-  const tasks = Route.useLoaderData() as Task[]
+  const initialTasks = Route.useLoaderData() as Task[]
+  const [tasks, setTasks] = useState(initialTasks)
   const buckets = bucketize(tasks)
+
+  async function completeStandalone(task: Task) {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    try {
+      await completeStandaloneTaskFn({ data: { id: task.id } })
+    } catch {
+      setTasks((prev) => [...prev, task])
+    }
+  }
 
   return (
     <main className="min-w-0 flex-1 p-4 sm:p-6">
@@ -111,31 +133,54 @@ function MyTasks() {
               <span className="text-[12px] font-bold text-[var(--ink3)]">{b.tasks.length}</span>
             </div>
             <div className="flex flex-col">
-              {b.tasks.map((t) => (
-                <Link
-                  key={t.id}
-                  to="/board/$boardId"
-                  params={{ boardId: t.boardId }}
-                  className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 no-underline last:border-0 hover:bg-[var(--col)]"
-                >
-                  <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-bold text-[var(--ink)]">{t.title}</p>
-                    <p className="truncate text-[11px] text-[var(--ink3)]">
-                      {t.boardTitle} · {t.colTitle}
-                    </p>
-                  </div>
-                  {t.due && (
-                    <span
-                      className="shrink-0 text-[11px] font-bold tabular-nums"
-                      style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink2)' }}
-                    >
-                      {fmtDue(t.due)}
-                    </span>
-                  )}
-                  <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
-                </Link>
-              ))}
+              {b.tasks.map((t) =>
+                t.boardId ? (
+                  <Link
+                    key={t.id}
+                    to="/board/$boardId"
+                    params={{ boardId: t.boardId }}
+                    className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 no-underline last:border-0 hover:bg-[var(--col)]"
+                  >
+                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{t.title}</p>
+                      <p className="truncate text-[11px] text-[var(--ink3)]">
+                        {t.boardTitle} · {t.colTitle}
+                      </p>
+                    </div>
+                    {t.due && (
+                      <span
+                        className="shrink-0 text-[11px] font-bold tabular-nums"
+                        style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink2)' }}
+                      >
+                        {fmtDue(t.due)}
+                      </span>
+                    )}
+                    <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => completeStandalone(t)}
+                    className="flex w-full items-center gap-3 border-b border-[var(--line)] py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                  >
+                    <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{t.title}</p>
+                      <p className="truncate text-[11px] text-[var(--ink3)]">Personal</p>
+                    </div>
+                    {t.due && (
+                      <span
+                        className="shrink-0 text-[11px] font-bold tabular-nums"
+                        style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink2)' }}
+                      >
+                        {fmtDue(t.due)}
+                      </span>
+                    )}
+                  </button>
+                ),
+              )}
             </div>
           </section>
         ))}
