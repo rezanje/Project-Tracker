@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { CheckSquare } from 'lucide-react'
 import { fetchNav, fetchBoardAssigneesFn, type NavBoard, type NavWorkspace, type BoardAssignee } from '#/lib/nav'
-import { quickCreateTaskFn } from '#/lib/actions'
+import { quickCreateTaskFn, createStandaloneTaskFn } from '#/lib/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const NO_PROJECT = '__none__'
 
 // Boards live inside one workspace each — a board picked from workspace A
 // can't take a task meant for workspace B, so the workspace is inferred from
@@ -27,6 +29,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
   const [boards, setBoards] = useState<NavBoard[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
   const [boardId, setBoardId] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const [title, setTitle] = useState('')
   const [assignees, setAssignees] = useState<BoardAssignee[]>([])
   const [meId, setMeId] = useState('')
@@ -40,13 +43,13 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
       setWorkspaces(nav.workspaces)
       const wsId = routeWorkspaceId(pathname, nav.boards) ?? nav.workspaces[0]?.id ?? ''
       setWorkspaceId(wsId)
-      setBoardId(nav.boards.find((b) => b.workspaceId === wsId)?.id ?? '')
+      setBoardId(nav.boards.find((b) => b.workspaceId === wsId)?.id ?? NO_PROJECT)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    if (!boardId) {
+    if (!boardId || boardId === NO_PROJECT) {
       setAssignees([])
       return
     }
@@ -62,15 +65,20 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
 
   function onWorkspaceChange(id: string) {
     setWorkspaceId(id)
-    setBoardId(boards.find((b) => b.workspaceId === id)?.id ?? '')
+    setBoardId(boards.find((b) => b.workspaceId === id)?.id ?? NO_PROJECT)
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!boardId || !title.trim()) return
+    if (!title.trim()) return
     setSaving(true)
     setError(null)
     try {
+      if (boardId === NO_PROJECT) {
+        await createStandaloneTaskFn({ data: { title, dueDate: dueDate || null } })
+        onDone()
+        return
+      }
       const { boardId: bId } = await quickCreateTaskFn({ data: { boardId, title, assigneeId } })
       onDone()
       navigate({ to: '/board/$boardId', params: { boardId: bId } })
@@ -93,7 +101,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setTitle(e.target.value)}
         className="mb-2"
       />
-      {!lockedWorkspaceId && workspaces.length > 1 && (
+      {!lockedWorkspaceId && workspaces.length > 1 && boardId !== NO_PROJECT && (
         <select value={workspaceId} onChange={(e) => onWorkspaceChange(e.target.value)} className="field mb-2">
           {workspaces.map((w) => (
             <option key={w.id} value={w.id}>
@@ -102,16 +110,26 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
           ))}
         </select>
       )}
-      {boardsInWorkspace.length > 0 ? (
-        <select value={boardId} onChange={(e) => setBoardId(e.target.value)} className="field mb-2">
-          {boardsInWorkspace.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.title}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <p className="mb-2 text-[12px] text-[var(--ink3)]">No boards in this workspace yet — create one first.</p>
+      <select value={boardId} onChange={(e) => setBoardId(e.target.value)} className="field mb-2">
+        <option value={NO_PROJECT}>No project (personal note)</option>
+        {boardsInWorkspace.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.title}
+          </option>
+        ))}
+      </select>
+      {boardsInWorkspace.length === 0 && (
+        <p className="mb-2 text-[12px] text-[var(--ink3)]">
+          No boards in this workspace yet — create one first, or use "No project" above.
+        </p>
+      )}
+      {boardId === NO_PROJECT && (
+        <Input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="mb-2"
+        />
       )}
       {assignees.length > 0 && (
         <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="field mb-2">
