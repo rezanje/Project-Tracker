@@ -5,6 +5,7 @@ import { createNote, deleteNote, updateNote } from './notes'
 import { createWorkspace } from './workspaces'
 import { createBoard } from './boards'
 import { createCard } from './cards'
+import { createStandaloneTask, completeStandaloneTask } from './standalone-tasks'
 
 // Shared client-callable mutations used by the chrome (sidebar / dashboards).
 
@@ -82,6 +83,35 @@ export const quickCreateTaskFn = createServerFn({ method: 'POST' })
     const card = await createCard(supabase, col.id as string, data.title, { assignee_id: data.assigneeId })
     flush(headers)
     return { cardId: card.id, boardId: data.boardId }
+  })
+
+// QuickTaskForm "No project" branch: a personal task with no board at all.
+export const createStandaloneTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { title, dueDate } = (d ?? {}) as { title?: unknown; dueDate?: unknown }
+    if (typeof title !== 'string' || !title.trim()) throw new Error('title required')
+    return { title: title.trim(), dueDate: typeof dueDate === 'string' && dueDate ? dueDate : null }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await createStandaloneTask(supabase, user.id, data.title, data.dueDate)
+    flush(headers)
+    return { ok: true }
+  })
+
+export const completeStandaloneTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await completeStandaloneTask(supabase, user.id, data.id)
+    flush(headers)
+    return { ok: true }
   })
 
 // Header/Home "+ New Project" quick-create: title + target workspace, always
