@@ -59,10 +59,12 @@ workspaceName: string
 The line already has `truncate`, so the extra segment degrades by ellipsis on
 narrow screens rather than wrapping.
 
-### 3. `src/routes/my-tasks.tsx` — grouping
+### 3. `src/lib/my-tasks.ts` (new) — grouping
 
-Rename the `Bucket` type to `Group` (same shape: `{ key, label, tint, tasks }`) and
-add two producers alongside the existing `bucketize`:
+`Task`, the group type, and `bucketize` move here from the route (see Testing for
+why). `Bucket` is renamed to `Group` — it no longer describes only date buckets —
+keeping the same shape `{ key, label, tint, tasks }`. A second producer is added
+alongside `bucketize`:
 
 ```ts
 type Mode = 'due' | 'project' | 'workspace'
@@ -111,7 +113,7 @@ project and workspace dots match their sidebar colours.
 
 `groupBy` is a pure function — array of tasks in, array of groups out — so unlike
 the rest of this repo's tests it needs no database. A plain vitest unit test file
-(`src/routes/my-tasks.test.ts`) covers:
+(`src/lib/my-tasks.test.ts`) covers:
 
 - project mode puts tasks under their board title, workspace mode under their
   workspace name
@@ -122,9 +124,12 @@ the rest of this repo's tests it needs no database. A plain vitest unit test fil
 - groups sort by their earliest due date, with all-undated groups last
 - a board with a null workspace surfaces as `No workspace`
 
-Exporting `groupBy` and the `Task` type from the route module is required for the
-test to import them; both stay in `my-tasks.tsx` rather than moving to `src/lib/`,
-since nothing else consumes them.
+`groupBy`, `bucketize`, the `Task` type, and the `Group` type move to a new
+`src/lib/my-tasks.ts`, with the route importing them. They cannot stay in
+`my-tasks.tsx`: that module imports `@tanstack/react-start/server` at the top
+level, so a Node vitest test importing from it would pull server-only code into
+the test runner. This mirrors the existing `src/lib/home.ts` + `src/lib/home.test.ts`
+pair, whose `isDoneColumn`/`localDateStr` are consumed by this very route.
 
 The segmented control and the subtitle rendering are verified manually in the
 browser preview (the user is logged in, so the click-through can be driven
