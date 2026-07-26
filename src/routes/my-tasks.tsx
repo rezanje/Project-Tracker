@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
@@ -124,22 +124,34 @@ function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: b
 function MyTasks() {
   const initialTasks = Route.useLoaderData() as Task[]
   const [tasks, setTasks] = useState(initialTasks)
+  // Ids of standalone tasks whose completion is in flight (optimistically
+  // removed below, server write not yet confirmed). If an unrelated action
+  // (e.g. QuickTaskForm's router.invalidate() on standalone-task create)
+  // triggers a loader re-run while a completion is pending, the loader can
+  // still return that task — its done=true write hasn't landed server-side
+  // yet — so the resync below must keep filtering it out, or the row would
+  // reappear until the write finally settles. Mirrors the pendingDelete
+  // handling in board.$boardId.tsx.
+  const pendingCompleteRef = useRef<Set<string>>(new Set())
   // Re-sync from the loader whenever it re-runs (e.g. after QuickTaskForm's
   // router.invalidate() on standalone-task create). Only fires when
   // initialTasks itself changes, so the optimistic removal in
   // completeStandalone below (which doesn't invalidate the router) is
   // unaffected.
   useEffect(() => {
-    setTasks(initialTasks)
+    setTasks(initialTasks.filter((t) => !pendingCompleteRef.current.has(t.id)))
   }, [initialTasks])
   const buckets = bucketize(tasks)
 
   async function completeStandalone(task: Task) {
+    pendingCompleteRef.current.add(task.id)
     setTasks((prev) => prev.filter((t) => t.id !== task.id))
     try {
       await completeStandaloneTaskFn({ data: { id: task.id } })
     } catch {
       setTasks((prev) => [...prev, task])
+    } finally {
+      pendingCompleteRef.current.delete(task.id)
     }
   }
 
