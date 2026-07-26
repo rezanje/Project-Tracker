@@ -4,9 +4,9 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { CheckSquare, ChevronRight } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
-import { isDoneColumn } from '#/lib/home'
+import { isDoneColumn, localDateStr } from '#/lib/home'
 import { completeStandaloneTaskFn } from '#/lib/actions'
-import { bucketize, type Task } from '#/lib/my-tasks'
+import { bucketize, groupBy, byProject, byWorkspace, type Task } from '#/lib/my-tasks'
 
 const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise<Task[]> => {
   const headers = new Headers()
@@ -131,7 +131,15 @@ function MyTasks() {
   useEffect(() => {
     setTasks(initialTasks.filter((t) => !pendingCompleteRef.current.has(t.id)))
   }, [initialTasks])
-  const buckets = bucketize(tasks)
+  const [mode, setMode] = useState<'due' | 'project' | 'workspace'>('due')
+  const groups =
+    mode === 'project' ? groupBy(tasks, byProject)
+    : mode === 'workspace' ? groupBy(tasks, byWorkspace)
+    : bucketize(tasks)
+  // Overdue is a property of the task, not of the group it landed in: in
+  // project/workspace mode there is no 'overdue' group, but an overdue date
+  // must still render red.
+  const today = localDateStr()
 
   async function completeStandalone(task: Task) {
     pendingCompleteRef.current.add(task.id)
@@ -154,6 +162,28 @@ function MyTasks() {
           <span className="chip ml-1">{tasks.length} open</span>
         </div>
 
+        <div className="flex w-fit gap-0 overflow-hidden rounded-full border border-[var(--line)]">
+          {([
+            ['due', 'Due date'],
+            ['project', 'Project'],
+            ['workspace', 'Workspace'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              aria-pressed={mode === value}
+              className={`px-3.5 py-1.5 text-[12px] font-bold ${
+                mode === value
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {tasks.length === 0 && (
           <div className="card p-10 text-center text-[var(--ink2)]">
             <p className="display-title text-lg font-bold">All clear 🎉</p>
@@ -161,7 +191,7 @@ function MyTasks() {
           </div>
         )}
 
-        {buckets.map((b) => (
+        {groups.map((b) => (
           <section key={b.key} className="card p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: b.tint }} />
@@ -177,7 +207,7 @@ function MyTasks() {
                     params={{ boardId: t.boardId }}
                     className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 no-underline last:border-0 hover:bg-[var(--col)]"
                   >
-                    <TaskRowContent task={t} overdue={b.key === 'overdue'} showChevron />
+                    <TaskRowContent task={t} overdue={!!t.due && t.due < today} showChevron />
                   </Link>
                 ) : (
                   <button
@@ -186,7 +216,7 @@ function MyTasks() {
                     onClick={() => completeStandalone(t)}
                     className="flex w-full items-center gap-3 border-b border-[var(--line)] py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
                   >
-                    <TaskRowContent task={t} overdue={b.key === 'overdue'} showChevron={false} />
+                    <TaskRowContent task={t} overdue={!!t.due && t.due < today} showChevron={false} />
                   </button>
                 ),
               )}
