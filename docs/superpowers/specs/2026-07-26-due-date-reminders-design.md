@@ -38,10 +38,14 @@ Add an idempotency key to `reminders`, then schedule the daily scan.
 
 ```sql
 -- Idempotency key for machine-generated reminders. Null for user-created ones
--- (QuickReminderForm), so the unique index only constrains generated rows.
+-- (QuickReminderForm). A plain (not partial) unique index is deliberate: Postgres
+-- treats NULLs as distinct, so any number of user-created reminders coexist while
+-- generated keys stay unique. A partial index (`where source_key is not null`)
+-- would break the Edge Function's upsert — ON CONFLICT (source_key) cannot infer
+-- a partial index without repeating its predicate, which PostgREST cannot send.
 alter table reminders add column if not exists source_key text;
 create unique index if not exists reminders_source_key_idx
-  on reminders (source_key) where source_key is not null;
+  on reminders (source_key);
 
 -- Daily due-date scan. 01:00 UTC = 08:00 WIB — due dates are plain calendar
 -- dates, so the reminder fires on the morning of the due day, local time.
