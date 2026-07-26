@@ -4,17 +4,9 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { CheckSquare, ChevronRight } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
-import { isDoneColumn, localDateStr } from '#/lib/home'
+import { isDoneColumn } from '#/lib/home'
 import { completeStandaloneTaskFn } from '#/lib/actions'
-
-type Task = {
-  id: string
-  title: string
-  boardId: string | null
-  boardTitle: string
-  colTitle: string
-  due: string | null
-}
+import { bucketize, type Task } from '#/lib/my-tasks'
 
 const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise<Task[]> => {
   const headers = new Headers()
@@ -25,7 +17,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
     const [{ data: boards }, { data: standalone }] = await Promise.all([
       supabase
         .from('boards')
-        .select('id,title,columns(title,cards(id,title,due_date,assignee_id))')
+        .select('id,title,workspace_id,workspaces(name),columns(title,cards(id,title,due_date,assignee_id))')
         .neq('status', 'archived'),
       supabase
         .from('standalone_tasks')
@@ -38,21 +30,43 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
     for (const b of (boards ?? []) as Array<{
       id: string
       title: string
+      workspace_id: string | null
+      workspaces: { name: string } | { name: string }[] | null
       columns?: Array<{
         title: string
         cards?: Array<{ id: string; title: string; due_date: string | null; assignee_id: string | null }>
       }>
     }>) {
+      const ws = Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces
+      const workspaceName = ws?.name ?? 'No workspace'
       for (const col of b.columns ?? []) {
         if (isDoneColumn(col.title)) continue
         for (const c of col.cards ?? []) {
           if (c.assignee_id !== user.id) continue
-          tasks.push({ id: c.id, title: c.title, boardId: b.id, boardTitle: b.title, colTitle: col.title, due: c.due_date })
+          tasks.push({
+            id: c.id,
+            title: c.title,
+            boardId: b.id,
+            boardTitle: b.title,
+            colTitle: col.title,
+            workspaceId: b.workspace_id,
+            workspaceName,
+            due: c.due_date,
+          })
         }
       }
     }
     for (const s of (standalone ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
-      tasks.push({ id: s.id, title: s.title, boardId: null, boardTitle: 'Personal', colTitle: '', due: s.due_date })
+      tasks.push({
+        id: s.id,
+        title: s.title,
+        boardId: null,
+        boardTitle: 'Personal',
+        colTitle: '',
+        workspaceId: null,
+        workspaceName: 'Personal',
+        due: s.due_date,
+      })
     }
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
     return tasks
@@ -65,30 +79,6 @@ export const Route = createFileRoute('/my-tasks')({
   loader: async () => await fetchMyTasks(),
   component: MyTasks,
 })
-
-type Bucket = { key: string; label: string; tint: string; tasks: Task[] }
-
-function bucketize(tasks: Task[]): Bucket[] {
-  const today = localDateStr()
-  const in7 = localDateStr(new Date(Date.now() + 7 * 86_400_000))
-  const buckets: Bucket[] = [
-    { key: 'overdue', label: 'Overdue', tint: 'var(--danger)', tasks: [] },
-    { key: 'today', label: 'Today', tint: '#d97706', tasks: [] },
-    { key: 'week', label: 'This week', tint: '#2563eb', tasks: [] },
-    { key: 'later', label: 'Later', tint: 'var(--ink3)', tasks: [] },
-    { key: 'none', label: 'No due date', tint: 'var(--ink3)', tasks: [] },
-  ]
-  const by = Object.fromEntries(buckets.map((b) => [b.key, b])) as Record<string, Bucket>
-  for (const t of tasks) {
-    if (!t.due) by.none.tasks.push(t)
-    else if (t.due < today) by.overdue.tasks.push(t)
-    else if (t.due === today) by.today.tasks.push(t)
-    else if (t.due <= in7) by.week.tasks.push(t)
-    else by.later.tasks.push(t)
-  }
-  for (const b of buckets) b.tasks.sort((a, z) => (a.due ?? '') < (z.due ?? '') ? -1 : 1)
-  return buckets.filter((b) => b.tasks.length > 0)
-}
 
 function fmtDue(due: string | null): string {
   if (!due) return ''
@@ -105,7 +95,7 @@ function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: b
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-bold text-[var(--ink)]">{task.title}</p>
         <p className="truncate text-[11px] text-[var(--ink3)]">
-          {task.boardId ? `${task.boardTitle} · ${task.colTitle}` : task.boardTitle}
+          {task.boardId ? `${task.workspaceName} · ${task.boardTitle} · ${task.colTitle}` : task.boardTitle}
         </p>
       </div>
       {task.due && (

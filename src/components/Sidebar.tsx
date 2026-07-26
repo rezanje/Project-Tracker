@@ -21,16 +21,12 @@ import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
+import { accentFor } from '#/lib/accent'
 import ThemeToggle from './ThemeToggle'
 
-const COLLAPSE_KEY = 'sidebar-collapsed'
+export { accentFor } from '#/lib/accent'
 
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-export function accentFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
-}
+const COLLAPSE_KEY = 'sidebar-collapsed'
 
 // Two-letter avatar initials from an email local part (e.g. reza.g → RG).
 function initials(email: string): string {
