@@ -88,14 +88,23 @@ export const quickCreateTaskFn = createServerFn({ method: 'POST' })
 // QuickTaskForm "No project" branch: a personal task with no board at all.
 export const createStandaloneTaskFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
-    const { title, dueDate } = (d ?? {}) as { title?: unknown; dueDate?: unknown }
+    const { title, workspaceId, dueDate } = (d ?? {}) as {
+      title?: unknown
+      workspaceId?: unknown
+      dueDate?: unknown
+    }
     if (typeof title !== 'string' || !title.trim()) throw new Error('title required')
-    return { title: title.trim(), dueDate: typeof dueDate === 'string' && dueDate ? dueDate : null }
+    if (typeof workspaceId !== 'string' || !workspaceId) throw new Error('workspace required')
+    return {
+      title: title.trim(),
+      workspaceId,
+      dueDate: typeof dueDate === 'string' && dueDate ? dueDate : null,
+    }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    await createStandaloneTask(supabase, user.id, data.title, data.dueDate)
+    await createStandaloneTask(supabase, user.id, data.title, data.workspaceId, data.dueDate)
     flush(headers)
     return { ok: true }
   })

@@ -76,7 +76,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
     setError(null)
     try {
       if (boardId === NO_PROJECT) {
-        await createStandaloneTaskFn({ data: { title, dueDate: dueDate || null } })
+        await createStandaloneTaskFn({ data: { title, workspaceId, dueDate: dueDate || null } })
         router.invalidate()
         onDone()
         return
@@ -103,7 +103,8 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setTitle(e.target.value)}
         className="mb-2"
       />
-      {!lockedWorkspaceId && workspaces.length > 1 && boardId !== NO_PROJECT && (
+      {/* Shown for project-less tasks too: those still belong to a workspace. */}
+      {!lockedWorkspaceId && workspaces.length > 1 && (
         <select value={workspaceId} onChange={(e) => onWorkspaceChange(e.target.value)} className="field mb-2">
           {workspaces.map((w) => (
             <option key={w.id} value={w.id}>
@@ -113,7 +114,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         </select>
       )}
       <select value={boardId} onChange={(e) => setBoardId(e.target.value)} className="field mb-2">
-        <option value={NO_PROJECT}>No project (personal note)</option>
+        <option value={NO_PROJECT}>No project (personal task in this workspace)</option>
         {boardsInWorkspace.map((b) => (
           <option key={b.id} value={b.id}>
             {b.title}
@@ -144,7 +145,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         </select>
       )}
       {error && <p className="mb-2 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
-      <Button type="submit" disabled={saving || !boardId} className="w-full">
+      <Button type="submit" disabled={saving || !boardId || !workspaceId} className="w-full">
         {saving ? 'Creating…' : 'Create task'}
       </Button>
     </form>

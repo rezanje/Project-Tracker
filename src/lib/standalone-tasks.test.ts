@@ -30,23 +30,27 @@ async function makeSignedInUser(prefix: string) {
   const uid = u.user!.id
   const userClient = createClient(env.SUPABASE_URL!, env.SUPABASE_ANON_KEY!)
   await userClient.auth.signInWithPassword({ email, password })
-  return { uid, userClient }
+  // Every standalone task carries a workspace, so each test user needs one.
+  // The on_workspace_created trigger adds the owner as a member.
+  const { data: ws } = await admin.from('workspaces').insert({ owner_id: uid, name: 'WS' }).select('id').single()
+  return { uid, userClient, wsId: ws!.id as string }
 }
 
-test('createStandaloneTask inserts a task with a due date for its author (RLS path)', async () => {
-  const { uid, userClient } = await makeSignedInUser('standalone-create')
+test('createStandaloneTask inserts a task with a workspace and due date for its author (RLS path)', async () => {
+  const { uid, userClient, wsId } = await makeSignedInUser('standalone-create')
   try {
-    await createStandaloneTask(userClient, uid, 'Renew domain', '2026-08-01')
+    await createStandaloneTask(userClient, uid, 'Renew domain', wsId, '2026-08-01')
 
     const { data: rows } = await admin
       .from('standalone_tasks')
-      .select('user_id, title, due_date, done')
+      .select('user_id, title, due_date, done, workspace_id')
       .eq('user_id', uid)
     expect(rows).toHaveLength(1)
     expect(rows![0].title).toBe('Renew domain')
     expect(rows![0].due_date).toBe('2026-08-01')
     expect(rows![0].done).toBe(false)
     expect(rows![0].user_id).toBe(uid)
+    expect(rows![0].workspace_id).toBe(wsId)
   } finally {
     await admin.from('standalone_tasks').delete().eq('user_id', uid)
     await admin.auth.admin.deleteUser(uid)
@@ -54,9 +58,9 @@ test('createStandaloneTask inserts a task with a due date for its author (RLS pa
 }, 25000)
 
 test('createStandaloneTask defaults due date to null when omitted', async () => {
-  const { uid, userClient } = await makeSignedInUser('standalone-nodue')
+  const { uid, userClient, wsId } = await makeSignedInUser('standalone-nodue')
   try {
-    await createStandaloneTask(userClient, uid, 'Call accountant')
+    await createStandaloneTask(userClient, uid, 'Call accountant', wsId)
 
     const { data: rows } = await admin.from('standalone_tasks').select('due_date').eq('user_id', uid)
     expect(rows).toHaveLength(1)
@@ -67,10 +71,25 @@ test('createStandaloneTask defaults due date to null when omitted', async () => 
   }
 }, 25000)
 
-test('completeStandaloneTask marks a task done for its owning user (RLS path)', async () => {
-  const { uid, userClient } = await makeSignedInUser('standalone-complete')
+test('createStandaloneTask rejects a workspace the author is not a member of', async () => {
+  const { uid, userClient } = await makeSignedInUser('standalone-outsider')
+  const { uid: otherUid, wsId: otherWsId } = await makeSignedInUser('standalone-otherws')
   try {
-    await createStandaloneTask(userClient, uid, 'Pay invoice')
+    await expect(createStandaloneTask(userClient, uid, 'Sneak in', otherWsId)).rejects.toThrow()
+
+    const { data: rows } = await admin.from('standalone_tasks').select('id').eq('user_id', uid)
+    expect(rows).toHaveLength(0)
+  } finally {
+    await admin.from('standalone_tasks').delete().eq('user_id', uid)
+    await admin.auth.admin.deleteUser(uid)
+    await admin.auth.admin.deleteUser(otherUid)
+  }
+}, 25000)
+
+test('completeStandaloneTask marks a task done for its owning user (RLS path)', async () => {
+  const { uid, userClient, wsId } = await makeSignedInUser('standalone-complete')
+  try {
+    await createStandaloneTask(userClient, uid, 'Pay invoice', wsId)
     const { data: created } = await admin.from('standalone_tasks').select('id').eq('user_id', uid).single()
 
     await completeStandaloneTask(userClient, uid, created!.id as string)
@@ -85,10 +104,10 @@ test('completeStandaloneTask marks a task done for its owning user (RLS path)', 
 }, 25000)
 
 test("completeStandaloneTask does not mark another user's task done", async () => {
-  const { uid: ownerUid, userClient: ownerClient } = await makeSignedInUser('standalone-owner')
+  const { uid: ownerUid, userClient: ownerClient, wsId } = await makeSignedInUser('standalone-owner')
   const { uid: otherUid, userClient: otherClient } = await makeSignedInUser('standalone-other')
   try {
-    await createStandaloneTask(ownerClient, ownerUid, 'Owner only task')
+    await createStandaloneTask(ownerClient, ownerUid, 'Owner only task', wsId)
     const { data: created } = await admin.from('standalone_tasks').select('id').eq('user_id', ownerUid).single()
 
     await completeStandaloneTask(otherClient, otherUid, created!.id as string)

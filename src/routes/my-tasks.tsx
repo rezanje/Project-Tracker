@@ -21,7 +21,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
         .neq('status', 'archived'),
       supabase
         .from('standalone_tasks')
-        .select('id,title,due_date')
+        .select('id,title,due_date,workspace_id,workspaces(name)')
         .eq('user_id', user.id)
         .eq('done', false),
     ])
@@ -56,15 +56,23 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
         }
       }
     }
-    for (const s of (standalone ?? []) as Array<{ id: string; title: string; due_date: string | null }>) {
+    for (const s of (standalone ?? []) as Array<{
+      id: string
+      title: string
+      due_date: string | null
+      workspace_id: string | null
+      workspaces: { name: string } | { name: string }[] | null
+    }>) {
+      const ws = Array.isArray(s.workspaces) ? s.workspaces[0] : s.workspaces
       tasks.push({
         id: s.id,
         title: s.title,
         boardId: null,
         boardTitle: 'Personal',
         colTitle: '',
-        workspaceId: null,
-        workspaceName: 'Personal',
+        // Pre-0034 rows carry no workspace; they still group under 'Personal'.
+        workspaceId: s.workspace_id,
+        workspaceName: ws?.name ?? 'Personal',
         due: s.due_date,
       })
     }
@@ -95,7 +103,9 @@ function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: b
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-bold text-[var(--ink)]">{task.title}</p>
         <p className="truncate text-[11px] text-[var(--ink3)]">
-          {task.boardId ? `${task.workspaceName} · ${task.boardTitle} · ${task.colTitle}` : task.boardTitle}
+          {task.boardId ? `${task.workspaceName} · ${task.boardTitle} · ${task.colTitle}`
+            : task.workspaceId ? `${task.workspaceName} · ${task.boardTitle}`
+            : task.boardTitle}
         </p>
       </div>
       {task.due && (

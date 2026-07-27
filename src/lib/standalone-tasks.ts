@@ -7,9 +7,12 @@ export async function createStandaloneTask(
   supabase: SupabaseClient,
   userId: string,
   title: string,
+  workspaceId: string,
   dueDate: string | null = null,
 ): Promise<void> {
-  const { error } = await supabase.from('standalone_tasks').insert({ user_id: userId, title, due_date: dueDate })
+  const { error } = await supabase
+    .from('standalone_tasks')
+    .insert({ user_id: userId, title, workspace_id: workspaceId, due_date: dueDate })
   if (error) throw error
 }
 

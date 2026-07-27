@@ -54,6 +54,19 @@ test('standalone tasks collapse into one Personal group in both modes', () => {
   }
 })
 
+test('a workspace-tagged standalone task groups under its workspace, still Personal by project', () => {
+  const s = task({
+    id: 's1',
+    boardId: null,
+    boardTitle: 'Personal',
+    workspaceId: 'w9',
+    workspaceName: 'Gentanala',
+    due: '2026-07-01',
+  })
+  expect(groupBy([s], byWorkspace)[0].label).toBe('Gentanala')
+  expect(groupBy([s], byProject)[0].label).toBe('Personal')
+})
+
 test('two boards sharing a title stay separate groups (keyed by id)', () => {
   const groups = groupBy(
     [
