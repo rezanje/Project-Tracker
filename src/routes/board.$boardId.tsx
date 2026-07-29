@@ -23,6 +23,7 @@ import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
+import { setBoardPics } from '#/lib/board-pics'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import ProjectEdit from '#/components/ProjectEdit'
@@ -39,7 +40,7 @@ import type { CardRow } from '#/lib/board-data'
 export type Milestone = { id: string; label: string; start_date: string; end_date: string }
 
 export type BoardMeta = {
-  members: { id: string; name: string; avatar_url: string | null }[]
+  members: { id: string; name: string; avatar_url: string | null; isPic: boolean }[]
   labels: { id: string; name: string; color: string }[]
   milestones: Milestone[]
 }
@@ -159,7 +160,7 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     const { user, supabase } = await requireUser(getRequest(), headers)
     const { data: members, error: mErr } = await supabase
       .from('board_members')
-      .select('user_id, profiles(id,name,avatar_url)')
+      .select('user_id, is_pic, profiles(id,name,avatar_url)')
       .eq('board_id', data.boardId)
     if (mErr) throw mErr
     const { data: labels, error: lErr } = await supabase
@@ -175,14 +176,19 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     if (msErr) throw msErr
     const memberList = (members ?? []).map((m) => {
       const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
-      return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
+      return {
+        id: p?.id ?? (m.user_id as string),
+        name: p?.name ?? 'Unknown',
+        avatar_url: p?.avatar_url ?? null,
+        isPic: m.is_pic === true,
+      }
     })
     // The caller may see/edit this board via workspace membership alone,
     // without an explicit board_members row — make sure "assign to me" is
     // always offered even then.
     if (!memberList.some((m) => m.id === user.id)) {
       const { data: me } = await supabase.from('profiles').select('name,avatar_url').eq('id', user.id).single()
-      memberList.unshift({ id: user.id, name: me?.name ?? 'Me', avatar_url: me?.avatar_url ?? null })
+      memberList.unshift({ id: user.id, name: me?.name ?? 'Me', avatar_url: me?.avatar_url ?? null, isPic: false })
     }
     flush(headers)
     return {
@@ -361,6 +367,22 @@ const setFinanceFn = createServerFn({ method: 'POST' })
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
     await setBoardFinance(supabase, data.boardId, data.valueIdr)
+    flush(headers)
+  })
+
+const setBoardPicsFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, userIds } = (d ?? {}) as { boardId?: unknown; userIds?: unknown }
+    if (typeof boardId !== 'string') throw new Error('boardId required')
+    if (!Array.isArray(userIds) || userIds.some((u) => typeof u !== 'string'))
+      throw new Error('userIds must be an array of strings')
+    return { boardId, userIds: userIds as string[] }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    // RLS (members_owner_write) is what restricts this to the board owner.
+    await setBoardPics(supabase, data.boardId, data.userIds)
     flush(headers)
   })
 
