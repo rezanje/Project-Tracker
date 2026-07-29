@@ -334,7 +334,7 @@ const addTaskFn = createServerFn({ method: 'POST' })
   })
 
 const META_KEYS = [
-  'title', 'description', 'type', 'pic', 'status', 'client_name', 'start_date', 'deadline', 'priority',
+  'title', 'description', 'type', 'status', 'client_name', 'start_date', 'deadline', 'priority',
 ] as const
 
 const updateBoardFn = createServerFn({ method: 'POST' })
@@ -858,7 +858,13 @@ function BoardView() {
                 · Due {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               </span>
             )}
-            {board.pic && <span className="text-[12px] text-[var(--ink3)]">· PIC {board.pic}</span>}
+            {(() => {
+              const picNames = (boardMeta?.members ?? []).filter((m) => m.isPic).map((m) => m.name)
+              // Fall back to the legacy free-text PIC until accounts are picked,
+              // so existing projects never look like they lost their PIC.
+              const text = picNames.length > 0 ? picNames.join(', ') : board.pic
+              return text ? <span className="text-[12px] text-[var(--ink3)]">· PIC {text}</span> : null
+            })()}
             {isOwner && board.value_idr != null && (
               <span className="text-[12px] font-bold text-[var(--accent-ink)]">
                 · Rp {board.value_idr.toLocaleString('id-ID')}
@@ -1295,14 +1301,17 @@ function BoardView() {
         <ProjectEdit
           board={board}
           typeSuggestions={['Design', 'Development', 'Branding', 'Marketing', 'Consulting', 'Content']}
+          members={boardMeta?.members ?? []}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false)
             router.invalidate()
           }}
-          onSave={async (fields, valueIdr) => {
+          onSave={async (fields, valueIdr, picUserIds) => {
             await updateBoardFn({ data: { boardId: board.id, fields } })
             await setFinanceFn({ data: { boardId: board.id, valueIdr } })
+            await setBoardPicsFn({ data: { boardId: board.id, userIds: picUserIds } })
+            setBoardMeta(null) // force a refetch so the header picks up new PICs
           }}
           onDelete={async () => {
             await deleteBoardFn({ data: { boardId: board.id } })
