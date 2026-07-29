@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react'
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   CheckSquare,
   Home,
@@ -35,6 +35,7 @@ const BAR_NAV: Array<{
 
 export default function MobileNav() {
   const navigate = useNavigate()
+  const router = useRouter()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [sheetOpen, setSheetOpen] = useState(false)
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
@@ -45,12 +46,15 @@ export default function MobileNav() {
   const [inboxUnread, setInboxUnread] = useState(0)
 
   useEffect(() => {
-    fetchNav().then((nav) => {
-      setWorkspaces(nav.workspaces)
-      setBoards(nav.boards)
-      setIsSuperAdmin(nav.isSuperAdmin)
-      setPendingApprovals(nav.pendingApprovalsCount)
-    })
+    function loadNav() {
+      fetchNav().then((nav) => {
+        setWorkspaces(nav.workspaces)
+        setBoards(nav.boards)
+        setIsSuperAdmin(nav.isSuperAdmin)
+        setPendingApprovals(nav.pendingApprovalsCount)
+      })
+    }
+    loadNav()
     fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     const supabase = getBrowserSupabase()
     supabase.auth
@@ -58,7 +62,12 @@ export default function MobileNav() {
       .then((res: { data: { user: { email?: string | null } | null } }) =>
         setEmail(res.data.user?.email ?? null),
       )
-  }, [])
+
+    // See Sidebar.tsx: nav has no route loader, so re-fetch on every
+    // resolved navigation/invalidation to pick up count changes elsewhere.
+    const unsubNav = router.subscribe('onResolved', loadNav)
+    return () => unsubNav()
+  }, [router])
 
   // Close the sheet whenever the route changes (e.g. after tapping a link inside it).
   useEffect(() => {
