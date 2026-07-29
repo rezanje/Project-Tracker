@@ -10,6 +10,11 @@ interface ColumnProps {
   onAddCard?: (columnId: string, title: string) => Promise<void>
   onCardClick?: (card: CardRow) => void
   members?: CardAssignee[]
+  /** Each set only when that neighbour column exists — per-card move buttons. */
+  onMoveCardNext?: (cardId: string) => void
+  nextColumnTitle?: string
+  onMoveCardPrev?: (cardId: string) => void
+  prevColumnTitle?: string
 }
 
 const DOTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -19,7 +24,17 @@ function dotFor(id: string): string {
   return DOTS[h % DOTS.length]
 }
 
-export default function Column({ column, isOwner, onAddCard, onCardClick, members }: ColumnProps) {
+export default function Column({
+  column,
+  isOwner,
+  onAddCard,
+  onCardClick,
+  members,
+  onMoveCardNext,
+  nextColumnTitle,
+  onMoveCardPrev,
+  prevColumnTitle,
+}: ColumnProps) {
   const memberById = new Map((members ?? []).map((m) => [m.id, m]))
   const [newTitle, setNewTitle] = useState('')
   const [busy, setBusy] = useState(false)
@@ -46,7 +61,7 @@ export default function Column({ column, isOwner, onAddCard, onCardClick, member
   const inner = (
     <section
       ref={setNodeRef}
-      className="col-surface flex w-[300px] shrink-0 flex-col gap-[var(--gap)] p-[var(--pad)]"
+      className="col-surface flex min-h-[60vh] w-[300px] shrink-0 flex-col gap-[var(--gap)] p-[var(--pad)]"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -64,9 +79,9 @@ export default function Column({ column, isOwner, onAddCard, onCardClick, member
         />
       </div>
 
-      <div className="flex min-h-1.5 flex-col gap-[var(--gap)]">
+      <div className="flex min-h-1.5 flex-1 flex-col gap-[var(--gap)]">
         {column.cards.length === 0 ? (
-          <div className="rounded-xl border-[1.5px] border-dashed border-[var(--line)] p-4 text-center text-xs font-semibold text-[var(--ink3)]">
+          <div className="flex flex-1 items-center justify-center rounded-xl border-[1.5px] border-dashed border-[var(--line)] p-4 text-center text-xs font-semibold text-[var(--ink3)]">
             {isOwner ? 'Drop cards here' : 'No cards'}
           </div>
         ) : (
@@ -77,6 +92,10 @@ export default function Column({ column, isOwner, onAddCard, onCardClick, member
               isDraggable={isOwner}
               onCardClick={onCardClick}
               assignee={c.assignee_id ? memberById.get(c.assignee_id) : null}
+              onMoveNext={onMoveCardNext ? () => onMoveCardNext(c.id) : undefined}
+              nextColumnTitle={nextColumnTitle}
+              onMovePrev={onMoveCardPrev ? () => onMoveCardPrev(c.id) : undefined}
+              prevColumnTitle={prevColumnTitle}
             />
           ))
         )}

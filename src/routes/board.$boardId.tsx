@@ -736,18 +736,30 @@ function BoardView() {
   }))
 
   const columnsContent = (
-    <div className="gt-scroll flex items-start gap-4 overflow-x-auto pb-3.5">
+    <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
       {groupBy === 'phase'
-        ? phaseColumns.map((col) => (
-            <Column
-              key={col.id}
-              column={col}
-              isOwner={canEdit}
-              onAddCard={onAddCard}
-              onCardClick={openCardDetail}
-              members={boardMeta?.members}
-            />
-          ))
+        ? phaseColumns.map((col, i) => {
+            const prev = phaseColumns[i - 1]
+            const next = phaseColumns[i + 1]
+            return (
+              <Column
+                key={col.id}
+                column={col}
+                isOwner={canEdit}
+                onAddCard={onAddCard}
+                onCardClick={openCardDetail}
+                members={boardMeta?.members}
+                onMoveCardPrev={
+                  canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
+                }
+                prevColumnTitle={prev?.title}
+                onMoveCardNext={
+                  canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
+                }
+                nextColumnTitle={next?.title}
+              />
+            )
+          })
         : categoryColumns.map((col) => (
             // Read-only view: no owner tools / drag in category mode.
             <Column
