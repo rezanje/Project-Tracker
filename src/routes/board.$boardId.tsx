@@ -941,6 +941,7 @@ function BoardView() {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
+                  disabled={!boardMeta}
                   className="btn btn-ghost shrink-0"
                 >
                   Edit project
@@ -1297,11 +1298,11 @@ function BoardView() {
         />
       )}
 
-      {editing && (
+      {editing && boardMeta && (
         <ProjectEdit
           board={board}
           typeSuggestions={['Design', 'Development', 'Branding', 'Marketing', 'Consulting', 'Content']}
-          members={boardMeta?.members ?? []}
+          members={boardMeta.members}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false)
