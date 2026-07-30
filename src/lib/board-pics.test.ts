@@ -30,7 +30,19 @@ async function mkUser(tag: string) {
 
 /** Same shape as notifications.test.ts's helper: an admin-created user plus
  * their own signed-in (anon-key, RLS-scoped) client, for tests that need to
- * act as that user rather than as the service role. */
+ * act as that user rather than as the service role.
+ *
+ * Unlike notifications.test.ts's version, this one does NOT ignore
+ * signInWithPassword's result: if sign-in fails, an anon-key client that
+ * never authenticated still "works" for RLS-scoped queries — it just matches
+ * zero rows everywhere, which is indistinguishable from RLS correctly
+ * blocking a non-owner. That would let the "plain member cannot change PICs"
+ * test below pass vacuously even if the underlying RLS policy were removed
+ * entirely. So this throws loudly on a sign-in error, and then independently
+ * re-checks (via userClient.auth.getUser(), not the sign-in response) that
+ * the client actually holds a session for the intended user before handing
+ * it back — so a future change that swallows the sign-in error again still
+ * can't produce an anonymous client here. */
 async function makeSignedInUser(prefix: string) {
   const email = `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@gmail.com`
   const password = 'Babikeguling1!'
@@ -43,7 +55,16 @@ async function makeSignedInUser(prefix: string) {
   if (error) throw error
   const uid = u.user!.id
   const userClient = createClient(env.SUPABASE_URL!, env.SUPABASE_ANON_KEY!)
-  await userClient.auth.signInWithPassword({ email, password })
+  const { error: signInErr } = await userClient.auth.signInWithPassword({ email, password })
+  if (signInErr) throw signInErr
+  const { data: check, error: checkErr } = await userClient.auth.getUser()
+  if (checkErr || check.user?.id !== uid) {
+    throw new Error(
+      `makeSignedInUser(${prefix}): client is not authenticated as ${uid} (got ${
+        check?.user?.id ?? 'anonymous'
+      })`,
+    )
+  }
   return { uid, userClient }
 }
 
@@ -247,5 +268,45 @@ test('setBoardPics as a non-owner member leaves the PIC list unchanged (RLS enfo
     if (owner) await admin.auth.admin.deleteUser(owner.id)
     if (member) await admin.auth.admin.deleteUser(member.uid)
     if (otherPic) await admin.auth.admin.deleteUser(otherPic.id)
+  }
+}, 30000)
+
+// The test above proves RLS blocks a non-owner. Nothing else in this suite
+// exercises the actual production path in the other direction: every other
+// test calls setBoardPics with the service-role client, which bypasses RLS
+// entirely, so a policy change that broke real owners while still blocking
+// non-owners would pass the whole suite. Here the board OWNER calls
+// setBoardPics through their own RLS-scoped client and the PIC list must
+// actually change.
+test('setBoardPics as the board owner changes the PIC list through their own RLS-scoped client', async () => {
+  let owner: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
+  let a: Awaited<ReturnType<typeof mkUser>> | undefined
+  let boardId: string | undefined
+  try {
+    owner = await makeSignedInUser('rls-owner-write')
+    a = await mkUser('rls-owner-write-member')
+    const board = await mkBoard(owner.uid, [a.id])
+    boardId = board.boardId
+
+    // mkBoard passes owner.uid as boards.owner_id, and the
+    // on_board_created trigger (0004_board_owner_trigger.sql) inserts a
+    // board_members row for owner_id with role='owner' as a side effect of
+    // the board insert. is_board_owner()/members_owner_write RLS depends on
+    // that row existing, so verify it rather than assume it.
+    const { data: ownerMembership, error: ownerMembershipErr } = await admin
+      .from('board_members')
+      .select('role')
+      .eq('board_id', boardId)
+      .eq('user_id', owner.uid)
+      .single()
+    expect(ownerMembershipErr).toBeNull()
+    expect(ownerMembership?.role).toBe('owner')
+
+    await setBoardPics(owner.userClient, boardId, [a.id])
+    expect(await listBoardPicIds(admin, boardId)).toEqual([a.id])
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (owner) await admin.auth.admin.deleteUser(owner.uid)
+    if (a) await admin.auth.admin.deleteUser(a.id)
   }
 }, 30000)
