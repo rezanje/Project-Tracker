@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { BarChart3, Calendar } from '@/components/pixel-icons'
-import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
@@ -47,15 +47,15 @@ export default function MobileNav() {
 
   useEffect(() => {
     function loadNav() {
-      fetchNav().then((nav) => {
+      fetchNavDeduped().then((nav) => {
         setWorkspaces(nav.workspaces)
         setBoards(nav.boards)
         setIsSuperAdmin(nav.isSuperAdmin)
         setPendingApprovals(nav.pendingApprovalsCount)
       })
+      fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     }
     loadNav()
-    fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     const supabase = getBrowserSupabase()
     supabase.auth
       .getUser()
@@ -63,7 +63,7 @@ export default function MobileNav() {
         setEmail(res.data.user?.email ?? null),
       )
 
-    // See Sidebar.tsx: nav has no route loader, so re-fetch on every
+    // See Sidebar.tsx: nav has no route loader, so re-fetch both on every
     // resolved navigation/invalidation to pick up count changes elsewhere.
     const unsubNav = router.subscribe('onResolved', loadNav)
     return () => unsubNav()

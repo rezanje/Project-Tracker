@@ -16,7 +16,7 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { BarChart3, Calendar, FolderKanban } from '@/components/pixel-icons'
-import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { fetchInboxUnreadFn } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
@@ -66,20 +66,21 @@ export default function Sidebar() {
 
   useEffect(() => {
     function loadNav() {
-      fetchNav().then((nav) => {
+      fetchNavDeduped().then((nav) => {
         setWorkspaces(nav.workspaces)
         setBoards(nav.boards)
         setIsSuperAdmin(nav.isSuperAdmin)
         setPendingApprovals(nav.pendingApprovalsCount)
       })
+      fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     }
     loadNav()
-    fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
 
     // Nav has no route loader of its own, so `router.invalidate()` calls
-    // elsewhere (e.g. after resolving an approval) wouldn't otherwise reach
-    // it — re-fetch on every resolved navigation/invalidation instead.
+    // elsewhere (e.g. after resolving an approval, or reading the inbox)
+    // wouldn't otherwise reach it — re-fetch both on every resolved
+    // navigation/invalidation instead.
     const unsubNav = router.subscribe('onResolved', loadNav)
 
     const supabase = getBrowserSupabase()
