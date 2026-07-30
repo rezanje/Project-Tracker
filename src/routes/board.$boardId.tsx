@@ -20,6 +20,12 @@ import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
+import {
+  addWorkspaceMemberToBoard,
+  callerOwnsBoard,
+  listAddableWorkspaceMembers,
+  type AddableMember,
+} from '#/lib/board-members'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
@@ -96,16 +102,44 @@ const inviteFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    const { data: m } = await supabase
-      .from('board_members')
-      .select('role')
-      .eq('board_id', data.boardId)
-      .eq('user_id', user.id)
-      .single()
-    if (m?.role !== 'owner') throw new Error('forbidden')
+    // Workspace owners see this form too (board-data.ts maps their workspace
+    // role onto the board), so checking only the board_members row rejected
+    // callers the UI had already offered the control to.
+    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
     const res = await inviteClient(getServiceSupabase(), data.boardId, data.email, data.role)
     flush(headers)
     return res
+  })
+
+const fetchAddableMembersFn = createServerFn({ method: 'GET' })
+  .validator((d: unknown) => {
+    const boardId = (d as { boardId?: unknown })?.boardId
+    if (typeof boardId !== 'string' || !boardId) throw new Error('boardId required')
+    return { boardId }
+  })
+  .handler(async ({ data }): Promise<AddableMember[]> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
+    const list = await listAddableWorkspaceMembers(getServiceSupabase(), data.boardId)
+    flush(headers)
+    return list
+  })
+
+const addBoardMemberFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, userId } = (d ?? {}) as { boardId?: unknown; userId?: unknown }
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (typeof boardId !== 'string' || !uuid.test(boardId)) throw new Error('valid boardId required')
+    if (typeof userId !== 'string' || !uuid.test(userId)) throw new Error('valid userId required')
+    return { boardId, userId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
+    await addWorkspaceMemberToBoard(getServiceSupabase(), data.boardId, data.userId)
+    flush(headers)
   })
 
 const addCardFn = createServerFn({ method: 'POST' })
