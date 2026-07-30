@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { MessageSquare, Paperclip, Tag } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MessageSquare, Paperclip, Tag } from 'lucide-react'
 import { Calendar } from '@/components/pixel-icons'
 import type { CardRow } from '#/lib/board-data'
 
@@ -11,6 +11,11 @@ interface CardProps {
   isDraggable?: boolean
   onCardClick?: (card: CardRow) => void
   assignee?: CardAssignee | null
+  /** Each set only when that neighbour column exists — no-drag move buttons. */
+  onMoveNext?: () => void
+  nextColumnTitle?: string
+  onMovePrev?: () => void
+  prevColumnTitle?: string
 }
 
 function initials(name: string): string {
@@ -31,7 +36,45 @@ export function catColor(s: string): string {
   return CAT_COLORS[h % CAT_COLORS.length]
 }
 
-export default function Card({ card, isDraggable, onCardClick, assignee }: CardProps) {
+function MoveButton({
+  icon: Icon,
+  label,
+  onMove,
+}: {
+  icon: typeof ArrowRight
+  label: string
+  onMove: () => void
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      // Stop propagation on pointer, click, and keyboard so the drag sensor
+      // (pointer + keyboard sensors) and the card-detail click never fire.
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onMove()
+      }}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--card)] text-[var(--ink2)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+    >
+      <Icon size={13} aria-hidden="true" />
+    </button>
+  )
+}
+
+export default function Card({
+  card,
+  isDraggable,
+  onCardClick,
+  assignee,
+  onMoveNext,
+  nextColumnTitle,
+  onMovePrev,
+  prevColumnTitle,
+}: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: !isDraggable })
 
@@ -66,6 +109,20 @@ export default function Card({ card, isDraggable, onCardClick, assignee }: CardP
         <p className="min-w-0 flex-1 text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
           {card.title}
         </p>
+        {onMovePrev && (
+          <MoveButton
+            icon={ArrowLeft}
+            label={prevColumnTitle ? `Move to ${prevColumnTitle}` : 'Move to previous column'}
+            onMove={onMovePrev}
+          />
+        )}
+        {onMoveNext && (
+          <MoveButton
+            icon={ArrowRight}
+            label={nextColumnTitle ? `Move to ${nextColumnTitle}` : 'Move to next column'}
+            onMove={onMoveNext}
+          />
+        )}
         {assignee && (
           <span
             title={assignee.name}

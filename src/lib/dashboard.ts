@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
+import { myPicBoardIds, type PicMemberRow } from './board-pics'
 import { isDoneColumn, localDateStr, weekdayIndex, weekRange } from './home'
 
 // One aggregation feeding both dashboards (Command Center + Pixel Home). Panels
@@ -25,6 +26,8 @@ export type DashProject = {
   done: number
   total: number
   members: DashProjectMember[]
+  /** True when the signed-in user is flagged PIC on this board. */
+  isMyPic: boolean
 }
 export type DashPriority = {
   id: string
@@ -153,11 +156,16 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
     // Project-card avatars: real board members (not task assignees), matching
     // the board detail page's "who's on this project" meaning.
     const boardIds = (boards ?? []).map((b) => b.id as string)
+    type MemberRow = PicMemberRow & { profiles: unknown }
     const { data: boardMembers } = boardIds.length
-      ? await supabase.from('board_members').select('board_id, profiles(id,name,avatar_url)').in('board_id', boardIds)
-      : { data: [] as Array<{ board_id: string; profiles: unknown }> }
+      ? await supabase.from('board_members').select('board_id, user_id, is_pic, profiles(id,name,avatar_url)').in('board_id', boardIds)
+      : { data: [] as MemberRow[] }
+    const rows = (boardMembers ?? []) as MemberRow[]
+    // Computed from the raw rows (not from membersByBoard) so a PIC whose
+    // profile row failed to join is still counted.
+    const myPicBoards = myPicBoardIds(rows, user.id)
     const membersByBoard = new Map<string, DashProjectMember[]>()
-    for (const m of (boardMembers ?? []) as Array<{ board_id: string; profiles: unknown }>) {
+    for (const m of rows) {
       const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
       if (!p) continue
       const list = membersByBoard.get(m.board_id) ?? []
@@ -266,6 +274,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         done: bDone,
         total: bTotal,
         members: membersByBoard.get(b.id) ?? [],
+        isMyPic: myPicBoards.has(b.id as string),
       })
       if (bTotal > 0 && bDone === bTotal) pDone++
       else if (bDone > 0) pInProgress++

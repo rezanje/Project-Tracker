@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
+import { dedupeInFlight } from './nav'
 
 export type Thread = {
   id: string
@@ -247,6 +248,25 @@ export const fetchInboxUnreadFn = createServerFn({ method: 'GET' }).handler(
     }
   },
 )
+
+/**
+ * `Sidebar` and `MobileNav` are both mounted at once (hidden by CSS
+ * breakpoints, not unmounted) and both subscribe their inbox count reload to
+ * the router's `onResolved` event — same shape as the nav data in `nav.ts`.
+ * Left unguarded, every resolved navigation fires `fetchInboxUnreadFn()`
+ * twice, and overlapping calls can resolve out of order, letting a stale
+ * count win over a fresher one. Route through this deduped wrapper instead
+ * of calling `fetchInboxUnreadFn` directly, reusing the same
+ * `dedupeInFlight` helper `fetchNavDeduped` uses for nav data.
+ *
+ * Client-only: like `fetchNavDeduped`, this is a module-scope, process-wide
+ * singleton wrapping a per-user server function. Both current call sites are
+ * inside `useEffect`, so it's safe today — but this must never be called
+ * from a route loader (loaders also run on the server): two concurrent
+ * users' loader requests could then share this one in-flight promise, and
+ * one user could receive another user's unread count.
+ */
+export const fetchInboxUnreadDeduped = dedupeInFlight(fetchInboxUnreadFn)
 
 export const fetchMessageableMembersFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<MessageableMember[]> => {

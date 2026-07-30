@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 import { FolderKanban } from '@/components/pixel-icons'
@@ -28,6 +29,10 @@ function SegBar({ pct, color }: { pct: number; color: string }) {
 
 function Projects() {
   const d = Route.useLoaderData() as DashboardData
+  const [picOnly, setPicOnly] = useState(false)
+
+  const picCount = d.projects.filter((p) => p.isMyPic).length
+  const shown = picOnly ? d.projects.filter((p) => p.isMyPic) : d.projects
 
   return (
     <main className="min-w-0 flex-1 p-4 sm:p-6">
@@ -35,20 +40,47 @@ function Projects() {
         <div className="flex items-center gap-2">
           <FolderKanban size={22} className="text-[var(--accent)]" aria-hidden="true" />
           <h1 className="display-title text-2xl font-extrabold text-[var(--ink)]">All Projects</h1>
-          <span className="chip ml-1">{d.projects.length}</span>
+          <span className="chip ml-1">{shown.length}</span>
         </div>
 
-        {d.projects.length === 0 && (
+        <div className="flex gap-2">
+          {([
+            { key: false, label: 'All', n: d.projects.length },
+            { key: true, label: "I'm PIC", n: picCount },
+          ] as const).map((t) => (
+            <button
+              key={String(t.key)}
+              type="button"
+              onClick={() => setPicOnly(t.key)}
+              aria-pressed={picOnly === t.key}
+              className={`rounded-full border-2 px-3 py-1 text-[12px] font-bold transition ${
+                picOnly === t.key
+                  ? 'border-[var(--ink)] bg-[var(--accent-soft)] text-[var(--accent-ink)]'
+                  : 'border-[var(--line)] text-[var(--ink2)] hover:border-[var(--ink)]'
+              }`}
+            >
+              {t.label} ({t.n})
+            </button>
+          ))}
+        </div>
+
+        {shown.length === 0 && (
           <div className="card p-10 text-center text-[var(--ink2)]">
-            <p className="display-title text-lg font-bold">No projects yet</p>
-            <p className="mt-1 text-sm text-[var(--ink3)]">Create a board from a workspace to see it here.</p>
+            <p className="display-title text-lg font-bold">
+              {picOnly ? "You're not PIC of any project" : 'No projects yet'}
+            </p>
+            <p className="mt-1 text-sm text-[var(--ink3)]">
+              {picOnly
+                ? 'A project owner can make you PIC from Edit project.'
+                : 'Create a board from a workspace to see it here.'}
+            </p>
           </div>
         )}
 
-        {d.projects.length > 0 && (
+        {shown.length > 0 && (
           <section className="card p-4">
             <div className="flex flex-col">
-              {d.projects.map((p, i) => {
+              {shown.map((p, i) => {
                 const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
                 return (
                   <Link
@@ -59,7 +91,14 @@ function Projects() {
                   >
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: tint }} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-[var(--ink)]">{p.title}</p>
+                      <p className="flex items-center gap-1.5 truncate text-[14px] font-bold text-[var(--ink)]">
+                        <span className="truncate">{p.title}</span>
+                        {p.isMyPic && (
+                          <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-[var(--accent-ink)]">
+                            PIC
+                          </span>
+                        )}
+                      </p>
                       <p className="truncate text-[11px] text-[var(--ink3)]">
                         {p.wsName} · {p.done}/{p.total} tasks
                       </p>

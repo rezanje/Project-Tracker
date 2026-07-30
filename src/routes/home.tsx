@@ -1,18 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { useMemo, useState, type ComponentType } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import {
-  CheckSquare,
-  Megaphone,
-  MoreVertical,
-  Music2,
-  Play,
-  Plus,
-  RotateCcw,
-  SkipBack,
-  SkipForward,
-  Target,
-  Volume2,
-} from 'lucide-react'
+import { CheckSquare, Megaphone, MoreVertical, Plus, Target } from 'lucide-react'
 import { AlarmClock, Flame, FolderPlus, StickyNote } from '@/components/pixel-icons'
 import { segFill } from '#/lib/progress'
 import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
@@ -116,68 +104,6 @@ function MiniBars({ data, color }: { data: number[]; color: string }) {
         />
       ))}
     </div>
-  )
-}
-
-function Pomodoro() {
-  const [secs, setSecs] = useState(25 * 60)
-  const [running, setRunning] = useState(false)
-  const ref = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    if (!running) return
-    ref.current = setInterval(() => {
-      setSecs((s) => {
-        if (s <= 1) {
-          setRunning(false)
-          return 0
-        }
-        return s - 1
-      })
-    }, 1000)
-    return () => {
-      if (ref.current) clearInterval(ref.current)
-    }
-  }, [running])
-
-  const mm = String(Math.floor(secs / 60)).padStart(2, '0')
-  const ss = String(secs % 60).padStart(2, '0')
-
-  return (
-    <section className="card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-          🍅 Pomodoro
-        </h3>
-      </div>
-      <div className="lcd-screen mb-3">
-        <p className="lcd-digits text-center text-5xl font-bold">
-          {mm}:{ss}
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setRunning((r) => !r)}
-          className="btn btn-primary flex-1"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          <Play size={15} aria-hidden="true" />
-          {running ? 'Pause' : 'Start Focus'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setRunning(false)
-            setSecs(25 * 60)
-          }}
-          className="btn btn-ghost flex-1"
-        >
-          <RotateCcw size={15} aria-hidden="true" />
-          Reset
-        </button>
-      </div>
-    </section>
   )
 }
 
@@ -575,39 +501,6 @@ function PixelHome() {
                 tint="#2563eb"
                 panel={(close) => <QuickReminderForm onDone={close} />}
               />
-            </div>
-          </section>
-
-          <Pomodoro />
-
-          {/* MUSIC */}
-          <section className="card p-4">
-            <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-              🎵 Music
-            </h3>
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-[8px] border-2 border-[var(--ink)] bg-[var(--col)]">
-                <Music2 size={20} className="text-[var(--ink2)]" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-bold text-[var(--ink)]">Lofi for Coding</p>
-                <p className="truncate text-[11px] text-[var(--ink3)]">Lofi Girl</p>
-              </div>
-            </div>
-            <div className="my-2 h-1.5 rounded-full bg-[var(--col)]">
-              <div className="h-full w-1/3 rounded-full bg-[var(--accent)]" />
-            </div>
-            <div className="flex items-center justify-center gap-4 text-[var(--ink2)]">
-              <SkipBack size={16} />
-              <button
-                type="button"
-                aria-label="Play"
-                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--ink)] bg-[var(--btn)] text-[var(--btn-ink)]"
-              >
-                <Play size={15} />
-              </button>
-              <SkipForward size={16} />
-              <Volume2 size={16} className="ml-auto" />
             </div>
           </section>
 

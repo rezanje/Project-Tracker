@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react'
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   CheckSquare,
   ChevronDown,
@@ -16,9 +16,9 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { BarChart3, Calendar, FolderKanban } from '@/components/pixel-icons'
-import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
+import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
-import { fetchInboxUnreadFn } from '#/lib/messages'
+import { fetchInboxUnreadDeduped } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { accentFor } from '#/lib/accent'
@@ -53,6 +53,7 @@ const MAIN_NAV: Array<{
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const router = useRouter()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
   const [boards, setBoards] = useState<NavBoard[]>([])
@@ -64,14 +65,23 @@ export default function Sidebar() {
   const [inboxUnread, setInboxUnread] = useState(0)
 
   useEffect(() => {
-    fetchNav().then((nav) => {
-      setWorkspaces(nav.workspaces)
-      setBoards(nav.boards)
-      setIsSuperAdmin(nav.isSuperAdmin)
-      setPendingApprovals(nav.pendingApprovalsCount)
-    })
-    fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
+    function loadNav() {
+      fetchNavDeduped().then((nav) => {
+        setWorkspaces(nav.workspaces)
+        setBoards(nav.boards)
+        setIsSuperAdmin(nav.isSuperAdmin)
+        setPendingApprovals(nav.pendingApprovalsCount)
+      })
+      fetchInboxUnreadDeduped().then(setInboxUnread).catch(() => {})
+    }
+    loadNav()
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
+
+    // Nav has no route loader of its own, so `router.invalidate()` calls
+    // elsewhere (e.g. after resolving an approval, or reading the inbox)
+    // wouldn't otherwise reach it — re-fetch both on every resolved
+    // navigation/invalidation instead.
+    const unsubNav = router.subscribe('onResolved', loadNav)
 
     const supabase = getBrowserSupabase()
     supabase.auth
@@ -83,8 +93,11 @@ export default function Sidebar() {
       (_e: unknown, session: { user?: { email?: string | null } } | null) =>
         setEmail(session?.user?.email ?? null),
     )
-    return () => sub.subscription.unsubscribe()
-  }, [])
+    return () => {
+      unsubNav()
+      sub.subscription.unsubscribe()
+    }
+  }, [router])
 
   async function logout() {
     await getBrowserSupabase().auth.signOut()

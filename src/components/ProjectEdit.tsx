@@ -6,9 +6,10 @@ import type { BoardMetaUpdate } from '#/lib/boards'
 interface Props {
   board: BoardWithColumns
   typeSuggestions: string[]
+  members: { id: string; name: string; isPic: boolean; isMember: boolean; role: 'owner' | 'member' | 'client' }[]
   onClose: () => void
   onSaved: () => void
-  onSave: (fields: BoardMetaUpdate, valueIdr: number) => Promise<void>
+  onSave: (fields: BoardMetaUpdate, valueIdr: number, picUserIds: string[]) => Promise<void>
   onDelete: () => Promise<void>
 }
 
@@ -16,11 +17,15 @@ const label = 'mb-1.5 text-xs font-bold uppercase tracking-[0.04em] text-[var(--
 const STATUSES = ['active', 'on_hold', 'done', 'archived'] as const
 const PRIORITIES = ['', 'low', 'medium', 'high', 'urgent'] as const
 
-export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, onSave, onDelete }: Props) {
+export default function ProjectEdit({ board, typeSuggestions, members, onClose, onSaved, onSave, onDelete }: Props) {
   const [title, setTitle] = useState(board.title)
   const [description, setDescription] = useState(board.description ?? '')
   const [type, setType] = useState(board.type ?? '')
-  const [pic, setPic] = useState(board.pic ?? '')
+  const [picIds, setPicIds] = useState<string[]>(members.filter((m) => m.isPic).map((m) => m.id))
+  // PIC candidates must be real board_members rows — the synthetic
+  // caller-as-member entry (isMember: false) has no row for setBoardPics to
+  // match, so ticking it would silently save nothing (finding 2).
+  const picCandidates = members.filter((m) => m.isMember)
   const [status, setStatus] = useState(board.status)
   const [clientName, setClientName] = useState(board.client_name ?? '')
   const [startDate, setStartDate] = useState(board.start_date ?? '')
@@ -42,7 +47,6 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
           title: title.trim() || board.title,
           description: t(description),
           type: t(type),
-          pic: t(pic),
           status,
           client_name: t(clientName),
           start_date: startDate || null,
@@ -50,6 +54,7 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
           priority: priority || null,
         },
         Math.max(0, Math.floor(Number(value) || 0)),
+        picIds,
       )
       onSaved()
     } catch {
@@ -130,7 +135,29 @@ export default function ProjectEdit({ board, typeSuggestions, onClose, onSaved, 
             </div>
             <div>
               <div className={label}>PIC</div>
-              <input value={pic} onChange={(e) => setPic(e.target.value)} className="field" />
+              {picCandidates.length === 0 ? (
+                <p className="text-[12px] text-[var(--ink3)]">
+                  Invite members to this project first.
+                </p>
+              ) : (
+                <div className="flex max-h-[132px] flex-col gap-1 overflow-y-auto">
+                  {picCandidates.map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 text-[13px] text-[var(--ink)]">
+                      <input
+                        type="checkbox"
+                        checked={picIds.includes(m.id)}
+                        onChange={(e) =>
+                          setPicIds((prev) =>
+                            e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id),
+                          )
+                        }
+                      />
+                      <span className="truncate">{m.name}</span>
+                      <span className="text-[11px] capitalize text-[var(--ink3)]">({m.role})</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

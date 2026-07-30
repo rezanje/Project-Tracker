@@ -1,15 +1,11 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
-  AlertTriangle,
   Banknote,
   FileText,
   Image as ImageIcon,
   Info,
-  Lightbulb,
-  Sparkles,
   Star,
   TrendingUp,
-  Truck,
   X,
 } from 'lucide-react'
 import { Building2, Clock, Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
@@ -65,13 +61,6 @@ function progressColor(pct: number): string {
   return 'var(--danger)'
 }
 
-// ---- static panels (no data source yet) ----
-const AI_ITEMS = [
-  { icon: AlertTriangle, tint: 'var(--danger)', title: 'Produksi Gentanala terlambat 2 hari', sub: '3 task overdue' },
-  { icon: Lightbulb, tint: '#d9a406', title: 'Konten minggu depan masih kosong', sub: '2 konten belum dijadwalkan' },
-  { icon: TrendingUp, tint: 'var(--accent)', title: 'Revenue Disma Fresh naik 14% minggu ini', sub: 'Rp 4.2M (+14%)' },
-  { icon: Truck, tint: '#2563eb', title: 'Supplier packaging belum approve', sub: 'Menunggu dari PT. Kayu Abadi' },
-]
 const TYPE_COLORS: Record<string, string> = {
   Meeting: '#7c3aed',
   Approval: '#2563eb',
@@ -179,7 +168,7 @@ function CommandCenter() {
 
         {/* workspace health + AI summary */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <section className="card p-4 lg:col-span-8">
+          <section className="card p-4 lg:col-span-12">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
                 Workspace Health <Info size={12} className="text-[var(--ink3)]" />
@@ -252,31 +241,6 @@ function CommandCenter() {
                 ))}
               </div>
             )}
-          </section>
-
-          {/* AI SUMMARY — Coming Soon */}
-          <section className="card relative overflow-hidden p-4 lg:col-span-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                <Sparkles size={13} className="text-[var(--accent)]" /> AI Summary
-              </h3>
-            </div>
-            <div className="pointer-events-none space-y-2 opacity-40 blur-[1.5px]">
-              {AI_ITEMS.map((it) => (
-                <div key={it.title} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
-                  <it.icon size={16} style={{ color: it.tint }} className="mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-bold text-[var(--ink)]">{it.title}</p>
-                    <p className="truncate text-[11px] text-[var(--ink3)]">{it.sub}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="chip bg-[var(--pop-soft)] text-[var(--pop-ink)]" style={{ borderColor: 'var(--pop-ink)' }}>
-                🤖 Coming Soon
-              </span>
-            </div>
           </section>
         </div>
 

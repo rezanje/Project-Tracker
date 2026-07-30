@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Award, Bot, Plus, Sparkles, Trophy, Users } from 'lucide-react'
+import { Award, Plus, Sparkles, Trophy, Users } from 'lucide-react'
 import { Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
 
@@ -203,24 +203,8 @@ export default function WorkspaceDashboard({
           </div>
         </div>
 
-        {/* AI summary + schedule + active projects */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* AI summary — Coming Soon */}
-          <section className="card relative overflow-hidden p-4">
-            <Head title="AI Summary" />
-            <div className="pointer-events-none flex gap-2 opacity-40 blur-[1.5px]">
-              <Bot size={40} className="shrink-0 text-[var(--accent)]" />
-              <p className="text-[13px] text-[var(--ink2)]">
-                {name} is doing well! Consider reviewing projects that are behind schedule.
-              </p>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="chip bg-[var(--pop-soft)] text-[var(--pop-ink)]" style={{ borderColor: 'var(--pop-ink)' }}>
-                🤖 Coming Soon
-              </span>
-            </div>
-          </section>
-
+        {/* schedule + active projects */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* upcoming schedule */}
           <section className="card p-4">
             <Head title="Upcoming Schedule" />

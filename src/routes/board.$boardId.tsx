@@ -23,6 +23,7 @@ import { inviteClient } from '#/lib/invites'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
+import { setBoardPics } from '#/lib/board-pics'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import ProjectEdit from '#/components/ProjectEdit'
@@ -39,7 +40,18 @@ import type { CardRow } from '#/lib/board-data'
 export type Milestone = { id: string; label: string; start_date: string; end_date: string }
 
 export type BoardMeta = {
-  members: { id: string; name: string; avatar_url: string | null }[]
+  members: {
+    id: string
+    name: string
+    avatar_url: string | null
+    isPic: boolean
+    // Whether this entry is a real `board_members` row. `false` only for the
+    // synthetic caller-as-member entry unshifted below (workspace-only access,
+    // no board_members row) — that entry must stay usable for task assignment
+    // everywhere, but must NOT be offered as a PIC candidate (see ProjectEdit).
+    isMember: boolean
+    role: 'owner' | 'member' | 'client'
+  }[]
   labels: { id: string; name: string; color: string }[]
   milestones: Milestone[]
 }
@@ -159,7 +171,7 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     const { user, supabase } = await requireUser(getRequest(), headers)
     const { data: members, error: mErr } = await supabase
       .from('board_members')
-      .select('user_id, profiles(id,name,avatar_url)')
+      .select('user_id, is_pic, role, profiles(id,name,avatar_url)')
       .eq('board_id', data.boardId)
     if (mErr) throw mErr
     const { data: labels, error: lErr } = await supabase
@@ -175,14 +187,30 @@ const fetchBoardMeta = createServerFn({ method: 'GET' })
     if (msErr) throw msErr
     const memberList = (members ?? []).map((m) => {
       const p = (m.profiles as unknown) as { id: string; name: string; avatar_url: string | null } | null
-      return { id: p?.id ?? (m.user_id as string), name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null }
+      return {
+        id: p?.id ?? (m.user_id as string),
+        name: p?.name ?? 'Unknown',
+        avatar_url: p?.avatar_url ?? null,
+        isPic: m.is_pic === true,
+        isMember: true,
+        role: (m.role as 'owner' | 'member' | 'client' | null) ?? 'member',
+      }
     })
     // The caller may see/edit this board via workspace membership alone,
     // without an explicit board_members row — make sure "assign to me" is
-    // always offered even then.
+    // always offered even then. isMember: false marks this as synthetic so it
+    // is excluded from the PIC checkbox list (it has no board_members row for
+    // setBoardPics to match).
     if (!memberList.some((m) => m.id === user.id)) {
       const { data: me } = await supabase.from('profiles').select('name,avatar_url').eq('id', user.id).single()
-      memberList.unshift({ id: user.id, name: me?.name ?? 'Me', avatar_url: me?.avatar_url ?? null })
+      memberList.unshift({
+        id: user.id,
+        name: me?.name ?? 'Me',
+        avatar_url: me?.avatar_url ?? null,
+        isPic: false,
+        isMember: false,
+        role: 'member',
+      })
     }
     flush(headers)
     return {
@@ -328,7 +356,7 @@ const addTaskFn = createServerFn({ method: 'POST' })
   })
 
 const META_KEYS = [
-  'title', 'description', 'type', 'pic', 'status', 'client_name', 'start_date', 'deadline', 'priority',
+  'title', 'description', 'type', 'status', 'client_name', 'start_date', 'deadline', 'priority',
 ] as const
 
 const updateBoardFn = createServerFn({ method: 'POST' })
@@ -361,6 +389,29 @@ const setFinanceFn = createServerFn({ method: 'POST' })
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
     await setBoardFinance(supabase, data.boardId, data.valueIdr)
+    flush(headers)
+  })
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const MAX_PICS = 200
+
+const setBoardPicsFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, userIds } = (d ?? {}) as { boardId?: unknown; userIds?: unknown }
+    if (typeof boardId !== 'string') throw new Error('boardId required')
+    if (
+      !Array.isArray(userIds) ||
+      userIds.length > MAX_PICS ||
+      !userIds.every((u) => typeof u === 'string' && UUID_RE.test(u))
+    )
+      throw new Error(`userIds must be an array of at most ${MAX_PICS} UUIDs`)
+    return { boardId, userIds: userIds as string[] }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    // RLS (members_owner_write) is what restricts this to the board owner.
+    await setBoardPics(supabase, data.boardId, data.userIds)
     flush(headers)
   })
 
@@ -736,18 +787,30 @@ function BoardView() {
   }))
 
   const columnsContent = (
-    <div className="gt-scroll flex items-start gap-4 overflow-x-auto pb-3.5">
+    <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
       {groupBy === 'phase'
-        ? phaseColumns.map((col) => (
-            <Column
-              key={col.id}
-              column={col}
-              isOwner={canEdit}
-              onAddCard={onAddCard}
-              onCardClick={openCardDetail}
-              members={boardMeta?.members}
-            />
-          ))
+        ? phaseColumns.map((col, i) => {
+            const prev = phaseColumns[i - 1]
+            const next = phaseColumns[i + 1]
+            return (
+              <Column
+                key={col.id}
+                column={col}
+                isOwner={canEdit}
+                onAddCard={onAddCard}
+                onCardClick={openCardDetail}
+                members={boardMeta?.members}
+                onMoveCardPrev={
+                  canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
+                }
+                prevColumnTitle={prev?.title}
+                onMoveCardNext={
+                  canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
+                }
+                nextColumnTitle={next?.title}
+              />
+            )
+          })
         : categoryColumns.map((col) => (
             // Read-only view: no owner tools / drag in category mode.
             <Column
@@ -824,7 +887,16 @@ function BoardView() {
                 · Due {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               </span>
             )}
-            {board.pic && <span className="text-[12px] text-[var(--ink3)]">· PIC {board.pic}</span>}
+            {(() => {
+              const picNames = (boardMeta?.members ?? []).filter((m) => m.isPic).map((m) => m.name)
+              // Fall back to the legacy free-text PIC until accounts are picked,
+              // so existing projects never look like they lost their PIC. But
+              // suppress that fallback while boardMeta is still loading (null) —
+              // otherwise a board with both legacy text and account PICs shows
+              // the legacy text first, then swaps to account names a beat later.
+              const text = picNames.length > 0 ? picNames.join(', ') : boardMeta ? board.pic : null
+              return text ? <span className="text-[12px] text-[var(--ink3)]">· PIC {text}</span> : null
+            })()}
             {isOwner && board.value_idr != null && (
               <span className="text-[12px] font-bold text-[var(--accent-ink)]">
                 · Rp {board.value_idr.toLocaleString('id-ID')}
@@ -901,6 +973,7 @@ function BoardView() {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
+                  disabled={!boardMeta}
                   className="btn btn-ghost shrink-0"
                 >
                   Edit project
@@ -1257,18 +1330,21 @@ function BoardView() {
         />
       )}
 
-      {editing && (
+      {editing && boardMeta && (
         <ProjectEdit
           board={board}
           typeSuggestions={['Design', 'Development', 'Branding', 'Marketing', 'Consulting', 'Content']}
+          members={boardMeta.members}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false)
             router.invalidate()
           }}
-          onSave={async (fields, valueIdr) => {
+          onSave={async (fields, valueIdr, picUserIds) => {
             await updateBoardFn({ data: { boardId: board.id, fields } })
             await setFinanceFn({ data: { boardId: board.id, valueIdr } })
+            await setBoardPicsFn({ data: { boardId: board.id, userIds: picUserIds } })
+            setBoardMeta(null) // force a refetch so the header picks up new PICs
           }}
           onDelete={async () => {
             await deleteBoardFn({ data: { boardId: board.id } })
