@@ -4,7 +4,7 @@ import { requireUser } from './auth'
 
 export type Notification = {
   id: string
-  kind: 'assignment' | 'reminder' | 'approval' | 'mention' | 'status'
+  kind: 'assignment' | 'reminder' | 'approval' | 'mention' | 'status' | 'pic'
   message: string
   boardId: string | null
   read: boolean
@@ -52,7 +52,7 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
       board_id: string | null
       read_at: string | null
       created_at: string
-      kind: 'assignment' | 'mention' | 'status'
+      kind: 'assignment' | 'mention' | 'status' | 'pic'
     }>).map((n) => ({
       id: n.id,
       kind: n.kind,

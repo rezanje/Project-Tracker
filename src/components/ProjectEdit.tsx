@@ -6,7 +6,7 @@ import type { BoardMetaUpdate } from '#/lib/boards'
 interface Props {
   board: BoardWithColumns
   typeSuggestions: string[]
-  members: { id: string; name: string; isPic: boolean }[]
+  members: { id: string; name: string; isPic: boolean; isMember: boolean; role: 'owner' | 'member' | 'client' }[]
   onClose: () => void
   onSaved: () => void
   onSave: (fields: BoardMetaUpdate, valueIdr: number, picUserIds: string[]) => Promise<void>
@@ -22,6 +22,10 @@ export default function ProjectEdit({ board, typeSuggestions, members, onClose, 
   const [description, setDescription] = useState(board.description ?? '')
   const [type, setType] = useState(board.type ?? '')
   const [picIds, setPicIds] = useState<string[]>(members.filter((m) => m.isPic).map((m) => m.id))
+  // PIC candidates must be real board_members rows — the synthetic
+  // caller-as-member entry (isMember: false) has no row for setBoardPics to
+  // match, so ticking it would silently save nothing (finding 2).
+  const picCandidates = members.filter((m) => m.isMember)
   const [status, setStatus] = useState(board.status)
   const [clientName, setClientName] = useState(board.client_name ?? '')
   const [startDate, setStartDate] = useState(board.start_date ?? '')
@@ -131,13 +135,13 @@ export default function ProjectEdit({ board, typeSuggestions, members, onClose, 
             </div>
             <div>
               <div className={label}>PIC</div>
-              {members.length === 0 ? (
+              {picCandidates.length === 0 ? (
                 <p className="text-[12px] text-[var(--ink3)]">
                   Invite members to this project first.
                 </p>
               ) : (
                 <div className="flex max-h-[132px] flex-col gap-1 overflow-y-auto">
-                  {members.map((m) => (
+                  {picCandidates.map((m) => (
                     <label key={m.id} className="flex items-center gap-2 text-[13px] text-[var(--ink)]">
                       <input
                         type="checkbox"
@@ -149,6 +153,7 @@ export default function ProjectEdit({ board, typeSuggestions, members, onClose, 
                         }
                       />
                       <span className="truncate">{m.name}</span>
+                      <span className="text-[11px] capitalize text-[var(--ink3)]">({m.role})</span>
                     </label>
                   ))}
                 </div>
