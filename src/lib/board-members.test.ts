@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
 import {
+  addWorkspaceMemberForCaller,
   addWorkspaceMemberToBoard,
   callerOwnsBoard,
   listAddableWorkspaceMembers,
@@ -173,6 +174,34 @@ test('addWorkspaceMemberToBoard never downgrades an existing board role', async 
   }
 }, 30000)
 
+test('addWorkspaceMemberToBoard mirrors a workspace owner’s role instead of demoting them', async () => {
+  // Reproduces finding #1: wsOwner owns the workspace but the board is created
+  // by someone else, so wsOwner gets NO board_members row from the board-owner
+  // trigger. board-data.ts resolves their role to 'owner' via the workspace
+  // fallback, so the "add from workspace" picker offers them as a candidate.
+  // Adding them through this path must NOT leave them as a plain 'member' —
+  // that would silently demote a workspace owner the next time board-data.ts
+  // reads their (now-explicit) board_members row, since that row wins over the
+  // derived workspace role.
+  let wsOwner, boardCreator, wsId: string | undefined, boardId: string | undefined
+  try {
+    wsOwner = await mkUser('bmmirrorwsown')
+    boardCreator = await mkUser('bmmirrorcreator')
+    wsId = await mkWorkspace(wsOwner.id)
+    await addToWorkspace(wsId, boardCreator.id)
+    boardId = await mkBoard(boardCreator.id, wsId)
+    expect((await boardMemberRoles(boardId))[wsOwner.id]).toBeUndefined()
+
+    await addWorkspaceMemberToBoard(admin, boardId, wsOwner.id)
+
+    expect((await boardMemberRoles(boardId))[wsOwner.id]).toBe('owner')
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
+    for (const u of [wsOwner, boardCreator]) if (u) await admin.auth.admin.deleteUser(u.id)
+  }
+}, 30000)
+
 test('addWorkspaceMemberToBoard rejects a user who is not in the board workspace', async () => {
   let owner, outsider, wsId: string | undefined, boardId: string | undefined
   try {
@@ -251,6 +280,58 @@ test('leaving one workspace does not touch board memberships in another', async 
   }
 }, 40000)
 
+test('leaving the workspace drops the board creator’s own owner row too', async () => {
+  // The cascade trigger (0036_workspace_member_cascade.sql) deletes by user_id
+  // across every board in the workspace — it doesn't special-case the board's
+  // creator. This is the spec's explicitly accepted consequence, not a
+  // regression: unlike the earlier cascade tests, which use a plain 'member'
+  // row, this one exercises the creator's 'owner' row (added by
+  // 0004_board_owner_trigger.sql).
+  let owner, wsId: string | undefined, boardId: string | undefined
+  try {
+    owner = await mkUser('bmcreatorcascade')
+    wsId = await mkWorkspace(owner.id)
+    boardId = await mkBoard(owner.id, wsId)
+    expect((await boardMemberRoles(boardId))[owner.id]).toBe('owner')
+
+    await admin.from('workspace_members').delete().eq('workspace_id', wsId).eq('user_id', owner.id)
+
+    expect((await boardMemberRoles(boardId))[owner.id]).toBeUndefined()
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+  }
+}, 30000)
+
+test('deleting a whole workspace cascades to its workspace_members and boards', async () => {
+  let owner, joiner, wsId: string | undefined, boardId: string | undefined
+  try {
+    owner = await mkUser('bmwscascadeowner')
+    joiner = await mkUser('bmwscascadejoin')
+    wsId = await mkWorkspace(owner.id)
+    await addToWorkspace(wsId, joiner.id)
+    boardId = await mkBoard(owner.id, wsId)
+    await addWorkspaceMemberToBoard(admin, boardId, joiner.id)
+
+    const { error: delErr } = await admin.from('workspaces').delete().eq('id', wsId)
+    expect(delErr).toBeNull()
+
+    const { data: wsMembers } = await admin
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', wsId)
+    expect(wsMembers ?? []).toEqual([])
+
+    const { data: boards } = await admin.from('boards').select('id').eq('id', boardId)
+    expect(boards ?? []).toEqual([])
+  } finally {
+    // The workspace, its boards and its workspace_members rows are already
+    // gone via cascade — only the auth users still need cleanup.
+    for (const u of [owner, joiner]) if (u) await admin.auth.admin.deleteUser(u.id)
+  }
+}, 30000)
+
 test('callerOwnsBoard is true for a workspace owner with no board row, false for a plain member', async () => {
   let wsOwner: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
   let plain: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
@@ -313,5 +394,40 @@ test('callerOwnsBoard is true for an explicit board owner who is not the workspa
     if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
     if (wsOwner) await admin.auth.admin.deleteUser(wsOwner.id)
     if (boardCreator) await admin.auth.admin.deleteUser(boardCreator.uid)
+  }
+}, 40000)
+
+test('addWorkspaceMemberForCaller rejects a plain workspace member and leaves membership unchanged', async () => {
+  // Finding #2: nothing previously asserted that the gate (callerOwnsBoard) ran
+  // before the act (addWorkspaceMemberToBoard) — deleting the gate line from the
+  // route handler left every existing test passing. addWorkspaceMemberForCaller
+  // composes gate-then-act so that ordering is testable outside the route file.
+  // Uses the caller's own signed-in, RLS-scoped client (via makeSignedInUser) —
+  // an unauthenticated client would match zero rows everywhere and pass this
+  // test vacuously regardless of whether the gate ran.
+  let owner
+  let plain: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
+  let target
+  let wsId: string | undefined, boardId: string | undefined
+  try {
+    owner = await mkUser('bmgateowner')
+    plain = await makeSignedInUser('bmgateplain')
+    target = await mkUser('bmgatetarget')
+    wsId = await mkWorkspace(owner.id)
+    await addToWorkspace(wsId, plain.uid)
+    await addToWorkspace(wsId, target.id)
+    boardId = await mkBoard(owner.id, wsId)
+
+    await expect(
+      addWorkspaceMemberForCaller(plain.userClient, admin, boardId, target.id, plain.uid),
+    ).rejects.toThrow()
+
+    expect((await boardMemberRoles(boardId))[target.id]).toBeUndefined()
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (target) await admin.auth.admin.deleteUser(target.id)
+    if (plain) await admin.auth.admin.deleteUser(plain.uid)
   }
 }, 40000)
