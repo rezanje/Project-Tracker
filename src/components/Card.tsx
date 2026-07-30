@@ -50,8 +50,10 @@ function MoveButton({
       type="button"
       title={label}
       aria-label={label}
-      // Stop both so the drag sensor and the card-detail click never fire.
+      // Stop propagation on pointer, click, and keyboard so the drag sensor
+      // (pointer + keyboard sensors) and the card-detail click never fire.
       onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation()
         onMove()
