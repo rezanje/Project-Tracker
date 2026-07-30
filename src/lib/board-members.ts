@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type AddableMember = { id: string; name: string; avatar_url: string | null }
+export type AddableMember = { id: string; name: string }
 
 /** Read the board's workspace id, or null when it has none. */
 async function boardWorkspaceId(svc: SupabaseClient, boardId: string): Promise<string | null> {
@@ -29,10 +29,16 @@ export async function listAddableWorkspaceMembers(
   const workspaceId = await boardWorkspaceId(svc, boardId)
   if (!workspaceId) return []
 
+  // Not filtered on profiles.status = 'approved' like searchAddableAccounts'
+  // sibling query: a pending account can only reach this list by already being a
+  // workspace_members row (added there by an owner, vetted independently of
+  // approval), and requireUser (src/lib/auth.ts) redirects any unapproved user
+  // to /pending on every route regardless, so an unapproved candidate showing
+  // up here has no access consequence — they still can't use the app.
   const [{ data: wsRows, error: wErr }, { data: bmRows, error: mErr }] = await Promise.all([
     svc
       .from('workspace_members')
-      .select('user_id, profiles(id,name,avatar_url)')
+      .select('user_id, profiles(id,name)')
       .eq('workspace_id', workspaceId),
     svc.from('board_members').select('user_id').eq('board_id', boardId),
   ])
@@ -44,24 +50,31 @@ export async function listAddableWorkspaceMembers(
   for (const r of wsRows ?? []) {
     const uid = r.user_id as string
     if (already.has(uid)) continue
-    const p = (r.profiles as unknown) as
-      | { id: string; name: string | null; avatar_url: string | null }
-      | null
-    out.push({ id: uid, name: p?.name ?? 'Unknown', avatar_url: p?.avatar_url ?? null })
+    const p = (r.profiles as unknown) as { id: string; name: string | null } | null
+    out.push({ id: uid, name: p?.name ?? 'Unknown' })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
- * Register an existing workspace member on the board as a plain `member`.
+ * Register an existing workspace member on the board, mirroring their
+ * workspace role: a workspace `owner` is inserted as board `owner`, everyone
+ * else as plain `member`.
  *
- * This grants no new access — `is_board_editor`'s workspace arm already covers
- * them (`0012_workspaces.sql`). The row is what makes them appear in the
- * project's member list, so they can be mentioned, assigned, and made PIC.
+ * Mirroring rather than hardcoding `'member'` matters because a workspace
+ * owner can always administer every board in the workspace anyway —
+ * `is_board_owner()`'s workspace arm already passes for them
+ * (`supabase/migrations/0012_workspaces.sql`) — so inserting them as `'member'`
+ * would grant nothing new but would silently demote them the moment this
+ * explicit row starts winning over that implicit access (`board-data.ts`
+ * prefers a `board_members` row over the derived workspace role). Mirroring
+ * the role keeps the operation a no-op for owners while still registering
+ * plain members. `workspace_members.role` is constrained to `'owner' |
+ * 'member'` (`0012_workspaces.sql`), so those are the only two cases.
  *
  * Verifies the user really is in the board's workspace, because `svc` bypasses
  * RLS and `userId` arrives from the client. Callers MUST also authorise the
- * caller with `callerOwnsBoard` first.
+ * caller with `callerOwnsBoard` first — see `addWorkspaceMemberForCaller`.
  */
 export async function addWorkspaceMemberToBoard(
   svc: SupabaseClient,
@@ -73,12 +86,13 @@ export async function addWorkspaceMemberToBoard(
 
   const { data: wm, error: wErr } = await svc
     .from('workspace_members')
-    .select('user_id')
+    .select('role')
     .eq('workspace_id', workspaceId)
     .eq('user_id', userId)
     .maybeSingle()
   if (wErr) throw wErr
   if (!wm) throw new Error('user is not a member of this board’s workspace')
+  const role = (wm.role as string) === 'owner' ? 'owner' : 'member'
 
   // Check-then-insert rather than upsert: an upsert would overwrite an existing
   // row and silently downgrade a board owner to 'member'.
@@ -91,10 +105,48 @@ export async function addWorkspaceMemberToBoard(
   if (eErr) throw eErr
   if (existing) return
 
-  const { error } = await svc
-    .from('board_members')
-    .insert({ board_id: boardId, user_id: userId, role: 'member' })
-  if (error) throw error
+  const { error } = await svc.from('board_members').insert({ board_id: boardId, user_id: userId, role })
+  if (error) {
+    // A double-click (or any concurrent retry) can pass the existence check
+    // above twice before either insert lands, so the second insert hits the
+    // board_members primary key. Treat that race as success — the row exists,
+    // which is what the caller actually wants — instead of surfacing a false
+    // "failed to add" for an add that in fact succeeded.
+    if ((error as { code?: string }).code === '23505') return
+    throw error
+  }
+}
+
+/**
+ * Gate-then-act wrapper: authorises `callerId` with `callerOwnsBoard` against
+ * their own RLS-scoped client, then delegates to `addWorkspaceMemberToBoard`
+ * with the service-role client. Pulled out of the route handler so the
+ * ordering (authorise before acting) is unit-testable — the route file
+ * (`src/routes/board.$boardId.tsx`) cannot be imported from a test.
+ */
+export async function addWorkspaceMemberForCaller(
+  callerClient: SupabaseClient,
+  svc: SupabaseClient,
+  boardId: string,
+  userId: string,
+  callerId: string,
+): Promise<void> {
+  if (!(await callerOwnsBoard(callerClient, boardId, callerId))) throw new Error('forbidden')
+  await addWorkspaceMemberToBoard(svc, boardId, userId)
+}
+
+/**
+ * Gate-then-act wrapper for the addable-members list — same rationale as
+ * `addWorkspaceMemberForCaller`.
+ */
+export async function listAddableWorkspaceMembersForCaller(
+  callerClient: SupabaseClient,
+  svc: SupabaseClient,
+  boardId: string,
+  callerId: string,
+): Promise<AddableMember[]> {
+  if (!(await callerOwnsBoard(callerClient, boardId, callerId))) throw new Error('forbidden')
+  return listAddableWorkspaceMembers(svc, boardId)
 }
 
 /**

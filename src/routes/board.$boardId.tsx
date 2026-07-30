@@ -21,9 +21,9 @@ import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import {
-  addWorkspaceMemberToBoard,
+  addWorkspaceMemberForCaller,
   callerOwnsBoard,
-  listAddableWorkspaceMembers,
+  listAddableWorkspaceMembersForCaller,
   type AddableMember,
 } from '#/lib/board-members'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
@@ -111,17 +111,24 @@ const inviteFn = createServerFn({ method: 'POST' })
     return res
   })
 
+const boardIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const fetchAddableMembersFn = createServerFn({ method: 'GET' })
   .validator((d: unknown) => {
     const boardId = (d as { boardId?: unknown })?.boardId
-    if (typeof boardId !== 'string' || !boardId) throw new Error('boardId required')
+    if (typeof boardId !== 'string' || !boardIdUuid.test(boardId))
+      throw new Error('valid boardId required')
     return { boardId }
   })
   .handler(async ({ data }): Promise<AddableMember[]> => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
-    const list = await listAddableWorkspaceMembers(getServiceSupabase(), data.boardId)
+    const list = await listAddableWorkspaceMembersForCaller(
+      supabase,
+      getServiceSupabase(),
+      data.boardId,
+      user.id,
+    )
     flush(headers)
     return list
   })
@@ -129,16 +136,15 @@ const fetchAddableMembersFn = createServerFn({ method: 'GET' })
 const addBoardMemberFn = createServerFn({ method: 'POST' })
   .validator((d: unknown) => {
     const { boardId, userId } = (d ?? {}) as { boardId?: unknown; userId?: unknown }
-    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (typeof boardId !== 'string' || !uuid.test(boardId)) throw new Error('valid boardId required')
-    if (typeof userId !== 'string' || !uuid.test(userId)) throw new Error('valid userId required')
+    if (typeof boardId !== 'string' || !boardIdUuid.test(boardId))
+      throw new Error('valid boardId required')
+    if (typeof userId !== 'string' || !boardIdUuid.test(userId)) throw new Error('valid userId required')
     return { boardId, userId }
   })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
-    await addWorkspaceMemberToBoard(getServiceSupabase(), data.boardId, data.userId)
+    await addWorkspaceMemberForCaller(supabase, getServiceSupabase(), data.boardId, data.userId, user.id)
     flush(headers)
   })
 
@@ -511,6 +517,7 @@ function BoardView() {
   const [inviteLink, setInviteLink] = useState<string | null>(null)
   const [addable, setAddable] = useState<AddableMember[]>([])
   const [addUserId, setAddUserId] = useState('')
+  const [addingMember, setAddingMember] = useState(false)
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
   // The column a card started in, captured at drag-start (handleDragOver moves
@@ -658,10 +665,11 @@ function BoardView() {
 
   async function onAddMember(e: React.FormEvent) {
     e.preventDefault()
-    if (!addUserId) return
+    if (!addUserId || addingMember) return
     const picked = addable.find((m) => m.id === addUserId)
     setResult(null)
     setInviteLink(null)
+    setAddingMember(true)
     try {
       await addBoardMemberFn({ data: { boardId: board.id, userId: addUserId } })
       setResult(`Added ${picked?.name ?? 'member'} to this project.`)
@@ -671,8 +679,10 @@ function BoardView() {
       // boardMeta is only refetched when null — see the effect that guards on it.
       setAddable(await fetchAddableMembersFn({ data: { boardId: board.id } }))
       setBoardMeta(null)
-    } catch {
-      setResult('Failed to add member.')
+    } catch (err) {
+      setResult(err instanceof Error && err.message ? err.message : 'Failed to add member.')
+    } finally {
+      setAddingMember(false)
     }
   }
 
@@ -1073,26 +1083,35 @@ function BoardView() {
                     Invite
                   </button>
                 </form>
-                {addable.length > 0 && (
-                  <form onSubmit={onAddMember} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
-                    <select
-                      value={addUserId}
-                      onChange={(e) => setAddUserId(e.target.value)}
-                      aria-label="Add someone from this workspace"
-                      className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
-                    >
-                      <option value="">Add from workspace…</option>
-                      {addable.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit" disabled={!addUserId} className="btn btn-primary shrink-0">
-                      Add
-                    </button>
-                  </form>
-                )}
+                <form onSubmit={onAddMember} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
+                  <select
+                    value={addUserId}
+                    onChange={(e) => setAddUserId(e.target.value)}
+                    disabled={addable.length === 0}
+                    aria-label="Add someone from this workspace"
+                    className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
+                  >
+                    {addable.length === 0 ? (
+                      <option value="">Everyone in this workspace is already on this project</option>
+                    ) : (
+                      <>
+                        <option value="">Add from workspace…</option>
+                        {addable.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={!addUserId || addingMember}
+                    className="btn btn-primary shrink-0"
+                  >
+                    Add
+                  </button>
+                </form>
                 {result && (
                   <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
                 )}
