@@ -509,6 +509,8 @@ function BoardView() {
   const [inviteRole, setInviteRole] = useState<'member' | 'client'>('member')
   const [result, setResult] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [addable, setAddable] = useState<AddableMember[]>([])
+  const [addUserId, setAddUserId] = useState('')
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
   // The column a card started in, captured at drag-start (handleDragOver moves
@@ -553,6 +555,21 @@ function BoardView() {
     if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
   }, [initialBoard.id, boardMeta])
   const board = { ...initialBoard, columns }
+  // Owner-only: the endpoint rejects non-owners, so don't even ask.
+  useEffect(() => {
+    if (!isOwner) return
+    let alive = true
+    fetchAddableMembersFn({ data: { boardId: board.id } })
+      .then((list) => {
+        if (alive) setAddable(list)
+      })
+      .catch(() => {
+        if (alive) setAddable([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [isOwner, board.id])
   const isContent = board.kind === 'content'
 
   function openAddContent(date: string) {
@@ -636,6 +653,26 @@ function BoardView() {
       setEmail('')
     } catch {
       setResult('Failed to invite.')
+    }
+  }
+
+  async function onAddMember(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addUserId) return
+    const picked = addable.find((m) => m.id === addUserId)
+    setResult(null)
+    setInviteLink(null)
+    try {
+      await addBoardMemberFn({ data: { boardId: board.id, userId: addUserId } })
+      setResult(`Added ${picked?.name ?? 'member'} to this project.`)
+      setAddUserId('')
+      // Refresh both lists: the dropdown drops the added person, and the
+      // project's member list (which feeds PIC and mentions) gains them.
+      // boardMeta is only refetched when null — see the effect that guards on it.
+      setAddable(await fetchAddableMembersFn({ data: { boardId: board.id } }))
+      setBoardMeta(null)
+    } catch {
+      setResult('Failed to add member.')
     }
   }
 
@@ -1036,6 +1073,26 @@ function BoardView() {
                     Invite
                   </button>
                 </form>
+                {addable.length > 0 && (
+                  <form onSubmit={onAddMember} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
+                    <select
+                      value={addUserId}
+                      onChange={(e) => setAddUserId(e.target.value)}
+                      aria-label="Add someone from this workspace"
+                      className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
+                    >
+                      <option value="">Add from workspace…</option>
+                      {addable.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" disabled={!addUserId} className="btn btn-primary shrink-0">
+                      Add
+                    </button>
+                  </form>
+                )}
                 {result && (
                   <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
                 )}
