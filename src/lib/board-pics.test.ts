@@ -28,6 +28,25 @@ async function mkUser(tag: string) {
   return data.user
 }
 
+/** Same shape as notifications.test.ts's helper: an admin-created user plus
+ * their own signed-in (anon-key, RLS-scoped) client, for tests that need to
+ * act as that user rather than as the service role. */
+async function makeSignedInUser(prefix: string) {
+  const email = `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@gmail.com`
+  const password = 'Babikeguling1!'
+  const { data: u, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name: prefix },
+  })
+  if (error) throw error
+  const uid = u.user!.id
+  const userClient = createClient(env.SUPABASE_URL!, env.SUPABASE_ANON_KEY!)
+  await userClient.auth.signInWithPassword({ email, password })
+  return { uid, userClient }
+}
+
 /** Board + a column, with `owner` as owner and `others` as plain members. */
 async function mkBoard(ownerId: string, others: string[]) {
   const { data: b, error } = await admin
@@ -67,13 +86,20 @@ test('myPicBoardIds is empty when the user is PIC of nothing', () => {
 })
 
 // ─── DB-backed tests ────────────────────────────────────────────────────────
+// User creation happens INSIDE each try so that if the second or third
+// mkUser/makeSignedInUser call fails (auth rate limits are real here — see
+// vitest.config.ts's fileParallelism: false), the ones already created are
+// still cleaned up in `finally` rather than leaked.
 
 test('setBoardPics marks exactly the given members, and clears the rest', async () => {
-  const owner = await mkUser('picowner')
-  const a = await mkUser('pica')
-  const b = await mkUser('picb')
+  let owner: Awaited<ReturnType<typeof mkUser>> | undefined
+  let a: Awaited<ReturnType<typeof mkUser>> | undefined
+  let b: Awaited<ReturnType<typeof mkUser>> | undefined
   let boardId: string | undefined
   try {
+    owner = await mkUser('picowner')
+    a = await mkUser('pica')
+    b = await mkUser('picb')
     const board = await mkBoard(owner.id, [a.id, b.id])
     boardId = board.boardId
 
@@ -88,17 +114,19 @@ test('setBoardPics marks exactly the given members, and clears the rest', async 
     expect(await listBoardPicIds(admin, boardId)).toEqual([])
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
-    await admin.auth.admin.deleteUser(owner.id)
-    await admin.auth.admin.deleteUser(a.id)
-    await admin.auth.admin.deleteUser(b.id)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (a) await admin.auth.admin.deleteUser(a.id)
+    if (b) await admin.auth.admin.deleteUser(b.id)
   }
 }, 30000)
 
 test('removing a member drops their PIC status', async () => {
-  const owner = await mkUser('picrmowner')
-  const a = await mkUser('picrm')
+  let owner: Awaited<ReturnType<typeof mkUser>> | undefined
+  let a: Awaited<ReturnType<typeof mkUser>> | undefined
   let boardId: string | undefined
   try {
+    owner = await mkUser('picrmowner')
+    a = await mkUser('picrm')
     const board = await mkBoard(owner.id, [a.id])
     boardId = board.boardId
     await setBoardPics(admin, boardId, [a.id])
@@ -109,16 +137,18 @@ test('removing a member drops their PIC status', async () => {
     expect(await listBoardPicIds(admin, boardId)).toEqual([])
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
-    await admin.auth.admin.deleteUser(owner.id)
-    await admin.auth.admin.deleteUser(a.id)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (a) await admin.auth.admin.deleteUser(a.id)
   }
 }, 30000)
 
 test('creating a task notifies the PICs of that board', async () => {
-  const owner = await mkUser('picnotifowner')
-  const pic = await mkUser('picnotif')
+  let owner: Awaited<ReturnType<typeof mkUser>> | undefined
+  let pic: Awaited<ReturnType<typeof mkUser>> | undefined
   let boardId: string | undefined
   try {
+    owner = await mkUser('picnotifowner')
+    pic = await mkUser('picnotif')
     const board = await mkBoard(owner.id, [pic.id])
     boardId = board.boardId
     await setBoardPics(admin, boardId, [pic.id])
@@ -139,7 +169,83 @@ test('creating a task notifies the PICs of that board', async () => {
     expect(notes![0].message).toContain('Notify the PIC')
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
-    await admin.auth.admin.deleteUser(owner.id)
-    await admin.auth.admin.deleteUser(pic.id)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (pic) await admin.auth.admin.deleteUser(pic.id)
+  }
+}, 30000)
+
+// Every test above inserts cards with the service-role client, where
+// auth.uid() is null — the trigger's `bm.user_id is distinct from auth.uid()`
+// clause excludes nobody in that case, so this suite would still pass even if
+// that clause were deleted. This test has a signed-in PIC create the card
+// through their OWN client, so auth.uid() is actually their id, and proves
+// they are excluded from their own notification while another PIC still gets one.
+test('a PIC who creates the task is excluded from their own pic notification (self-exclusion)', async () => {
+  let owner: Awaited<ReturnType<typeof mkUser>> | undefined
+  let creatorPic: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
+  let otherPic: Awaited<ReturnType<typeof mkUser>> | undefined
+  let boardId: string | undefined
+  try {
+    owner = await mkUser('selfexcl-owner')
+    creatorPic = await makeSignedInUser('selfexcl-creator')
+    otherPic = await mkUser('selfexcl-other')
+    const board = await mkBoard(owner.id, [creatorPic.uid, otherPic.id])
+    boardId = board.boardId
+    await setBoardPics(admin, boardId, [creatorPic.uid, otherPic.id])
+
+    const { error } = await creatorPic.userClient
+      .from('cards')
+      .insert({ column_id: board.columnId, title: 'Self-exclusion task', position: 0 })
+    expect(error).toBeNull()
+
+    const { data: notes } = await admin
+      .from('notifications')
+      .select('user_id')
+      .eq('board_id', boardId)
+      .eq('kind', 'pic')
+
+    const notifiedIds = (notes ?? []).map((n) => n.user_id)
+    expect(notifiedIds).not.toContain(creatorPic.uid)
+    expect(notifiedIds).toContain(otherPic.id)
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (creatorPic) await admin.auth.admin.deleteUser(creatorPic.uid)
+    if (otherPic) await admin.auth.admin.deleteUser(otherPic.id)
+  }
+}, 30000)
+
+// setBoardPics and setBoardPicsFn both carry comments asserting that RLS
+// (members_owner_write) restricts writes to the board owner — this is the
+// branch's central security claim, and nothing else in this suite exercises
+// it, since every other test calls setBoardPics with the service-role client,
+// which bypasses RLS entirely. Here a plain (non-owner) member calls it with
+// their own RLS-scoped client. PostgREST reports zero rows updated as success,
+// not an error, so this must assert on the resulting PIC list, not on a throw.
+test('setBoardPics as a non-owner member leaves the PIC list unchanged (RLS enforced)', async () => {
+  let owner: Awaited<ReturnType<typeof mkUser>> | undefined
+  let member: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
+  let otherPic: Awaited<ReturnType<typeof mkUser>> | undefined
+  let boardId: string | undefined
+  try {
+    owner = await mkUser('rls-owner')
+    member = await makeSignedInUser('rls-member')
+    otherPic = await mkUser('rls-otherpic')
+    const board = await mkBoard(owner.id, [member.uid, otherPic.id])
+    boardId = board.boardId
+    await setBoardPics(admin, boardId, [otherPic.id])
+    expect(await listBoardPicIds(admin, boardId)).toEqual([otherPic.id])
+
+    // Plain member tries to make themselves PIC via their own client.
+    await setBoardPics(member.userClient, boardId, [member.uid])
+
+    // RLS should have silently matched zero rows on both the clear and set
+    // steps — the PIC list must be exactly what it was before.
+    expect(await listBoardPicIds(admin, boardId)).toEqual([otherPic.id])
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (owner) await admin.auth.admin.deleteUser(owner.id)
+    if (member) await admin.auth.admin.deleteUser(member.uid)
+    if (otherPic) await admin.auth.admin.deleteUser(otherPic.id)
   }
 }, 30000)
