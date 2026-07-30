@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { BarChart3, Calendar } from '@/components/pixel-icons'
 import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
-import { fetchInboxUnreadFn } from '#/lib/messages'
+import { fetchInboxUnreadDeduped } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
@@ -53,7 +53,7 @@ export default function MobileNav() {
         setIsSuperAdmin(nav.isSuperAdmin)
         setPendingApprovals(nav.pendingApprovalsCount)
       })
-      fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
+      fetchInboxUnreadDeduped().then(setInboxUnread).catch(() => {})
     }
     loadNav()
     const supabase = getBrowserSupabase()

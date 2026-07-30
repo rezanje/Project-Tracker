@@ -50,10 +50,16 @@ export const fetchNav = createServerFn({ method: 'GET' }).handler(async () => {
  * promise instead of each triggering their own request. Deliberately does
  * NOT cache the resolved value beyond that in-flight window: as soon as the
  * shared promise settles, the reference is cleared, so the very next call
- * always starts a brand-new request. That's what keeps this safe after a
- * genuine invalidation — an action that changes server state and then
- * triggers a re-fetch is never served a memoized/stale result, because by
- * the time that re-fetch call happens there is nothing in flight to join.
+ * always starts a brand-new request.
+ *
+ * That does NOT mean an invalidation-triggered refetch is always guaranteed
+ * to see fresh state: if a mutation completes and calls `router.invalidate()`
+ * while an earlier `onResolved`-triggered fetch is still pending, the new
+ * call joins that pre-mutation in-flight promise instead of starting a fresh
+ * one, so the data it resolves to is one step behind until the next
+ * navigation. The window is roughly one nav round trip and nav data rarely
+ * changes inside it, so this is accepted rather than solved (closing it
+ * would need a generation counter, which isn't worth the complexity here).
  */
 export function dedupeInFlight<T>(fn: () => Promise<T>): () => Promise<T> {
   let inFlight: Promise<T> | null = null
@@ -76,6 +82,13 @@ export function dedupeInFlight<T>(fn: () => Promise<T>): () => Promise<T> {
  * through this deduped wrapper instead of calling `fetchNav` directly so
  * concurrent calls (the common case: both components react to the same
  * event in the same tick) coalesce into one server round trip.
+ *
+ * Client-only: this is a module-scope, process-wide singleton wrapping a
+ * per-user server function. Both current call sites are inside `useEffect`,
+ * so it's safe today — but this must never be called from a route loader
+ * (loaders also run on the server): two concurrent users' loader requests
+ * could then share this one in-flight promise, and one user could receive
+ * another user's workspaces and boards.
  */
 export const fetchNavDeduped = dedupeInFlight(fetchNav)
 

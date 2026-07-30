@@ -18,7 +18,7 @@ import {
 import { BarChart3, Calendar, FolderKanban } from '@/components/pixel-icons'
 import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
-import { fetchInboxUnreadFn } from '#/lib/messages'
+import { fetchInboxUnreadDeduped } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { accentFor } from '#/lib/accent'
@@ -72,7 +72,7 @@ export default function Sidebar() {
         setIsSuperAdmin(nav.isSuperAdmin)
         setPendingApprovals(nav.pendingApprovalsCount)
       })
-      fetchInboxUnreadFn().then(setInboxUnread).catch(() => {})
+      fetchInboxUnreadDeduped().then(setInboxUnread).catch(() => {})
     }
     loadNav()
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
