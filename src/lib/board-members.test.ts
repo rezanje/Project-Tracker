@@ -114,6 +114,7 @@ test('listAddableWorkspaceMembers excludes people already on the board', async (
 
     const addable = await listAddableWorkspaceMembers(admin, boardId)
     expect(addable.map((m) => m.id)).toEqual([notYet.id])
+    expect(addable[0]?.name).toBe('bmoff')
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
@@ -275,5 +276,42 @@ test('callerOwnsBoard is true for a workspace owner with no board row, false for
     if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
     if (boardCreator) await admin.auth.admin.deleteUser(boardCreator.id)
     for (const u of [wsOwner, plain]) if (u) await admin.auth.admin.deleteUser(u.uid)
+  }
+}, 40000)
+
+test('callerOwnsBoard is true for an explicit board owner who is not the workspace owner', async () => {
+  // Exercises arm 1 of callerOwnsBoard (the explicit board_members role='owner' row)
+  // in isolation from arm 2 (workspace ownership): wsOwner owns the workspace, but
+  // the board is created by boardCreator, a plain workspace member, so boardCreator
+  // gets a board_members 'owner' row from the board trigger while remaining a
+  // 'member' (not 'owner') of the workspace.
+  let wsOwner
+  let boardCreator: Awaited<ReturnType<typeof makeSignedInUser>> | undefined
+  let wsId: string | undefined, boardId: string | undefined
+  try {
+    wsOwner = await mkUser('bmarm1wsown')
+    boardCreator = await makeSignedInUser('bmarm1creator')
+    wsId = await mkWorkspace(wsOwner.id)
+    await addToWorkspace(wsId, boardCreator.uid, 'member')
+    boardId = await mkBoard(boardCreator.uid, wsId)
+
+    const { data: wsRow, error: wsErr } = await admin
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', wsId)
+      .eq('user_id', boardCreator.uid)
+      .single()
+    if (wsErr) throw wsErr
+    expect(wsRow!.role).toBe('member') // proves arm 2 cannot be what grants access below
+
+    const roles = await boardMemberRoles(boardId)
+    expect(roles[boardCreator.uid]).toBe('owner') // arm 1's explicit board row
+
+    expect(await callerOwnsBoard(boardCreator.userClient, boardId, boardCreator.uid)).toBe(true)
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (wsId) await admin.from('workspaces').delete().eq('id', wsId)
+    if (wsOwner) await admin.auth.admin.deleteUser(wsOwner.id)
+    if (boardCreator) await admin.auth.admin.deleteUser(boardCreator.uid)
   }
 }, 40000)
