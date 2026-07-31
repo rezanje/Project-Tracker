@@ -9,6 +9,7 @@ import {
   Clock,
   MoreHorizontal,
 } from 'lucide-react'
+import BackButton from '#/components/BackButton'
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn } from '#/lib/home'
 import { listSchedule, type ScheduleEvent } from '#/lib/events'
@@ -147,9 +148,7 @@ function CalendarPage() {
       <div className="mx-auto flex max-w-[1100px] flex-col">
         {/* title row */}
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]">
-            <ChevronLeft size={18} aria-hidden="true" />
-          </span>
+          <BackButton />
           <h1 className="flex-1 text-center text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
             Schedule
           </h1>

@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ChevronLeft } from 'lucide-react'
+import BackButton from '#/components/BackButton'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import {
@@ -170,9 +170,7 @@ function Reports() {
     <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
       <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]">
-            <ChevronLeft size={18} aria-hidden="true" />
-          </span>
+          <BackButton />
           <h1 className="flex-1 text-center text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
             Performance
           </h1>
