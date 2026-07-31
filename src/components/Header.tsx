@@ -327,8 +327,12 @@ export default function Header() {
     : ''
   const timeStr = now ? now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
+  // Not sticky: in the comps the header scrolls away with the page and the
+  // floating bottom nav is the only pinned chrome. The translucent background
+  // and blur went with it — both only existed to keep a pinned bar readable
+  // over scrolling content.
   return (
-    <header className="sticky top-0 z-20 flex flex-col gap-4 bg-[var(--header-bg)] px-5 py-4 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:px-7 sm:py-6">
+    <header className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-7 sm:py-6">
       {/* Greeting sits beside the round controls on mobile, matching the comp. */}
       <div className="flex min-w-0 items-center gap-3 sm:flex-1">
         <div className="min-w-0 flex-1">
