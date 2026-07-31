@@ -28,9 +28,21 @@ function initials(name: string): string {
   return chars.toUpperCase() || '?'
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className="flex-1 rounded-[22px] bg-[var(--card)] p-[15px] shadow-[var(--shadow)]">
+/** A stat tile. Pass `to` to make it a doorway — the approvals queue lives
+ *  behind the Approval count rather than in a menu of its own. */
+function Stat({
+  label,
+  value,
+  accent,
+  to,
+}: {
+  label: string
+  value: number
+  accent?: boolean
+  to?: '/reports'
+}) {
+  const body = (
+    <>
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">{label}</p>
       <p
         className={`mt-[5px] text-[26px] font-extrabold tabular-nums tracking-[-0.03em] ${
@@ -39,7 +51,14 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
       >
         {value}
       </p>
-    </div>
+    </>
+  )
+  const cls = 'flex-1 rounded-[22px] bg-[var(--card)] p-[15px] shadow-[var(--shadow)]'
+  if (!to) return <div className={cls}>{body}</div>
+  return (
+    <Link to={to} className={`${cls} block no-underline transition hover:-translate-y-0.5 active:scale-[.99]`}>
+      {body}
+    </Link>
   )
 }
 
@@ -100,7 +119,7 @@ function CommandCenter() {
         <div className="flex gap-2.5">
           <Stat label="Aktif" value={active} />
           <Stat label="Telat" value={d.stats.overdue} accent />
-          <Stat label="Approval" value={d.approvals} />
+          <Stat label="Approval" value={d.approvals} to="/reports" />
         </div>
 
         {/* workspace cards */}

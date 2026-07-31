@@ -429,12 +429,12 @@ function Home() {
           {/* ACTIVE PROJECTS */}
           <section>
             <div className="mb-3.5 flex items-baseline justify-between">
-              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Active projects</h2>
+              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Projects</h2>
               <Link
                 to="/projects"
-                className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
+                className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--accent)]"
               >
-                View all
+                See all
               </Link>
             </div>
             {d.projects.length === 0 ? (

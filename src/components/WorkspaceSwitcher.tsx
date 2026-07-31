@@ -6,6 +6,7 @@ import { createWorkspaceFn } from '#/lib/actions'
 import { fetchNav, fetchNavDeduped, type NavWorkspace } from '#/lib/nav'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { setScope, useScope, type Scope } from '#/lib/workspace-scope'
+import { toast } from './Toast'
 
 /** Two-letter mark for a workspace, e.g. "Rakit Studio" → RS. */
 function initials(name: string): string {
@@ -79,7 +80,13 @@ export function WorkspaceSwitcherSheet({
   function pick(next: Scope) {
     setScope(next)
     onClose()
-    navigate({ to: next === 'all' ? '/' : '/home' })
+    if (next === 'all') {
+      toast('Monitor semua workspace')
+      navigate({ to: '/' })
+      return
+    }
+    toast(`Masuk ${workspaces.find((w) => w.id === next)?.name ?? 'workspace'}`)
+    navigate({ to: '/home' })
   }
 
   async function addWorkspace() {

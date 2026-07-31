@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import Header from '../components/Header'
 import MobileNav from '../components/MobileNav'
 import Sidebar from '../components/Sidebar'
+import Toast from '../components/Toast'
 
 import appCss from '../styles.css?url'
 
@@ -56,6 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           {!bare && <Footer />}
         </div>
         {!bare && <MobileNav />}
+        <Toast />
         <TanStackDevtools
           config={{
             position: 'bottom-right',

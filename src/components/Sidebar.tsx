@@ -1,21 +1,15 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import {
-  BarChart3,
   Calendar,
   CheckSquare,
-  ChevronDown,
-  FolderKanban,
   Home,
-  Inbox,
-  LayoutDashboard,
+  PieChart,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Settings,
-  Star,
   UserCheck,
 } from 'lucide-react'
 import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
@@ -38,19 +32,20 @@ function initials(email: string): string {
   return chars.toUpperCase() || '?'
 }
 
+// Mirrors the mobile bar so desktop and phone agree on what the app's four
+// places are. Everything else keeps its doorway elsewhere: Projects behind
+// Home's "See all", Reports behind the KPI card, approvals behind the Command
+// Center's Approval tile, Inbox behind the header bell.
 const MAIN_NAV: Array<{
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  to: '/home' | '/' | '/inbox' | '/my-tasks' | '/projects' | '/calendar' | '/reports'
+  to: '/home' | '/' | '/my-tasks' | '/calendar'
   badge?: number
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Command Center', icon: LayoutDashboard, to: '/' },
-  { label: 'Inbox', icon: Inbox, to: '/inbox' },
-  { label: 'My Tasks', icon: CheckSquare, to: '/my-tasks' },
-  { label: 'Projects', icon: FolderKanban, to: '/projects' },
-  { label: 'Calendar', icon: Calendar, to: '/calendar' },
-  { label: 'Reports', icon: BarChart3, to: '/reports' },
+  { label: 'Command center', icon: PieChart, to: '/' },
+  { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
+  { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
 
 export default function Sidebar() {
@@ -60,7 +55,6 @@ export default function Sidebar() {
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
   const [boards, setBoards] = useState<NavBoard[]>([])
   const [collapsed, setCollapsed] = useState(false)
-  const [favOpen, setFavOpen] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState(0)
@@ -281,40 +275,8 @@ export default function Sidebar() {
         {!collapsed && <span className="truncate">Add workspace</span>}
       </button>
 
-      {/* favorites */}
-      <button
-        type="button"
-        onClick={() => setFavOpen((v) => !v)}
-        title="Favorites"
-        className={`mt-4 flex items-center gap-[11px] rounded-[14px] py-[11px] text-[14px] font-medium text-[var(--ink2)] hover:bg-[var(--col)] ${
-          collapsed ? 'justify-center px-0' : 'px-3'
-        }`}
-      >
-        <Star size={18} className="shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="flex-1 truncate text-left">Favorites</span>}
-        {!collapsed && (
-          <ChevronDown
-            size={14}
-            className={`shrink-0 transition-transform ${favOpen ? '' : '-rotate-90'}`}
-            aria-hidden="true"
-          />
-        )}
-      </button>
-      {!collapsed && favOpen && (
-        <p className="px-3 py-1 text-[13px] text-[var(--ink3)]">No favorites yet</p>
-      )}
-
-      {/* settings */}
-      <Link
-        to="/coming-soon"
-        title="Settings"
-        className={`flex items-center gap-[11px] rounded-[14px] py-[11px] text-[14px] font-medium text-[var(--ink2)] no-underline hover:bg-[var(--col)] ${
-          collapsed ? 'justify-center px-0' : 'px-3'
-        }`}
-      >
-        <Settings size={18} className="shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="truncate">Settings</span>}
-      </Link>
+      {/* Settings and Log out live in the header's profile menu, so the rail
+          stays the four destinations plus workspaces. */}
 
       <div className="mt-auto flex flex-col gap-2">
         {email && (

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   FolderKanban,
   LogOut,
+  MessageSquare,
   Plus,
   Search,
   Settings,
@@ -333,6 +334,18 @@ function NotificationsBell() {
           {items.length === 0 && (
             <p className="px-2.5 py-4 text-center text-[12px] text-[var(--ink3)]">Nothing yet — you're all caught up.</p>
           )}
+          {/* The bell is where messages live now that the nav is four tabs. */}
+          <button
+            type="button"
+            onClick={() => {
+              close()
+              navigate({ to: '/inbox' })
+            }}
+            className="mb-1 flex w-full items-center gap-2.5 rounded-[12px] bg-[var(--col)] px-3 py-2.5 text-left text-[13px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
+          >
+            <MessageSquare size={15} aria-hidden="true" />
+            Pesan
+          </button>
           {items.map((n) => (
             <button
               key={`${n.kind}:${n.id}`}
