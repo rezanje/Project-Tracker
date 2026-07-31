@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#77716a; font-family:"Hanken Grotesk",ui-sans-serif,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+a { color:#137a3f; text-underline-offset:2px; }
+a:hover { color:#1f9d55; }
+</style>
+</helmet>
+
+<div style="padding:56px; display:flex; flex-direction:column; gap:56px; background:#77716a; min-height:100vh">
+
+  <div style="display:flex; flex-direction:column; gap:6px; max-width:900px">
+    <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:15px; color:#fff; letter-spacing:-0.02em">RAKIT — CURRENT UI</p>
+    <p style="margin:0; font-size:14px; color:#e8e4dc; line-height:1.5">Pixel-faithful recreation from <span style="font-family:'Space Mono',monospace; font-size:12.5px">src/styles.css</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">routes/home.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">board.$boardId.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">Sidebar.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">Header.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">MobileNav.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">Column.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">Card.tsx</span>, <span style="font-family:'Space Mono',monospace; font-size:12.5px">login.tsx</span>. Tokens: bg #f7f4ec · ink #14241c · accent #1f9d55 · 2px borders · 4px hard shadow · Press Start 2P display face.</p>
+  </div>
+
+  <!-- ============ DESKTOP HOME ============ -->
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <p style="margin:0; font-family:'Space Mono',monospace; font-size:12px; color:#fff; letter-spacing:0.08em">01 · /home — DESKTOP 1440</p>
+    <div data-screen-label="Current /home desktop" style="width:1440px; display:flex; background:#f7f4ec; color:#14241c; border-radius:6px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.28)">
+
+      <!-- Sidebar.tsx : w-60 px-3 py-4, border-r 1px --line -->
+      <aside style="width:240px; flex:none; display:flex; flex-direction:column; gap:2px; padding:16px 12px; background:#f7f4ec; border-right:1px solid #e6e1d3">
+        <div style="display:flex; align-items:center; gap:8px; padding:0 8px; margin-bottom:8px">
+          <img src="assets/logo192.png" alt="" width="28" height="28" style="border-radius:8px; display:block">
+          <span style="font-family:'Press Start 2P',monospace; font-size:18px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Rakit</span>
+        </div>
+        <div style="display:flex; justify-content:flex-end; padding:6px 10px; margin-bottom:4px; color:#8a978f">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+        </div>
+
+        <nav style="display:flex; flex-direction:column; gap:2px; margin-bottom:8px">
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; background:#dcf3e5; color:#137a3f">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span style="flex:1">Home</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>
+            <span style="flex:1">Command Center</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+            <span style="flex:1">Inbox</span>
+            <span style="display:flex; height:20px; min-width:20px; align-items:center; justify-content:center; border-radius:999px; background:#1f9d55; padding:0 4px; font-size:10px; font-weight:700; color:#fff">3</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span style="flex:1">My Tasks</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="1" y="3" width="6" height="2"></rect><rect x="1" y="5" width="14" height="8"></rect><rect x="3" y="7" width="3" height="4" fill="#f7f4ec"></rect><rect x="7" y="7" width="6" height="2" fill="#f7f4ec"></rect></svg>
+            <span style="flex:1">Projects</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="3" width="12" height="11"></rect><rect x="3" y="6" width="10" height="7" fill="#f7f4ec"></rect><rect x="4" y="1" width="2" height="3"></rect><rect x="10" y="1" width="2" height="3"></rect><rect x="5" y="8" width="2" height="2"></rect><rect x="9" y="8" width="2" height="2"></rect></svg>
+            <span style="flex:1">Calendar</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+            <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="9" width="3" height="5"></rect><rect x="6.5" y="5" width="3" height="9"></rect><rect x="11" y="2" width="3" height="12"></rect></svg>
+            <span style="flex:1">Reports</span>
+          </div>
+        </nav>
+
+        <p style="margin:4px 0 4px; padding:0 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#8a978f">Workspaces</p>
+        <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+          <span style="display:flex; height:20px; width:20px; flex:none; align-items:center; justify-content:center; border-radius:6px; font-size:10px; font-weight:800; color:#fff; background:#7c3aed">G</span>
+          <span>Gentanala</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; background:#dcf3e5; color:#137a3f">
+          <span style="display:flex; height:20px; width:20px; flex:none; align-items:center; justify-content:center; border-radius:6px; font-size:10px; font-weight:800; color:#fff; background:#2563eb">R</span>
+          <span>Rakit Studio</span>
+        </div>
+        <div style="margin:2px 0 0 12px; display:flex; flex-direction:column; gap:2px; border-left:1px solid #e6e1d3; padding-left:10px">
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 8px; font-size:13px; font-weight:600; background:#efece1; color:#14241c">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+            <span>Website Redesign</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 8px; font-size:13px; font-weight:600; color:#8a978f">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+            <span>Q3 Content Calendar</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; color:#586a60">
+          <span style="display:flex; height:20px; width:20px; flex:none; align-items:center; justify-content:center; border-radius:6px; font-size:10px; font-weight:800; color:#fff; background:#d97706">P</span>
+          <span>Personal</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; border-radius:8px; padding:6px 10px; margin-top:2px; font-size:13px; font-weight:600; color:#8a978f">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          <span>Add workspace</span>
+        </div>
+        <div style="margin-top:auto; padding-top:12px; border-top:1px solid #e6e1d3; display:flex; align-items:center; gap:8px">
+          <span style="display:flex; height:28px; width:28px; align-items:center; justify-content:center; border-radius:999px; background:#1f9d55; font-size:11px; font-weight:700; color:#fff">RR</span>
+          <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; color:#586a60">rezarezanje@…</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a978f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>
+        </div>
+      </aside>
+
+      <!-- main column -->
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column">
+        <!-- Header.tsx : border-b-2 --ink, bg header-bg, px-6 py-2.5 -->
+        <header style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-bottom:2px solid #14241c; background:rgba(255,255,255,0.72); padding:10px 24px; backdrop-filter:blur(12px)">
+          <div style="display:flex; min-width:0; align-items:center; gap:12px">
+            <div style="min-width:0; line-height:1.2">
+              <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">Good morning,</p>
+              <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:20px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Reza 👋</p>
+            </div>
+            <span style="display:flex; height:36px; width:36px; flex:none; align-items:center; justify-content:center; border-radius:9px; border:2px solid #14241c; background:#dcf3e5; color:#137a3f">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+            </span>
+            <span style="border-radius:10px; border:2px solid #14241c; background:#fff; padding:4px 10px; font-size:11px; font-weight:600; color:#586a60">Here's what matters today!</span>
+          </div>
+          <div style="display:flex; flex:1; align-items:center; justify-content:flex-end; gap:8px">
+            <div style="margin-right:4px; text-align:right; line-height:1.2">
+              <p style="margin:0; display:flex; align-items:center; justify-content:flex-end; gap:4px; font-size:12px; font-weight:700; color:#14241c">
+                <svg width="13" height="13" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="#8a978f"><rect x="2" y="3" width="12" height="11"></rect><rect x="3" y="6" width="10" height="7" fill="#fff"></rect><rect x="4" y="1" width="2" height="3"></rect><rect x="10" y="1" width="2" height="3"></rect></svg>
+                Friday, 31 July 2026
+              </p>
+              <p style="margin:0; display:flex; align-items:center; justify-content:flex-end; gap:4px; font-size:11px; font-weight:600; color:#8a978f">
+                <svg width="12" height="12" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="3" y="1" width="10" height="14"></rect><rect x="4" y="3" width="8" height="10" fill="#fff"></rect><rect x="7" y="5" width="2" height="4"></rect><rect x="9" y="8" width="2" height="2"></rect></svg>
+                09:24
+              </p>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; border-radius:999px; border:2px solid #14241c; background:#fff; padding:6px 12px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a978f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <span style="width:144px; font-size:14px; color:#8a978f">Search anything…</span>
+            </label>
+            <span style="position:relative; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px; padding:9px 10px; font-size:13.6px; font-weight:700; line-height:1; border:2px solid #14241c; background:#fff; color:#586a60; box-shadow:3px 3px 0 #14241c">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+              <span style="position:absolute; right:-4px; top:-4px; display:flex; height:16px; min-width:16px; align-items:center; justify-content:center; border-radius:999px; background:#c0392b; padding:0 4px; font-size:9px; font-weight:700; color:#fff">2</span>
+            </span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px; padding:9px 16px; font-size:13.6px; font-weight:700; line-height:1; border:2px solid #14241c; background:#16211b; color:#fff; box-shadow:3px 3px 0 #14241c">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+              New
+            </span>
+            <span style="display:flex; align-items:center; gap:6px; border-radius:999px; border:2px solid #14241c; background:#fff; padding:4px 8px 4px 4px">
+              <span style="display:flex; height:28px; width:28px; align-items:center; justify-content:center; border-radius:999px; background:#1f9d55; font-size:11px; font-weight:700; color:#fff">RR</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a978f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+            </span>
+          </div>
+        </header>
+
+        <!-- main -->
+        <main style="flex:1; padding:24px; display:flex; gap:16px; align-items:flex-start">
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:16px">
+
+            <!-- TODAY -->
+            <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+              <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px">
+                <svg width="18" height="18" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="#c0392b"><rect x="7" y="1" width="2" height="3"></rect><rect x="5" y="4" width="6" height="3"></rect><rect x="4" y="7" width="8" height="6"></rect><rect x="6" y="13" width="4" height="2"></rect><rect x="6" y="9" width="4" height="3" fill="#f5c451"></rect></svg>
+                <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Today</h3>
+              </div>
+              <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; align-items:center; gap:16px; border-bottom:2px solid #e6e1d3; padding-bottom:12px">
+                <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em; color:#14241c">7</span><span style="font-size:11px; font-weight:600; color:#8a978f">Tasks</span></div>
+                <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em; color:#c0392b">2</span><span style="font-size:11px; font-weight:600; color:#8a978f">Overdue</span></div>
+                <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em; color:#d97706">3</span><span style="font-size:11px; font-weight:600; color:#8a978f">Due today</span></div>
+                <div style="margin-left:auto; display:flex; align-items:center; gap:8px">
+                  <span style="display:inline-flex; gap:3px">
+                    <span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#1f9d55"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="width:10px; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+                  </span>
+                  <span style="white-space:nowrap; font-size:14px; font-weight:800; color:#137a3f">52%</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column">
+                <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #e6e1d3; padding:8px 0">
+                  <span style="height:16px; width:16px; flex:none; border-radius:5px; border:2px solid #14241c"></span>
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:13px; font-weight:700; color:#14241c">Finalise homepage hero copy</p>
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">Website Redesign</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; border:1.5px solid #7a5600; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; background:#fdf0cf; color:#7a5600">Due today</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #e6e1d3; padding:8px 0">
+                  <span style="height:16px; width:16px; flex:none; border-radius:5px; border:2px solid #14241c"></span>
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:13px; font-weight:700; color:#14241c">Kirim invoice Gentanala batch 2</p>
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">Gentanala Corporate</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; border:1.5px solid #7a5600; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; background:#fdf0cf; color:#7a5600">Due today</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; padding:8px 0">
+                  <span style="height:16px; width:16px; flex:none; border-radius:5px; border:2px solid #14241c"></span>
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:13px; font-weight:700; color:#14241c">Review konten IG week 31</p>
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">Q3 Content Calendar</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; border:1.5px solid #7a5600; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; background:#fdf0cf; color:#7a5600">Due today</span>
+                </div>
+              </div>
+              <a href="#01" style="margin-top:8px; display:inline-block; font-size:12px; font-weight:700; color:#137a3f; text-decoration:none">View all tasks →</a>
+            </section>
+
+            <!-- ACTIVE PROJECTS -->
+            <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+              <div style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between">
+                <h3 style="margin:0; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">Active Projects</h3>
+                <a href="#01" style="font-size:11px; font-weight:700; color:#137a3f; text-decoration:none">View all projects →</a>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px">
+                <div style="border-radius:10px; border:2px solid #14241c; padding:12px">
+                  <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px">
+                    <span style="height:8px; width:8px; border-radius:999px; background:#1f9d55"></span>
+                    <p style="margin:0; flex:1; font-size:13px; font-weight:700; color:#14241c">Website Redesign</p>
+                    <span style="font-size:12px; font-weight:800; color:#1f9d55">68%</span>
+                  </div>
+                  <span style="display:inline-flex; gap:3px; width:100%">
+                    <span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+                  </span>
+                  <div style="margin-top:8px; display:flex; align-items:center; justify-content:space-between">
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">17 / 25 tasks</span>
+                    <span style="display:inline-flex">
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; font-size:9px; font-weight:700; color:#fff; background:#2563eb">R</span>
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:9px; font-weight:700; color:#fff; background:#db2777">D</span>
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:9px; font-weight:700; color:#fff; background:#7c3aed">A</span>
+                    </span>
+                  </div>
+                </div>
+                <div style="border-radius:10px; border:2px solid #14241c; padding:12px">
+                  <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px">
+                    <span style="height:8px; width:8px; border-radius:999px; background:#d97706"></span>
+                    <p style="margin:0; flex:1; font-size:13px; font-weight:700; color:#14241c">Q3 Content Calendar</p>
+                    <span style="font-size:12px; font-weight:800; color:#d97706">42%</span>
+                  </div>
+                  <span style="display:inline-flex; gap:3px; width:100%">
+                    <span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+                  </span>
+                  <div style="margin-top:8px; display:flex; align-items:center; justify-content:space-between">
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">8 / 19 tasks</span>
+                    <span style="display:inline-flex">
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; font-size:9px; font-weight:700; color:#fff; background:#0891b2">M</span>
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:9px; font-weight:700; color:#fff; background:#1f9d55">S</span>
+                    </span>
+                  </div>
+                </div>
+                <div style="border-radius:10px; border:2px solid #14241c; padding:12px">
+                  <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px">
+                    <span style="height:8px; width:8px; border-radius:999px; background:#2563eb"></span>
+                    <p style="margin:0; flex:1; font-size:13px; font-weight:700; color:#14241c">Gentanala Corporate</p>
+                    <span style="font-size:12px; font-weight:800; color:#2563eb">85%</span>
+                  </div>
+                  <span style="display:inline-flex; gap:3px; width:100%">
+                    <span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #2563eb; background:#2563eb"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+                  </span>
+                  <div style="margin-top:8px; display:flex; align-items:center; justify-content:space-between">
+                    <span style="font-size:11px; font-weight:600; color:#8a978f">22 / 26 tasks</span>
+                    <span style="display:inline-flex">
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; font-size:9px; font-weight:700; color:#fff; background:#7c3aed">A</span>
+                      <span style="display:flex; height:24px; width:24px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:9px; font-weight:700; color:#fff; background:#2563eb">R</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- KPI + PROJECT PROGRESS -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+              <div style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+                <h3 style="margin:0 0 12px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">📊 KPI Overview</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                  <div style="border-radius:10px; border:2px solid #e6e1d3; padding:12px">
+                    <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">Revenue</p>
+                    <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; line-height:1.25; letter-spacing:-0.02em; color:#14241c">Rp 184.5M</p>
+                    <div style="margin-top:4px; display:flex; height:32px; align-items:flex-end; gap:2px">
+                      <span style="width:6px; height:44%; border-radius:2px; background:#1f9d55; opacity:0.57"></span><span style="width:6px; height:67%; border-radius:2px; background:#1f9d55; opacity:0.64"></span><span style="width:6px; height:56%; border-radius:2px; background:#1f9d55; opacity:0.71"></span><span style="width:6px; height:78%; border-radius:2px; background:#1f9d55; opacity:0.79"></span><span style="width:6px; height:67%; border-radius:2px; background:#1f9d55; opacity:0.86"></span><span style="width:6px; height:89%; border-radius:2px; background:#1f9d55; opacity:0.93"></span><span style="width:6px; height:100%; border-radius:2px; background:#1f9d55"></span>
+                    </div>
+                  </div>
+                  <div style="border-radius:10px; border:2px solid #e6e1d3; padding:12px">
+                    <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">Tasks Done</p>
+                    <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; line-height:1.25; letter-spacing:-0.02em; color:#14241c">128</p>
+                    <div style="margin-top:4px; display:flex; height:32px; align-items:flex-end; gap:2px">
+                      <span style="width:6px; height:44%; border-radius:2px; background:#2563eb; opacity:0.57"></span><span style="width:6px; height:67%; border-radius:2px; background:#2563eb; opacity:0.64"></span><span style="width:6px; height:56%; border-radius:2px; background:#2563eb; opacity:0.71"></span><span style="width:6px; height:78%; border-radius:2px; background:#2563eb; opacity:0.79"></span><span style="width:6px; height:67%; border-radius:2px; background:#2563eb; opacity:0.86"></span><span style="width:6px; height:89%; border-radius:2px; background:#2563eb; opacity:0.93"></span><span style="width:6px; height:100%; border-radius:2px; background:#2563eb"></span>
+                    </div>
+                  </div>
+                  <div style="border-radius:10px; border:2px solid #e6e1d3; padding:12px">
+                    <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">On Progress</p>
+                    <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; line-height:1.25; letter-spacing:-0.02em; color:#14241c">6</p>
+                    <div style="margin-top:4px; display:flex; height:32px; align-items:flex-end; gap:2px">
+                      <span style="width:6px; height:44%; border-radius:2px; background:#d97706; opacity:0.57"></span><span style="width:6px; height:67%; border-radius:2px; background:#d97706; opacity:0.64"></span><span style="width:6px; height:56%; border-radius:2px; background:#d97706; opacity:0.71"></span><span style="width:6px; height:78%; border-radius:2px; background:#d97706; opacity:0.79"></span><span style="width:6px; height:67%; border-radius:2px; background:#d97706; opacity:0.86"></span><span style="width:6px; height:89%; border-radius:2px; background:#d97706; opacity:0.93"></span><span style="width:6px; height:100%; border-radius:2px; background:#d97706"></span>
+                    </div>
+                  </div>
+                  <div style="border-radius:10px; border:2px solid #e6e1d3; padding:12px">
+                    <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">Overdue</p>
+                    <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; line-height:1.25; letter-spacing:-0.02em; color:#14241c">4</p>
+                    <div style="margin-top:4px; display:flex; height:32px; align-items:flex-end; gap:2px">
+                      <span style="width:6px; height:44%; border-radius:2px; background:#c0392b; opacity:0.57"></span><span style="width:6px; height:67%; border-radius:2px; background:#c0392b; opacity:0.64"></span><span style="width:6px; height:56%; border-radius:2px; background:#c0392b; opacity:0.71"></span><span style="width:6px; height:78%; border-radius:2px; background:#c0392b; opacity:0.79"></span><span style="width:6px; height:67%; border-radius:2px; background:#c0392b; opacity:0.86"></span><span style="width:6px; height:89%; border-radius:2px; background:#c0392b; opacity:0.93"></span><span style="width:6px; height:100%; border-radius:2px; background:#c0392b"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+                <h3 style="margin:0 0 12px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                  Project Progress
+                </h3>
+                <div style="display:flex; align-items:center; gap:16px">
+                  <svg width="96" height="96" viewBox="0 0 96 96" style="flex:none">
+                    <circle cx="48" cy="48" r="34" fill="none" stroke="#efece1" stroke-width="12"></circle>
+                    <circle cx="48" cy="48" r="34" fill="none" stroke="#1f9d55" stroke-width="12" stroke-linecap="round" stroke-dasharray="139 214" transform="rotate(-90 48 48)"></circle>
+                    <text x="48" y="53" text-anchor="middle" fill="#14241c" font-family="Press Start 2P" font-size="13">65%</text>
+                  </svg>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:8px">
+                    <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px">
+                      <span style="display:flex; align-items:center; gap:8px; font-weight:600; color:#586a60"><span style="height:8px; width:8px; border-radius:999px; background:#8a978f"></span>Total Projects</span>
+                      <span style="font-weight:800; color:#14241c">9</span>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px">
+                      <span style="display:flex; align-items:center; gap:8px; font-weight:600; color:#586a60"><span style="height:8px; width:8px; border-radius:999px; background:#1f9d55"></span>Completed</span>
+                      <span style="font-weight:800; color:#14241c">3</span>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px">
+                      <span style="display:flex; align-items:center; gap:8px; font-weight:600; color:#586a60"><span style="height:8px; width:8px; border-radius:999px; background:#d97706"></span>In Progress</span>
+                      <span style="font-weight:800; color:#14241c">6</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- right rail w-80 -->
+          <div style="width:320px; flex:none; display:flex; flex-direction:column; gap:16px">
+            <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+              <h3 style="margin:0 0 12px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">⚡ Quick Actions</h3>
+              <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px; border-radius:10px; border:2px solid #e6e1d3; padding:8px; text-align:center">
+                  <span style="display:flex; height:36px; width:36px; align-items:center; justify-content:center; border-radius:8px; border:2px solid #14241c; background:rgba(31,157,85,0.18); color:#1f9d55">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                  </span>
+                  <span style="font-size:10px; font-weight:700; color:#586a60">Add Task</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px; border-radius:10px; border:2px solid #e6e1d3; padding:8px; text-align:center">
+                  <span style="display:flex; height:36px; width:36px; align-items:center; justify-content:center; border-radius:8px; border:2px solid #14241c; background:rgba(217,119,6,0.18); color:#d97706">
+                    <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="1" y="3" width="6" height="2"></rect><rect x="1" y="5" width="14" height="8"></rect><rect x="7" y="7" width="2" height="4" fill="#fff"></rect><rect x="6" y="8" width="4" height="2" fill="#fff"></rect></svg>
+                  </span>
+                  <span style="font-size:10px; font-weight:700; color:#586a60">Add Project</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px; border-radius:10px; border:2px solid #e6e1d3; padding:8px; text-align:center">
+                  <span style="display:flex; height:36px; width:36px; align-items:center; justify-content:center; border-radius:8px; border:2px solid #14241c; background:rgba(124,58,237,0.18); color:#7c3aed">
+                    <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="2" width="12" height="12"></rect><rect x="4" y="4" width="8" height="2" fill="#fff"></rect><rect x="4" y="7" width="8" height="2" fill="#fff"></rect><rect x="4" y="10" width="5" height="2" fill="#fff"></rect></svg>
+                  </span>
+                  <span style="font-size:10px; font-weight:700; color:#586a60">Add Note</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px; border-radius:10px; border:2px solid #e6e1d3; padding:8px; text-align:center">
+                  <span style="display:flex; height:36px; width:36px; align-items:center; justify-content:center; border-radius:8px; border:2px solid #14241c; background:rgba(37,99,235,0.18); color:#2563eb">
+                    <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="3" y="3" width="10" height="10"></rect><rect x="4" y="4" width="8" height="8" fill="#fff"></rect><rect x="7" y="6" width="2" height="3"></rect><rect x="9" y="8" width="2" height="2"></rect><rect x="1" y="1" width="3" height="2"></rect><rect x="12" y="1" width="3" height="2"></rect></svg>
+                  </span>
+                  <span style="font-size:10px; font-weight:700; color:#586a60">Set Reminder</span>
+                </div>
+              </div>
+            </section>
+
+            <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+              <div style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between">
+                <h3 style="margin:0; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+                  Announcements
+                </h3>
+                <span style="font-size:11px; font-weight:700; color:#137a3f">View all</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; gap:8px; border-radius:10px; border:2px solid #e6e1d3; padding:8px">
+                  <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; font-size:9px; font-weight:700; color:#fff; background:#2563eb">R</span>
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:11px; font-weight:700; color:#14241c">Reza</p>
+                    <p style="margin:0; font-size:12px; color:#586a60">Sprint review moved to Friday 14:00.</p>
+                  </div>
+                </div>
+                <div style="display:flex; gap:8px; border-radius:10px; border:2px solid #e6e1d3; padding:8px">
+                  <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; font-size:9px; font-weight:700; color:#fff; background:#db2777">D</span>
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:11px; font-weight:700; color:#14241c">Dita</p>
+                    <p style="margin:0; font-size:12px; color:#586a60">Brand assets v3 sudah di Drive.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+              <div style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px">
+                <h3 style="margin:0; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">📝 Notes</h3>
+                <div style="display:flex; align-items:center; gap:12px">
+                  <span style="border:1px solid #e6e1d3; border-radius:11px; background:#fff; color:#14241c; padding:5px 8px; font-size:11px; font-weight:500">Newest</span>
+                  <span style="font-size:11px; font-weight:700; color:#137a3f">+ New Note</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; align-items:flex-start; gap:8px; border-radius:10px; border:2px solid #14241c; background:#fdf0cf; padding:10px">
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:12px; font-weight:600; color:#7a5600">Cek stok kayu jati buat batch souvenir Q4</p>
+                    <span style="display:inline-flex; margin-top:4px; align-items:center; gap:5px; border:1.5px solid #14241c; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; background:#dcf3e5; color:#137a3f">Supply</span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a5600" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                </div>
+                <div style="display:flex; align-items:flex-start; gap:8px; border-radius:10px; border:2px solid #14241c; background:#fdf0cf; padding:10px">
+                  <div style="min-width:0; flex:1">
+                    <p style="margin:0; font-size:12px; font-weight:600; color:#7a5600">Follow up quote vendor packaging — deadline Senin</p>
+                    <span style="display:inline-flex; margin-top:4px; align-items:center; gap:5px; border:1.5px solid #14241c; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; background:#dcf3e5; color:#137a3f">Ops</span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a5600" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DESKTOP BOARD ============ -->
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <p style="margin:0; font-family:'Space Mono',monospace; font-size:12px; color:#fff; letter-spacing:0.08em">02 · /board/$boardId — DESKTOP 1440</p>
+    <div data-screen-label="Current board desktop" style="width:1440px; background:#f7f4ec; color:#14241c; border-radius:6px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.28); padding:24px">
+      <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:16px; margin-bottom:20px">
+        <div style="flex:1; min-width:0">
+          <a href="#02" style="font-size:12px; font-weight:700; color:#137a3f; text-decoration:none">← All projects</a>
+          <div style="margin-top:6px; display:flex; align-items:center; gap:10px">
+            <h1 style="margin:0; font-family:'Press Start 2P',monospace; font-size:26px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Website Redesign</h1>
+            <span style="border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; background:#dcf3e5; color:#137a3f">owner</span>
+          </div>
+          <div style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px">
+            <span style="border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; background:rgba(124,58,237,0.13); color:#7c3aed">Client project</span>
+            <span style="border-radius:999px; background:#efece1; padding:4px 10px; font-size:11px; font-weight:700; color:#586a60">in progress</span>
+            <span style="border-radius:999px; background:#c0392b; padding:4px 10px; font-size:11px; font-weight:700; color:#fff">urgent</span>
+            <span style="font-size:12px; color:#8a978f">· PT Gentanala Nusantara</span>
+            <span style="font-size:12px; color:#8a978f">· Due 22 Aug</span>
+            <span style="font-size:12px; color:#8a978f">· PIC Reza, Dita</span>
+            <span style="font-size:12px; font-weight:700; color:#137a3f">· Rp 48.500.000</span>
+          </div>
+          <p style="margin:10px 0 0; max-width:640px; font-size:14px; line-height:1.6; color:#586a60">Full marketing-site rebuild: new IA, design system, and CMS migration. Launch target end of August.</p>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+          <span style="display:inline-flex">
+            <span style="display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; font-size:11px; font-weight:700; color:#fff; background:#2563eb">R</span>
+            <span style="display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:11px; font-weight:700; color:#fff; background:#db2777">D</span>
+            <span style="display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:11px; font-weight:700; color:#fff; background:#7c3aed">A</span>
+            <span style="display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:999px; border:2px solid #fff; margin-left:-8px; font-size:11px; font-weight:700; color:#fff; background:#0891b2">M</span>
+          </span>
+          <div style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:3px 3px 0 #14241c; padding:8px 12px; display:flex; align-items:center; gap:8px">
+            <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="#1f9d55"><rect x="2" y="3" width="12" height="11"></rect><rect x="3" y="6" width="10" height="7" fill="#fff"></rect><rect x="4" y="1" width="2" height="3"></rect><rect x="10" y="1" width="2" height="3"></rect></svg>
+            <div>
+              <p style="margin:0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#8a978f">Deadline</p>
+              <p style="margin:0; font-size:13px; font-weight:800; color:#14241c">22 Aug 2026</p>
+            </div>
+          </div>
+          <div style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:3px 3px 0 #14241c; padding:8px 12px; min-width:140px">
+            <div style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between">
+              <p style="margin:0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#8a978f">Progress</p>
+              <span style="font-size:12px; font-weight:800; color:#137a3f">68%</span>
+            </div>
+            <div style="height:8px; overflow:hidden; border-radius:999px; background:#efece1"><div style="height:100%; width:68%; border-radius:999px; background:#1f9d55"></div></div>
+          </div>
+          <div style="display:flex; gap:8px">
+            <span style="display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:9px 16px; font-size:13.6px; font-weight:700; line-height:1; border:2px solid #14241c; background:#16211b; color:#fff; box-shadow:3px 3px 0 #14241c">+ Add task</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:9px 16px; font-size:13.6px; font-weight:700; line-height:1; border:2px solid #14241c; background:#fff; color:#586a60; box-shadow:3px 3px 0 #14241c">Edit project</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- columns row -->
+      <div style="display:flex; gap:14px; align-items:flex-start; overflow:hidden">
+        <section style="border:1px solid #e6e1d3; border-radius:10px; background:#efece1; display:flex; min-height:520px; width:300px; flex:none; flex-direction:column; gap:14px; padding:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="display:flex; align-items:center; gap:8px">
+              <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:15px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Backlog</h3>
+              <span style="display:inline-flex; height:22px; min-width:22px; align-items:center; justify-content:center; border-radius:999px; border:1px solid #e6e1d3; background:#fff; padding:0 6px; font-size:12px; font-weight:700; color:#586a60">4</span>
+            </div>
+            <span style="height:8px; width:8px; border-radius:999px; background:#2563eb"></span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; gap:14px">
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Audit existing sitemap &amp; redirects</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#2563eb">RR</span>
+              </div>
+              <span style="display:inline-block; margin-top:8px; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; background:rgba(37,99,235,0.13); color:#2563eb">Research</span>
+            </article>
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Kumpulin testimoni klien buat social proof</p>
+              </div>
+            </article>
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Riset kompetitor pricing page</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#db2777">DA</span>
+              </div>
+            </article>
+          </div>
+          <form style="display:flex; gap:6px">
+            <span style="min-width:0; flex:1; border:1px solid #e6e1d3; border-radius:10px; background:#fff; color:#8a978f; padding:10px 12px; font-size:13px; font-weight:500">Add a card…</span>
+            <span style="display:flex; height:36px; width:36px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#16211b; font-size:19px; line-height:1; color:#fff">+</span>
+          </form>
+        </section>
+
+        <section style="border:1px solid #e6e1d3; border-radius:10px; background:#efece1; display:flex; min-height:520px; width:300px; flex:none; flex-direction:column; gap:14px; padding:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="display:flex; align-items:center; gap:8px">
+              <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:15px; font-weight:400; letter-spacing:-0.02em; color:#14241c">In Progress</h3>
+              <span style="display:inline-flex; height:22px; min-width:22px; align-items:center; justify-content:center; border-radius:999px; border:1px solid #e6e1d3; background:#fff; padding:0 6px; font-size:12px; font-weight:700; color:#586a60">3</span>
+            </div>
+            <span style="height:8px; width:8px; border-radius:999px; background:#d97706"></span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; gap:14px">
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Finalise homepage hero copy</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:6px; border:1px solid #e6e1d3; background:#fff; color:#586a60">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </span>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#2563eb">RR</span>
+              </div>
+              <span style="display:inline-block; margin-top:8px; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; background:rgba(219,39,119,0.13); color:#db2777">Copy</span>
+              <p style="margin:8px 0 0; font-size:12.5px; line-height:1.5; color:#586a60">Value prop harus jelas dalam 5 detik. Tone: percaya diri, ga jargon.</p>
+              <div style="margin-top:10px; display:flex; align-items:center; gap:12px; font-size:11px; font-weight:600; color:#8a978f">
+                <span style="display:flex; align-items:center; gap:4px"><svg width="13" height="13" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="3" width="12" height="11"></rect><rect x="3" y="6" width="10" height="7" fill="#fff"></rect><rect x="4" y="1" width="2" height="3"></rect><rect x="10" y="1" width="2" height="3"></rect></svg>Jul 31</span>
+                <span style="display:flex; align-items:center; gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6l-4 4V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path></svg>3</span>
+                <span style="display:flex; align-items:center; gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>2</span>
+              </div>
+            </article>
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Design system: tombol + form states</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#7c3aed">AN</span>
+              </div>
+              <span style="display:inline-block; margin-top:8px; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; background:rgba(31,157,85,0.13); color:#1f9d55">Design</span>
+            </article>
+          </div>
+          <form style="display:flex; gap:6px">
+            <span style="min-width:0; flex:1; border:1px solid #e6e1d3; border-radius:10px; background:#fff; color:#8a978f; padding:10px 12px; font-size:13px; font-weight:500">Add a card…</span>
+            <span style="display:flex; height:36px; width:36px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#16211b; font-size:19px; line-height:1; color:#fff">+</span>
+          </form>
+        </section>
+
+        <section style="border:1px solid #e6e1d3; border-radius:10px; background:#efece1; display:flex; min-height:520px; width:300px; flex:none; flex-direction:column; gap:14px; padding:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="display:flex; align-items:center; gap:8px">
+              <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:15px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Review</h3>
+              <span style="display:inline-flex; height:22px; min-width:22px; align-items:center; justify-content:center; border-radius:999px; border:1px solid #e6e1d3; background:#fff; padding:0 6px; font-size:12px; font-weight:700; color:#586a60">1</span>
+            </div>
+            <span style="height:8px; width:8px; border-radius:999px; background:#7c3aed"></span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; gap:14px">
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Migrasi 40 artikel blog ke CMS baru</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#0891b2">MI</span>
+              </div>
+            </article>
+            <div style="display:flex; flex:1; align-items:center; justify-content:center; border-radius:12px; border:1.5px dashed #e6e1d3; padding:16px; text-align:center; font-size:12px; font-weight:600; color:#8a978f">Drop cards here</div>
+          </div>
+          <form style="display:flex; gap:6px">
+            <span style="min-width:0; flex:1; border:1px solid #e6e1d3; border-radius:10px; background:#fff; color:#8a978f; padding:10px 12px; font-size:13px; font-weight:500">Add a card…</span>
+            <span style="display:flex; height:36px; width:36px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#16211b; font-size:19px; line-height:1; color:#fff">+</span>
+          </form>
+        </section>
+
+        <section style="border:1px solid #e6e1d3; border-radius:10px; background:#efece1; display:flex; min-height:520px; width:300px; flex:none; flex-direction:column; gap:14px; padding:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="display:flex; align-items:center; gap:8px">
+              <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:15px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Done</h3>
+              <span style="display:inline-flex; height:22px; min-width:22px; align-items:center; justify-content:center; border-radius:999px; border:1px solid #e6e1d3; background:#fff; padding:0 6px; font-size:12px; font-weight:700; color:#586a60">17</span>
+            </div>
+            <span style="height:8px; width:8px; border-radius:999px; background:#1f9d55"></span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; gap:14px">
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Kickoff workshop dengan klien</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#2563eb">RR</span>
+              </div>
+            </article>
+            <article style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:14px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px">
+                <p style="margin:0; min-width:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.4; color:#14241c">Moodboard + arah visual disetujui</p>
+                <span style="display:flex; height:24px; width:24px; flex:none; align-items:center; justify-content:center; border-radius:999px; border:2px solid #14241c; font-size:9px; font-weight:700; color:#fff; background:#db2777">DA</span>
+              </div>
+            </article>
+          </div>
+          <form style="display:flex; gap:6px">
+            <span style="min-width:0; flex:1; border:1px solid #e6e1d3; border-radius:10px; background:#fff; color:#8a978f; padding:10px 12px; font-size:13px; font-weight:500">Add a card…</span>
+            <span style="display:flex; height:36px; width:36px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#16211b; font-size:19px; line-height:1; color:#fff">+</span>
+          </form>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MOBILE + LOGIN ============ -->
+  <div style="display:flex; gap:56px; align-items:flex-start; flex-wrap:wrap">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <p style="margin:0; font-family:'Space Mono',monospace; font-size:12px; color:#fff; letter-spacing:0.08em">03 · /home — MOBILE 390</p>
+      <div data-screen-label="Current /home mobile" style="width:390px; height:844px; background:#f7f4ec; color:#14241c; border-radius:6px; overflow:hidden; position:relative; box-shadow:0 24px 60px rgba(0,0,0,0.28); display:flex; flex-direction:column">
+        <header style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-bottom:2px solid #14241c; background:rgba(255,255,255,0.72); padding:10px 16px">
+          <div style="min-width:0; line-height:1.2; flex:1">
+            <p style="margin:0; font-size:11px; font-weight:600; color:#8a978f">Good morning,</p>
+            <p style="margin:0; font-family:'Press Start 2P',monospace; font-size:20px; letter-spacing:-0.02em; color:#14241c">Reza 👋</p>
+          </div>
+          <span style="position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:9px 10px; border:2px solid #14241c; background:#fff; color:#586a60; box-shadow:3px 3px 0 #14241c">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+          </span>
+          <span style="display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px; padding:9px 12px; font-size:13.6px; font-weight:700; border:2px solid #14241c; background:#16211b; color:#fff; box-shadow:3px 3px 0 #14241c">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          </span>
+          <span style="display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:9px 10px; border:2px solid #14241c; background:#fff; color:#586a60; box-shadow:3px 3px 0 #14241c">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>
+          </span>
+        </header>
+        <div style="flex:1; overflow:hidden; padding:16px; display:flex; flex-direction:column; gap:16px">
+          <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+            <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px">
+              <svg width="18" height="18" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="#c0392b"><rect x="7" y="1" width="2" height="3"></rect><rect x="5" y="4" width="6" height="3"></rect><rect x="4" y="7" width="8" height="6"></rect><rect x="6" y="13" width="4" height="2"></rect><rect x="6" y="9" width="4" height="3" fill="#f5c451"></rect></svg>
+              <h3 style="margin:0; font-family:'Press Start 2P',monospace; font-size:18px; letter-spacing:-0.02em; color:#14241c">Today</h3>
+            </div>
+            <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; align-items:center; gap:16px; border-bottom:2px solid #e6e1d3; padding-bottom:12px">
+              <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em">7</span><span style="font-size:11px; font-weight:600; color:#8a978f">Tasks</span></div>
+              <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em; color:#c0392b">2</span><span style="font-size:11px; font-weight:600; color:#8a978f">Overdue</span></div>
+              <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:-0.02em; color:#d97706">3</span><span style="font-size:11px; font-weight:600; color:#8a978f">Due today</span></div>
+            </div>
+            <div style="display:flex; flex-direction:column">
+              <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #e6e1d3; padding:8px 0">
+                <span style="height:16px; width:16px; flex:none; border-radius:5px; border:2px solid #14241c"></span>
+                <div style="min-width:0; flex:1">
+                  <p style="margin:0; font-size:13px; font-weight:700">Finalise homepage hero copy</p>
+                  <span style="font-size:11px; font-weight:600; color:#8a978f">Website Redesign</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 0">
+                <span style="height:16px; width:16px; flex:none; border-radius:5px; border:2px solid #14241c"></span>
+                <div style="min-width:0; flex:1">
+                  <p style="margin:0; font-size:13px; font-weight:700">Kirim invoice Gentanala batch 2</p>
+                  <span style="font-size:11px; font-weight:600; color:#8a978f">Gentanala Corporate</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section style="border:2px solid #14241c; border-radius:10px; background:#fff; box-shadow:4px 4px 0 #14241c; padding:16px">
+            <h3 style="margin:0 0 12px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:#586a60">Active Projects</h3>
+            <div style="border-radius:10px; border:2px solid #14241c; padding:12px; margin-bottom:12px">
+              <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px">
+                <span style="height:8px; width:8px; border-radius:999px; background:#1f9d55"></span>
+                <p style="margin:0; flex:1; font-size:13px; font-weight:700">Website Redesign</p>
+                <span style="font-size:12px; font-weight:800; color:#1f9d55">68%</span>
+              </div>
+              <span style="display:inline-flex; gap:3px; width:100%">
+                <span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #1f9d55; background:#1f9d55"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+              </span>
+            </div>
+            <div style="border-radius:10px; border:2px solid #14241c; padding:12px">
+              <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px">
+                <span style="height:8px; width:8px; border-radius:999px; background:#d97706"></span>
+                <p style="margin:0; flex:1; font-size:13px; font-weight:700">Q3 Content Calendar</p>
+                <span style="font-size:12px; font-weight:800; color:#d97706">42%</span>
+              </div>
+              <span style="display:inline-flex; gap:3px; width:100%">
+                <span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #d97706; background:#d97706"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span><span style="flex:1; height:12px; border:1.5px solid #14241c; background:#efece1"></span>
+              </span>
+            </div>
+          </section>
+        </div>
+        <!-- MobileNav.tsx -->
+        <nav style="display:flex; align-items:stretch; justify-content:space-around; border-top:2px solid #14241c; background:rgba(255,255,255,0.72); backdrop-filter:blur(12px)">
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:2px; padding:8px 0; font-size:10px; font-weight:700; color:#137a3f">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Home
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:2px; padding:8px 0; font-size:10px; font-weight:700; color:#8a978f">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>Center
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:2px; padding:8px 0; font-size:10px; font-weight:700; color:#8a978f">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>Tasks
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:2px; padding:8px 0; font-size:10px; font-weight:700; color:#8a978f">
+            <svg width="20" height="20" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="3" width="12" height="11"></rect><rect x="3" y="6" width="10" height="7" fill="#f7f4ec"></rect><rect x="4" y="1" width="2" height="3"></rect><rect x="10" y="1" width="2" height="3"></rect></svg>Calendar
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:2px; padding:8px 0; font-size:10px; font-weight:700; color:#8a978f">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>More
+          </div>
+        </nav>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <p style="margin:0; font-family:'Space Mono',monospace; font-size:12px; color:#fff; letter-spacing:0.08em">04 · /login</p>
+      <div data-screen-label="Current login" style="width:520px; background:#f7f4ec; border-radius:6px; box-shadow:0 24px 60px rgba(0,0,0,0.28); padding:40px; display:flex; justify-content:center">
+        <div style="width:400px; border:4px solid #14241c; border-radius:16px; background:#f3ecd8; box-shadow:8px 8px 0 #14241c; padding:30px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px">
+            <span style="display:grid; place-items:center; width:40px; height:40px; border:2px solid #14241c; border-radius:10px; background:#dcf3e5; color:#137a3f; box-shadow:3px 3px 0 #14241c">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+            </span>
+            <span style="position:relative; border:2px solid #14241c; border-radius:10px; background:#fff; padding:6px 10px; font-size:11.5px; font-weight:700; color:#14241c; box-shadow:3px 3px 0 #14241c">Let's get things done!</span>
+          </div>
+          <h1 style="margin:14px 0 4px; font-family:'Press Start 2P',monospace; font-size:22px; font-weight:400; letter-spacing:-0.02em; color:#14241c">Welcome back!</h1>
+          <p style="margin:0 0 20px; font-size:13.5px; color:#586a60">Track your work. Share the progress.</p>
+          <label style="margin-bottom:6px; display:block; font-size:12px; font-weight:700; color:#14241c">Email</label>
+          <div style="display:flex; align-items:center; gap:10px; border:2px solid #14241c; border-radius:12px; background:#fff; padding:2px 12px; box-shadow:3px 3px 0 #14241c; margin-bottom:16px">
+            <svg width="17" height="17" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="#8a978f"><rect x="1" y="3" width="14" height="10"></rect><rect x="2" y="4" width="12" height="8" fill="#fff"></rect><rect x="2" y="4" width="2" height="2"></rect><rect x="4" y="6" width="2" height="2"></rect><rect x="6" y="8" width="4" height="2"></rect><rect x="10" y="6" width="2" height="2"></rect><rect x="12" y="4" width="2" height="2"></rect></svg>
+            <span style="flex:1; padding:10px 0; font-size:14.4px; font-weight:500; color:#8a978f">Enter your email</span>
+          </div>
+          <label style="margin-bottom:6px; display:block; font-size:12px; font-weight:700; color:#14241c">Password</label>
+          <div style="display:flex; align-items:center; gap:10px; border:2px solid #14241c; border-radius:12px; background:#fff; padding:2px 12px; box-shadow:3px 3px 0 #14241c; margin-bottom:12px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8a978f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span style="flex:1; padding:10px 0; font-size:14.4px; font-weight:500; color:#8a978f">Enter your password</span>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8a978f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </div>
+          <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; font-size:13px">
+            <span style="display:flex; align-items:center; gap:8px; font-weight:600; color:#586a60"><span style="height:16px; width:16px; border:2px solid #1f9d55; background:#1f9d55; border-radius:3px"></span>Remember me</span>
+            <a href="#04" style="font-weight:700; color:#137a3f; text-decoration:none">Forgot password?</a>
+          </div>
+          <div style="width:100%; border:3px solid #14241c; border-radius:12px; background:#1f9d55; color:#fff; padding:14px 16px; font-size:16px; font-weight:800; box-shadow:4px 4px 0 #14241c; display:flex; align-items:center; justify-content:center; gap:6px">
+            Log in
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </div>
+          <p style="margin:16px 0 0; text-align:center; font-size:13px; color:#586a60">New here? <a href="#04" style="font-weight:700; color:#137a3f; text-decoration:none">Create an account</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

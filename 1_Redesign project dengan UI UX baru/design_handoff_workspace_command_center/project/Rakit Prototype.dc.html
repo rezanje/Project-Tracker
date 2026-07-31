@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin" />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#EDE9E3; --surf:#FBFAF8; --surf2:#F4F1EC; --line:#E7E2DA;
+      --ink:#1C1A17; --ink2:#6E6862; --ink3:#A39C94;
+      --acc:#E8622C; --acc-soft:#FBEDE5; --acc-ink:#B8442C; --green:#6E7A66;
+      --inv:#1C1A17; --inv-ink:#FBFAF8; --nav:#FBFAF8;
+      --sh-sm:0 1px 2px rgba(28,26,23,.05);
+      --sh-md:0 1px 2px rgba(28,26,23,.04), 0 10px 28px rgba(28,26,23,.045);
+      --sh-nav:0 1px 2px rgba(28,26,23,.04), 0 12px 30px rgba(28,26,23,.11);
+      --scrim:linear-gradient(180deg, rgba(237,233,227,0) 0%, #EDE9E3 55%);
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:#DCD6CD; font-family:'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased}
+    a{color:#E8622C; text-decoration:none}
+    a:hover{color:#B8442C}
+    button{border:none; background:none; padding:0; margin:0; cursor:pointer; color:inherit; font-family:inherit}
+    input{font-family:inherit}
+    input::placeholder{color:var(--ink3); opacity:1}
+    .sc{scrollbar-width:none}
+    .sc::-webkit-scrollbar{width:0; height:0}
+    @keyframes upIn{from{transform:translateY(102%)}to{transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes scrIn{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+    @keyframes toastIn{from{opacity:0; transform:translateY(14px) scale(.95)}to{opacity:1; transform:none}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</helmet>
+
+<div style="min-height:100vh; display:flex; align-items:flex-start; justify-content:center; gap:52px; padding:44px 40px 80px">
+
+  <div style="width:230px; flex:none; position:sticky; top:44px; display:flex; flex-direction:column; gap:22px">
+    <div>
+      <p style="margin:0; font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.14em; color:#7A736B">PROTOTYPE</p>
+      <h1 style="margin:6px 0 0; font-size:27px; font-weight:800; letter-spacing:-0.03em; color:#1C1A17; line-height:1.1">Rakit<br />redesign</h1>
+      <p style="margin:10px 0 0; font-size:13.5px; line-height:1.55; color:#5F5952">Klik-klik aja. Semua state beneran jalan — task, board, jadwal, tema.</p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:8px">
+      <button onClick="{{ toggleTheme }}" style="display:flex; align-items:center; gap:10px; border-radius:999px; background:#FBFAF8; box-shadow:0 1px 2px rgba(28,26,23,.06); padding:10px 14px; font-size:13.5px; font-weight:600; color:#1C1A17" style-hover="background:#fff; transform:translateY(-1px)" style-active="transform:translateY(0)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"></path></svg>
+        <span style="flex:1; text-align:left">{{ themeLabel }}</span>
+      </button>
+      <button onClick="{{ reset }}" style="display:flex; align-items:center; gap:10px; border-radius:999px; background:transparent; box-shadow:inset 0 0 0 1px rgba(28,26,23,.14); padding:10px 14px; font-size:13.5px; font-weight:600; color:#5F5952" style-hover="background:rgba(255,255,255,.5)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>
+        <span style="flex:1; text-align:left">Reset data</span>
+      </button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:9px; border-top:1px solid rgba(28,26,23,.12); padding-top:18px">
+      <p style="margin:0; font-family:'Space Mono',monospace; font-size:10.5px; letter-spacing:0.12em; color:#7A736B">COBA INI</p>
+      <p style="margin:0; font-size:13px; line-height:1.5; color:#5F5952">Sign in → landing di Command center (semua perusahaan). Tap pill workspace di atas buat pindah ke Rakit Studio, Kopi Lintas, atau Nusa Logistik — semua screen ikut kefilter.</p>
+    </div>
+  </div>
+
+  <div style="position:relative; width:390px; height:844px; flex:none; border-radius:44px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); color:var(--ink); box-shadow:0 40px 90px rgba(28,26,23,.34); {{ vars }}">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 30px 4px; flex:none">
+      <span style="font-size:15px; font-weight:700; letter-spacing:-0.01em">{{ clock }}</span>
+      <div style="display:flex; align-items:center; gap:6px; color:var(--ink)">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.2 6 8.9a3 3 0 0 1 4 0zM8 6.4a5.2 5.2 0 0 0-3.6 1.4L3 6.3a7.3 7.3 0 0 1 10 0l-1.4 1.5A5.2 5.2 0 0 0 8 6.4M8 1.8a9.8 9.8 0 0 0-6.6 2.5L0 2.9a11.8 11.8 0 0 1 16 0l-1.4 1.4A9.8 9.8 0 0 0 8 1.8"></path></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.2" stroke="currentColor" stroke-opacity="0.4"></rect><rect x="2" y="2" width="18" height="8" rx="2" fill="currentColor"></rect><path d="M23 4v4a2 2 0 0 0 0-4" fill="currentColor" fill-opacity="0.4"></path></svg>
+      </div>
+    </div>
+
+    <!-- ============ LOGIN ============ -->
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Login" style="flex:1; display:flex; flex-direction:column; padding:0 28px 34px; animation:scrIn .3s ease both">
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:26px">
+          <div>
+            <span style="display:flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:18px; background:var(--inv); color:var(--inv-ink); font-size:22px; font-weight:800; letter-spacing:-0.04em">R</span>
+            <h2 style="margin:22px 0 6px; font-size:30px; font-weight:800; letter-spacing:-0.03em; line-height:1.1">Masuk ke Rakit</h2>
+            <p style="margin:0; font-size:14.5px; line-height:1.5; color:var(--ink2)">Lanjutkan kerjaan tim kamu hari ini.</p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <label style="display:flex; flex-direction:column; gap:7px">
+              <span style="font-size:12.5px; font-weight:600; color:var(--ink2)">Email</span>
+              <span style="display:flex; align-items:center; gap:10px; border-radius:16px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--ink3)"><rect x="2" y="4" width="20" height="16" rx="4"></rect><path d="m3 7 9 6 9-6"></path></svg>
+                <input type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="nama@rakit.id" style="flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:15px; font-weight:500; color:var(--ink)" />
+              </span>
+            </label>
+
+            <label style="display:flex; flex-direction:column; gap:7px">
+              <span style="font-size:12.5px; font-weight:600; color:var(--ink2)">Password</span>
+              <span style="display:flex; align-items:center; gap:10px; border-radius:16px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3)"><rect x="3" y="10" width="18" height="11" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+                <input type="password" value="{{ pw }}" onChange="{{ setPw }}" placeholder="••••••••" style="flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:15px; font-weight:500; color:var(--ink)" />
+              </span>
+            </label>
+
+            <sc-if value="{{ err }}">
+              <p style="margin:2px 0 0; display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--acc-ink); animation:fadeIn .2s ease both">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v5M12 16.5v.01"></path></svg>{{ err }}
+              </p>
+            </sc-if>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <button onClick="{{ signIn }}" style="display:flex; align-items:center; justify-content:center; gap:10px; height:54px; border-radius:999px; background:var(--inv); color:var(--inv-ink); font-size:15.5px; font-weight:700; box-shadow:0 8px 24px rgba(28,26,23,.22)" style-hover="opacity:.92" style-active="transform:scale(.985)">
+                <sc-if value="{{ loading }}"><span style="width:17px; height:17px; border-radius:999px; border:2px solid currentColor; border-top-color:transparent; animation:spin .7s linear infinite"></span></sc-if>
+                {{ signInLabel }}
+            </button>
+            <button onClick="{{ demo }}" style="align-self:center; font-size:13.5px; font-weight:600; color:var(--ink2)" style-hover="color:var(--acc)">Lewati, langsung lihat demo</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ OVERVIEW (semua workspace) ============ -->
+    <sc-if value="{{ isOverview }}">
+      <div data-screen-label="Overview semua workspace" class="sc" style="flex:1; overflow-y:auto; overflow-x:hidden; padding:12px 20px 150px; display:flex; flex-direction:column; gap:18px; animation:scrIn .28s ease both">
+        <div style="display:flex; align-items:flex-start; gap:10px">
+          <div style="flex:1; min-width:0">
+            <button onClick="{{ openWs }}" style="display:inline-flex; align-items:center; gap:8px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); padding:5px 13px 5px 5px; font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:10px" style-hover="transform:translateY(-1px)" style-active="transform:scale(.97)">
+              <span style="{{ wsChipAvatar }}">{{ wsChip }}</span>
+              <span>{{ wsName }}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3)"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+            </button>
+            <h1 style="margin:0; font-size:27px; font-weight:800; letter-spacing:-0.03em; line-height:1.1">Command center</h1>
+            <p style="margin:5px 0 0; font-size:13.5px; color:var(--ink2)">{{ wsRole }}</p>
+          </div>
+          <button onClick="{{ openNotif }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); position:relative" style-active="transform:scale(.94)">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+            <sc-if value="{{ hasNotif }}"><span style="position:absolute; top:8px; right:9px; width:7px; height:7px; border-radius:999px; background:var(--acc); box-shadow:0 0 0 1.5px var(--surf)"></span></sc-if>
+          </button>
+          <button onClick="{{ toggleTheme }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <sc-if value="{{ dark }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"></path></svg></sc-if>
+            <sc-if value="{{ light }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.3 14.6A8.5 8.5 0 0 1 9.4 3.7a8.5 8.5 0 1 0 10.9 10.9"></path></svg></sc-if>
+          </button>
+        </div>
+
+        <div style="display:flex; gap:10px">
+          <div style="flex:1; border-radius:22px; background:var(--surf); padding:15px; box-shadow:var(--sh-md)">
+            <p style="margin:0; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Aktif</p>
+            <p style="margin:5px 0 0; font-size:26px; font-weight:800; letter-spacing:-0.03em; font-variant-numeric:tabular-nums">{{ ovActive }}</p>
+          </div>
+          <div style="flex:1; border-radius:22px; background:var(--surf); padding:15px; box-shadow:var(--sh-md)">
+            <p style="margin:0; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Telat</p>
+            <p style="margin:5px 0 0; font-size:26px; font-weight:800; letter-spacing:-0.03em; color:var(--acc); font-variant-numeric:tabular-nums">{{ ovLate }}</p>
+          </div>
+          <div style="flex:1; border-radius:22px; background:var(--surf); padding:15px; box-shadow:var(--sh-md)">
+            <p style="margin:0; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Approval</p>
+            <p style="margin:5px 0 0; font-size:26px; font-weight:800; letter-spacing:-0.03em; font-variant-numeric:tabular-nums">{{ ovApprovals }}</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 style="margin:0 0 12px; font-size:20px; font-weight:700; letter-spacing:-0.02em">Workspace kamu</h2>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ wsCards }}" as="w" hint-placeholder-count="3">
+              <div onClick="{{ w.open }}" style="border-radius:22px; background:var(--surf); box-shadow:var(--sh-sm); padding:16px; cursor:pointer" style-hover="transform:translateY(-2px)" style-active="transform:scale(.99)">
+                <div style="display:flex; align-items:center; gap:12px">
+                  <span style="{{ w.avatar }}">{{ w.ch }}</span>
+                  <div style="flex:1; min-width:0">
+                    <p style="margin:0; font-size:15.5px; font-weight:700; letter-spacing:-0.02em">{{ w.name }}</p>
+                    <p style="margin:2px 0 0; font-size:12.5px; color:var(--ink3)">{{ w.role }}</p>
+                  </div>
+                  <sc-if value="{{ w.hasLate }}">
+                    <span style="border-radius:999px; background:var(--acc-soft); color:var(--acc-ink); padding:4px 10px; font-size:11px; font-weight:700; flex:none">{{ w.lateLabel }}</span>
+                  </sc-if>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3); flex:none"><path d="m9 18 6-6-6-6"></path></svg>
+                </div>
+                <div style="margin-top:14px; display:flex; align-items:center; gap:10px">
+                  <div style="flex:1; height:6px; border-radius:999px; background:var(--line); overflow:hidden"><div style="{{ w.fill }}"></div></div>
+                  <span style="font-size:12px; font-weight:700; color:var(--ink2); font-variant-numeric:tabular-nums">{{ w.pct }}</span>
+                </div>
+                <p style="margin:9px 0 0; font-size:12.5px; color:var(--ink3)">{{ w.line }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <h2 style="margin:0 0 12px; font-size:20px; font-weight:700; letter-spacing:-0.02em">Butuh perhatian</h2>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ attention }}" as="t" hint-placeholder-count="3">
+              <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px; display:flex; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+                <span style="{{ t.bar }}"></span>
+                <div style="flex:1; min-width:0">
+                  <div style="display:flex; align-items:flex-start; gap:9px">
+                    <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                    <span style="{{ t.flagStyle }}">{{ t.flag }}</span>
+                  </div>
+                  <div style="margin-top:9px; display:flex; align-items:center; gap:8px">
+                    <span style="{{ t.wsDot }}"></span>
+                    <span style="flex:1; min-width:0; font-size:12.5px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ t.projName }}</span>
+                    <span style="font-size:12px; font-weight:500; color:var(--ink2)">{{ t.due }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ attentionEmpty }}">
+              <div style="border-radius:20px; background:var(--surf2); padding:28px 18px; text-align:center">
+                <p style="margin:0; font-size:14.5px; font-weight:700">Semua aman ✓</p>
+                <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada yang telat di semua workspace.</p>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px">
+            <h2 style="margin:0; font-size:20px; font-weight:700; letter-spacing:-0.02em">Hari ini, semua tim</h2>
+            <button onClick="{{ goTasks }}" style="font-size:13.5px; font-weight:600; color:var(--ink2)" style-hover="color:var(--acc)">See all</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ crossToday }}" as="t" hint-placeholder-count="4">
+              <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px; display:flex; align-items:flex-start; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+                <button onClick="{{ t.check }}" style="{{ t.checkStyle }}"></button>
+                <div style="flex:1; min-width:0">
+                  <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                  <div style="margin-top:8px; display:flex; align-items:center; gap:8px">
+                    <span style="{{ t.wsDot }}"></span>
+                    <span style="flex:1; min-width:0; font-size:12.5px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ t.wsName }}</span>
+                    <span style="font-size:12px; font-weight:500; color:var(--ink2)">{{ t.due }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ crossTodayEmpty }}">
+              <div style="border-radius:20px; background:var(--surf2); padding:28px 18px; text-align:center">
+                <p style="margin:0; font-size:14.5px; font-weight:700">Clear semua 🎉</p>
+                <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada task tersisa hari ini.</p>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ HOME (satu workspace) ============ -->
+    <sc-if value="{{ isHomeWs }}">
+      <div data-screen-label="Home" class="sc" style="flex:1; overflow-y:auto; overflow-x:hidden; padding:12px 20px 150px; display:flex; flex-direction:column; gap:16px; animation:scrIn .28s ease both">
+        <div style="display:flex; align-items:flex-start; gap:10px">
+          <div style="flex:1; min-width:0">
+            <button onClick="{{ openWs }}" style="display:inline-flex; align-items:center; gap:8px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); padding:5px 13px 5px 5px; font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:9px" style-hover="transform:translateY(-1px)" style-active="transform:scale(.97)">
+              <span style="{{ wsChipAvatar }}">{{ wsChip }}</span>
+              <span>{{ wsName }}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3)"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+            </button>
+            <h1 style="margin:0; font-size:28px; font-weight:800; letter-spacing:-0.03em">{{ greeting }}</h1>
+          </div>
+          <button onClick="{{ openNotif }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); position:relative" style-active="transform:scale(.94)">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+            <sc-if value="{{ hasNotif }}"><span style="position:absolute; top:8px; right:9px; width:7px; height:7px; border-radius:999px; background:var(--acc); box-shadow:0 0 0 1.5px var(--surf)"></span></sc-if>
+          </button>
+          <button onClick="{{ toggleTheme }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <sc-if value="{{ dark }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"></path></svg></sc-if>
+            <sc-if value="{{ light }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.3 14.6A8.5 8.5 0 0 1 9.4 3.7a8.5 8.5 0 1 0 10.9 10.9"></path></svg></sc-if>
+          </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; border-radius:18px; background:var(--surf2); padding:13px 16px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--ink3); flex:none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Cari task, project, event…" style="flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:14px; font-weight:500; color:var(--ink)" />
+          <sc-if value="{{ searching }}">
+            <button onClick="{{ clearQ }}" style="display:flex; color:var(--ink2)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ searching }}">
+          <div style="display:flex; flex-direction:column; gap:10px; animation:fadeIn .2s ease both">
+            <p style="margin:0; font-size:13px; font-weight:600; color:var(--ink2)">{{ resultLabel }}</p>
+            <sc-for list="{{ results }}" as="t" hint-placeholder-count="2">
+              <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px; display:flex; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+                <span style="{{ t.bar }}"></span>
+                <div style="flex:1; min-width:0">
+                  <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                  <p style="margin:2px 0 0; font-size:13px; color:var(--ink3)">{{ t.meta }}</p>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noResults }}">
+              <div style="border-radius:20px; background:var(--surf2); padding:26px 18px; text-align:center">
+                <p style="margin:0; font-size:14px; font-weight:600">Ga ketemu</p>
+                <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Coba kata kunci lain.</p>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ notSearching }}" hint-placeholder-val="{{ true }}">
+          <div style="border-radius:24px; background:var(--surf); padding:18px; display:flex; gap:14px; align-items:center; box-shadow:var(--sh-md)">
+            <div style="width:118px; flex:none">
+              <p style="margin:0 0 12px; font-size:15.5px; font-weight:700; letter-spacing:-0.015em; line-height:1.25">Lihat progres<br />KPI kamu</p>
+              <button onClick="{{ goKpi }}" style="display:inline-flex; align-items:center; border-radius:999px; background:var(--inv); color:var(--inv-ink); padding:9px 16px; font-size:13px; font-weight:700" style-hover="opacity:.9" style-active="transform:scale(.96)">Check now</button>
+            </div>
+            <div style="flex:1; min-width:0; position:relative">
+              <span style="position:absolute; top:-2px; right:0; display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:700; color:var(--green)">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 1 11 10H1z"></path></svg>+12.4%
+              </span>
+              <div style="display:flex; align-items:flex-end; gap:5px; height:66px; margin-top:16px">
+                <sc-for list="{{ spark }}" as="b" hint-placeholder-count="7">
+                  <div style="{{ b.style }}"></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px">
+              <h2 style="margin:0; font-size:20px; font-weight:700; letter-spacing:-0.02em">Projects</h2>
+              <span style="font-size:13px; font-weight:600; color:var(--ink3)">{{ projCount }}</span>
+            </div>
+            <div class="sc" style="display:flex; gap:12px; overflow-x:auto; margin:0 -20px; padding:2px 20px 6px">
+              <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+                <div onClick="{{ p.open }}" style="width:200px; flex:none; border-radius:24px; background:var(--surf); padding:16px; box-shadow:var(--sh-md); cursor:pointer" style-hover="transform:translateY(-2px)" style-active="transform:scale(.99)">
+                  <div style="display:flex; align-items:flex-end; gap:10px; height:74px; padding:0 4px">
+                    <sc-for list="{{ p.bars }}" as="bar" hint-placeholder-count="3">
+                      <div style="{{ bar }}"></div>
+                    </sc-for>
+                  </div>
+                  <p style="margin:14px 0 3px; font-size:15px; font-weight:700; letter-spacing:-0.015em">{{ p.name }}</p>
+                  <p style="margin:0; font-size:13px; line-height:1.4; color:var(--ink3)">{{ p.desc }}</p>
+                  <div style="margin-top:14px; display:flex; align-items:center; gap:8px">
+                    <div style="flex:1; height:5px; border-radius:999px; background:var(--line); overflow:hidden"><div style="{{ p.fill }}"></div></div>
+                    <span style="font-size:11.5px; font-weight:700; color:var(--ink2)">{{ p.pct }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px">
+              <h2 style="margin:0; font-size:20px; font-weight:700; letter-spacing:-0.02em">Task hari ini</h2>
+              <button onClick="{{ goTasks }}" style="font-size:13.5px; font-weight:600; color:var(--ink2)" style-hover="color:var(--acc)">See all</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px">
+              <sc-for list="{{ today }}" as="t" hint-placeholder-count="3">
+                <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px; display:flex; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+                  <span style="{{ t.bar }}"></span>
+                  <div style="flex:1; min-width:0">
+                    <div style="display:flex; align-items:flex-start; gap:8px">
+                      <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                      <button onClick="{{ t.check }}" style="{{ t.checkStyle }}">
+                        <sc-if value="{{ t.done }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 6"></path></svg></sc-if>
+                      </button>
+                    </div>
+                    <p style="margin:3px 0 0; font-size:13px; color:var(--ink3)">{{ t.status }}</p>
+                    <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between; gap:10px">
+                      <span style="display:inline-flex">
+                        <sc-for list="{{ t.ppl }}" as="a" hint-placeholder-count="3">
+                          <span style="{{ a.style }}">{{ a.ch }}</span>
+                        </sc-for>
+                      </span>
+                      <span style="font-size:12.5px; font-weight:500; color:var(--ink2)">{{ t.due }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ todayEmpty }}">
+                <div style="border-radius:20px; background:var(--surf2); padding:28px 18px; text-align:center">
+                  <p style="margin:0; font-size:14.5px; font-weight:700">Clear semua 🎉</p>
+                  <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada task tersisa hari ini.</p>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ============ BOARD ============ -->
+    <sc-if value="{{ isBoard }}">
+      <div data-screen-label="Board" style="flex:1; min-height:0; display:flex; flex-direction:column; animation:scrIn .28s ease both">
+        <div style="padding:12px 20px 0; display:flex; align-items:center; gap:12px; flex:none">
+          <button onClick="{{ goHome }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+          </button>
+          <div style="flex:1; text-align:center; min-width:0">
+            <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">{{ wsName }}</p>
+            <h1 style="margin:1px 0 0; font-size:18px; font-weight:700; letter-spacing:-0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ board.name }}</h1>
+          </div>
+          <button onClick="{{ cycleProject }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"></path><path d="M3 6h18"></path><path d="m7 22-4-4 4-4"></path><path d="M21 18H3"></path></svg>
+          </button>
+        </div>
+
+        <div style="padding:16px 20px 0; flex:none">
+          <div style="border-radius:24px; background:var(--surf); padding:18px; box-shadow:var(--sh-md)">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px">
+              <span style="border-radius:999px; background:var(--inv); color:var(--inv-ink); padding:5px 12px; font-size:11.5px; font-weight:600">Urgent</span>
+              <span style="border-radius:999px; background:var(--surf2); color:var(--ink2); padding:5px 12px; font-size:11.5px; font-weight:600">In progress</span>
+              <span style="font-size:12.5px; color:var(--ink3)">{{ board.due }}</span>
+            </div>
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:10px">
+              <div>
+                <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Project value</p>
+                <p style="margin:2px 0 0; font-size:22px; font-weight:700; letter-spacing:-0.02em; font-variant-numeric:tabular-nums">{{ board.value }}</p>
+              </div>
+              <span style="font-size:20px; font-weight:700; letter-spacing:-0.02em">{{ board.pct }}</span>
+            </div>
+            <div style="height:6px; border-radius:999px; background:var(--line); overflow:hidden"><div style="{{ board.fill }}"></div></div>
+            <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between">
+              <span style="display:inline-flex">
+                <sc-for list="{{ board.ppl }}" as="a" hint-placeholder-count="4">
+                  <span style="{{ a.style }}">{{ a.ch }}</span>
+                </sc-for>
+              </span>
+              <span style="font-size:12.5px; font-weight:500; color:var(--ink2)">{{ board.ratio }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sc" style="padding:18px 20px 0; display:flex; gap:8px; overflow-x:auto; flex:none">
+          <sc-for list="{{ cols }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }} <span style="opacity:.55">{{ c.n }}</span></button>
+          </sc-for>
+        </div>
+
+        <div class="sc" style="flex:1; min-height:0; overflow-y:auto; padding:14px 20px 150px; display:flex; flex-direction:column; gap:10px">
+          <sc-for list="{{ cards }}" as="t" hint-placeholder-count="3">
+            <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+              <div style="display:flex; align-items:flex-start; gap:10px">
+                <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                <span style="{{ t.avatar }}">{{ t.lead }}</span>
+              </div>
+              <sc-if value="{{ t.note }}">
+                <p style="margin:8px 0 0; font-size:13.5px; line-height:1.5; color:var(--ink2)">{{ t.note }}</p>
+              </sc-if>
+              <div style="margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                <span style="border-radius:999px; background:var(--surf2); color:var(--ink2); padding:4px 11px; font-size:11.5px; font-weight:600">{{ t.tag }}</span>
+                <span style="{{ t.dueStyle }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>{{ t.due }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ cardsEmpty }}">
+            <div style="border-radius:20px; background:var(--surf2); padding:30px 18px; text-align:center">
+              <p style="margin:0; font-size:14.5px; font-weight:700">Kolom ini kosong</p>
+              <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Tap + buat nambah task di sini.</p>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ MY TASKS ============ -->
+    <sc-if value="{{ isTasks }}">
+      <div data-screen-label="My tasks" style="flex:1; min-height:0; display:flex; flex-direction:column; animation:scrIn .28s ease both">
+        <div style="padding:12px 20px 0; display:flex; align-items:flex-end; gap:12px; flex:none">
+          <div style="flex:1; min-width:0">
+            <button onClick="{{ openWs }}" style="display:inline-flex; align-items:center; gap:8px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); padding:5px 13px 5px 5px; font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:9px" style-hover="transform:translateY(-1px)" style-active="transform:scale(.97)">
+              <span style="{{ wsChipAvatar }}">{{ wsChip }}</span>
+              <span>{{ wsName }}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3)"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+            </button>
+            <h1 style="margin:0; font-size:26px; font-weight:800; letter-spacing:-0.03em">My tasks</h1>
+            <p style="margin:2px 0 0; font-size:13.5px; color:var(--ink2)">{{ mySummary }}</p>
+          </div>
+          <span style="{{ ring }}">
+            <span style="display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:999px; background:var(--surf); font-size:12.5px; font-weight:700">{{ myPct }}</span>
+          </span>
+        </div>
+
+        <div class="sc" style="padding:16px 20px 0; display:flex; gap:8px; overflow-x:auto; flex:none">
+          <sc-for list="{{ myFilters }}" as="f" hint-placeholder-count="3">
+            <button onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.label }} <span style="opacity:.55">{{ f.n }}</span></button>
+          </sc-for>
+        </div>
+
+        <div class="sc" style="flex:1; min-height:0; overflow-y:auto; padding:14px 20px 150px; display:flex; flex-direction:column; gap:10px">
+          <sc-for list="{{ myList }}" as="t" hint-placeholder-count="5">
+            <div onClick="{{ t.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px; display:flex; align-items:flex-start; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+              <button onClick="{{ t.check }}" style="{{ t.checkStyle }}">
+                <sc-if value="{{ t.done }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 6"></path></svg></sc-if>
+              </button>
+              <div style="flex:1; min-width:0">
+                <p style="{{ t.titleStyle }}">{{ t.title }}</p>
+                <div style="margin-top:7px; display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+                  <span style="{{ t.pill }}">{{ t.status }}</span>
+                  <span style="font-size:12px; font-weight:500; color:var(--ink3)">{{ t.projName }}</span>
+                  <span style="{{ t.dueStyle }}">{{ t.due }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ myEmpty }}">
+            <div style="border-radius:20px; background:var(--surf2); padding:30px 18px; text-align:center">
+              <p style="margin:0; font-size:14.5px; font-weight:700">Kosong di sini</p>
+              <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ganti filter atau bikin task baru.</p>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ SCHEDULE ============ -->
+    <sc-if value="{{ isSchedule }}">
+      <div data-screen-label="Schedule" style="flex:1; min-height:0; display:flex; flex-direction:column; animation:scrIn .28s ease both">
+        <div style="padding:12px 20px 0; display:flex; align-items:center; gap:12px; flex:none">
+          <button onClick="{{ goHome }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+          </button>
+          <h1 style="margin:0; flex:1; text-align:center; font-size:20px; font-weight:700; letter-spacing:-0.02em">Schedule</h1>
+          <span style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm); color:var(--ink3)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+          </span>
+        </div>
+
+        <div style="padding:18px 20px 0; display:flex; align-items:center; gap:8px; flex:none">
+          <span style="font-size:17px; font-weight:700; letter-spacing:-0.02em">July 2026</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink2)"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+        </div>
+
+        <div style="padding:14px 20px 0; display:flex; gap:2px; flex:none">
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+            <button onClick="{{ d.pick }}" style="{{ d.style }}">
+              <span style="{{ d.dow }}">{{ d.name }}</span>
+              <span style="{{ d.num }}">{{ d.n }}</span>
+              <span style="{{ d.dot }}"></span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div class="sc" style="flex:1; min-height:0; overflow-y:auto; padding:18px 20px 150px; display:flex; gap:12px">
+          <div style="width:44px; flex:none; display:flex; flex-direction:column; padding-top:4px">
+            <sc-for list="{{ hours }}" as="h" hint-placeholder-count="8">
+              <span style="{{ h.style }}">{{ h.label }}</span>
+            </sc-for>
+          </div>
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ events }}" as="e" hint-placeholder-count="3">
+              <div onClick="{{ e.open }}" style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px; display:flex; gap:13px; cursor:pointer" style-hover="transform:translateY(-1px)" style-active="transform:scale(.99)">
+                <span style="{{ e.bar }}"></span>
+                <div style="flex:1; min-width:0">
+                  <p style="{{ e.titleStyle }}">{{ e.title }}</p>
+                  <p style="margin:3px 0 0; font-size:13px; color:var(--ink3)">{{ e.status }}</p>
+                  <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:8px">
+                    <span style="display:inline-flex">
+                      <sc-for list="{{ e.ppl }}" as="a" hint-placeholder-count="3">
+                        <span style="{{ a.style }}">{{ a.ch }}</span>
+                      </sc-for>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--ink2)">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>{{ e.time }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ eventsEmpty }}">
+              <div style="border-radius:20px; background:var(--surf2); padding:30px 18px; text-align:center">
+                <p style="margin:0; font-size:14.5px; font-weight:700">Hari kosong</p>
+                <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada agenda di tanggal ini.</p>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ KPI ============ -->
+    <sc-if value="{{ isKpi }}">
+      <div data-screen-label="KPI" class="sc" style="flex:1; overflow-y:auto; padding:12px 20px 150px; display:flex; flex-direction:column; gap:16px; animation:scrIn .28s ease both">
+        <div style="display:flex; align-items:center; gap:12px">
+          <button onClick="{{ goHome }}" style="display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--surf); box-shadow:var(--sh-sm)" style-active="transform:scale(.94)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+          </button>
+          <h1 style="margin:0; flex:1; text-align:center; font-size:20px; font-weight:700; letter-spacing:-0.02em">Performance</h1>
+          <span style="width:40px"></span>
+        </div>
+
+        <div style="display:flex; gap:12px">
+          <div style="flex:1; border-radius:22px; background:var(--surf); padding:16px; box-shadow:var(--sh-md)">
+            <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Selesai</p>
+            <p style="margin:6px 0 0; font-size:28px; font-weight:800; letter-spacing:-0.03em; font-variant-numeric:tabular-nums">{{ kpiDone }}</p>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--ink2)">dari {{ kpiTotal }} task</p>
+          </div>
+          <div style="flex:1; border-radius:22px; background:var(--surf); padding:16px; box-shadow:var(--sh-md)">
+            <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">On-time</p>
+            <p style="margin:6px 0 0; font-size:28px; font-weight:800; letter-spacing:-0.03em; color:var(--acc)">92%</p>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--ink2)">+4 vs bulan lalu</p>
+          </div>
+        </div>
+
+        <div style="border-radius:24px; background:var(--surf); padding:18px; box-shadow:var(--sh-md)">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px">
+            <h2 style="margin:0; font-size:16px; font-weight:700; letter-spacing:-0.02em">Minggu ini</h2>
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:var(--green)">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 1 11 10H1z"></path></svg>+12.4%
+            </span>
+          </div>
+          <div style="display:flex; align-items:stretch; gap:8px; height:120px">
+            <sc-for list="{{ weekBars }}" as="b" hint-placeholder-count="7">
+              <div style="flex:1; height:100%; display:flex; flex-direction:column; align-items:center; gap:8px">
+                <div style="flex:1; width:100%; display:flex; align-items:flex-end"><div style="{{ b.style }}"></div></div>
+                <span style="{{ b.labelStyle }}">{{ b.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <h2 style="margin:0 0 12px; font-size:20px; font-weight:700; letter-spacing:-0.02em">Butuh approval</h2>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ approvals }}" as="a" hint-placeholder-count="2">
+              <div style="border-radius:20px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px">
+                <div style="display:flex; align-items:flex-start; gap:11px">
+                  <span style="{{ a.avatar }}">{{ a.ch }}</span>
+                  <div style="flex:1; min-width:0">
+                    <p style="margin:0; font-size:14.5px; font-weight:700; letter-spacing:-0.01em">{{ a.who }}</p>
+                    <p style="margin:3px 0 0; font-size:13.5px; line-height:1.45; color:var(--ink2)">{{ a.what }}</p>
+                  </div>
+                </div>
+                <div style="margin-top:13px; display:flex; gap:9px">
+                  <button onClick="{{ a.approve }}" style="flex:1; border-radius:999px; background:var(--inv); color:var(--inv-ink); padding:10px 0; font-size:13px; font-weight:700" style-hover="opacity:.9" style-active="transform:scale(.98)">Approve</button>
+                  <button onClick="{{ a.reject }}" style="flex:1; border-radius:999px; background:var(--surf2); color:var(--ink2); padding:10px 0; font-size:13px; font-weight:700" style-hover="color:var(--acc-ink)" style-active="transform:scale(.98)">Decline</button>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ approvalsEmpty }}">
+              <div style="border-radius:20px; background:var(--surf2); padding:28px 18px; text-align:center">
+                <p style="margin:0; font-size:14.5px; font-weight:700">Semua beres ✓</p>
+                <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada yang nunggu approval.</p>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ BOTTOM NAV ============ -->
+    <sc-if value="{{ appMode }}">
+      <div style="position:absolute; left:0; right:0; bottom:0; height:132px; background:var(--scrim); pointer-events:none"></div>
+      <div style="position:absolute; left:20px; right:20px; bottom:22px; display:flex; align-items:center; gap:12px">
+        <div style="flex:1; display:flex; align-items:center; justify-content:space-around; border-radius:999px; background:var(--nav); padding:11px 8px; box-shadow:var(--sh-nav)">
+          <button onClick="{{ goHome }}" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:2px 12px" style-active="transform:scale(.9)">
+            <span style="{{ nav.home }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>
+            <span style="{{ nav.homeDot }}"></span>
+          </button>
+          <button onClick="{{ goBoard }}" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:2px 12px" style-active="transform:scale(.9)">
+            <span style="{{ nav.board }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15A9 9 0 1 1 9 2.8"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg></span>
+            <span style="{{ nav.boardDot }}"></span>
+          </button>
+          <button onClick="{{ goTasks }}" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:2px 12px" style-active="transform:scale(.9)">
+            <span style="{{ nav.tasks }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
+            <span style="{{ nav.tasksDot }}"></span>
+          </button>
+          <button onClick="{{ goSchedule }}" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:2px 12px" style-active="transform:scale(.9)">
+            <span style="{{ nav.sched }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="4"></rect><path d="M3 10h18"></path><path d="M8 2v4"></path><path d="M16 2v4"></path></svg></span>
+            <span style="{{ nav.schedDot }}"></span>
+          </button>
+        </div>
+        <button onClick="{{ openAdd }}" style="display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px; flex:none; border-radius:999px; background:var(--acc); color:#fff; box-shadow:0 8px 24px rgba(232,98,44,.42)" style-hover="transform:translateY(-2px)" style-active="transform:scale(.94)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        </button>
+      </div>
+    </sc-if>
+
+    <!-- ============ TOAST ============ -->
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute; left:24px; right:24px; bottom:104px; display:flex; align-items:center; gap:10px; border-radius:16px; background:var(--inv); color:var(--inv-ink); padding:13px 16px; font-size:13.5px; font-weight:600; box-shadow:0 12px 34px rgba(28,26,23,.32); animation:toastIn .24s cubic-bezier(.2,.9,.3,1) both; z-index:40">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="m5 12 5 5L20 6"></path></svg>
+        <span style="flex:1">{{ toast }}</span>
+      </div>
+    </sc-if>
+
+    <!-- ============ SHEETS ============ -->
+    <sc-if value="{{ sheetOpen }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute; inset:0; background:rgba(20,17,14,.42); backdrop-filter:blur(2px); animation:fadeIn .2s ease both; z-index:50"></div>
+    </sc-if>
+
+    <sc-if value="{{ detail }}">
+      <div style="position:absolute; left:0; right:0; bottom:0; max-height:78%; overflow-y:auto; border-radius:32px 32px 0 0; background:var(--bg); padding:14px 22px 30px; box-shadow:0 -18px 50px rgba(20,17,14,.28); animation:upIn .3s cubic-bezier(.2,.9,.3,1) both; z-index:60" class="sc">
+        <span style="display:block; width:44px; height:5px; border-radius:999px; background:var(--line); margin:0 auto 18px"></span>
+        <div style="display:flex; align-items:flex-start; gap:12px">
+          <span style="{{ detail.bar }}"></span>
+          <div style="flex:1; min-width:0">
+            <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">{{ detail.projName }}</p>
+            <h2 style="{{ detail.titleStyle }}">{{ detail.title }}</h2>
+          </div>
+          <button onClick="{{ closeSheet }}" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; flex:none; border-radius:999px; background:var(--surf2); color:var(--ink2)" style-active="transform:scale(.92)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <sc-if value="{{ detail.note }}">
+          <p style="margin:14px 0 0; border-radius:16px; background:var(--surf2); padding:14px 16px; font-size:13.5px; line-height:1.55; color:var(--ink2)">{{ detail.note }}</p>
+        </sc-if>
+
+        <div style="margin-top:18px; display:flex; align-items:center; justify-content:space-between; gap:12px">
+          <div>
+            <p style="margin:0; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Deadline</p>
+            <p style="margin:3px 0 0; font-size:14.5px; font-weight:600">{{ detail.due }}</p>
+          </div>
+          <span style="display:inline-flex">
+            <sc-for list="{{ detail.ppl }}" as="a" hint-placeholder-count="3">
+              <span style="{{ a.style }}">{{ a.ch }}</span>
+            </sc-for>
+          </span>
+        </div>
+
+        <p style="margin:20px 0 9px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Status</p>
+        <div style="display:flex; gap:6px; border-radius:999px; background:var(--surf2); padding:4px">
+          <sc-for list="{{ detail.steps }}" as="s" hint-placeholder-count="4">
+            <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:10px">
+          <button onClick="{{ detail.toggle }}" style="{{ detail.mainBtn }}">{{ detail.mainLabel }}</button>
+          <button onClick="{{ detail.remove }}" style="display:flex; align-items:center; justify-content:center; width:52px; height:52px; flex:none; border-radius:999px; background:var(--surf2); color:var(--ink2)" style-hover="color:var(--acc-ink)" style-active="transform:scale(.95)">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+          </button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ addOpen }}">
+      <div style="position:absolute; left:0; right:0; bottom:0; border-radius:32px 32px 0 0; background:var(--bg); padding:14px 22px 30px; box-shadow:0 -18px 50px rgba(20,17,14,.28); animation:upIn .3s cubic-bezier(.2,.9,.3,1) both; z-index:60">
+        <span style="display:block; width:44px; height:5px; border-radius:999px; background:var(--line); margin:0 auto 18px"></span>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px">
+          <h2 style="margin:0; flex:1; font-size:22px; font-weight:800; letter-spacing:-0.03em">Task baru</h2>
+          <button onClick="{{ closeSheet }}" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:999px; background:var(--surf2); color:var(--ink2)" style-active="transform:scale(.92)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <div style="border-radius:18px; background:var(--surf); box-shadow:var(--sh-sm); padding:15px 16px">
+          <input value="{{ nt.title }}" onChange="{{ setNtTitle }}" placeholder="Mau ngerjain apa?" style="width:100%; border:none; outline:none; background:transparent; font-size:16px; font-weight:600; color:var(--ink)" />
+        </div>
+
+        <p style="margin:18px 0 9px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Project</p>
+        <div class="sc" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:2px">
+          <sc-for list="{{ ntProjects }}" as="p" hint-placeholder-count="3">
+            <button onClick="{{ p.pick }}" style="{{ p.style }}">{{ p.name }}</button>
+          </sc-for>
+        </div>
+
+        <p style="margin:18px 0 9px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Kolom</p>
+        <div style="display:flex; gap:6px; border-radius:999px; background:var(--surf2); padding:4px">
+          <sc-for list="{{ ntCols }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+
+        <button onClick="{{ toggleNtToday }}" style="{{ ntTodayStyle }}">
+          <span style="{{ ntTodayBox }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 6"></path></svg></span>
+          <span style="flex:1; text-align:left">Jadwalkan hari ini</span>
+        </button>
+
+        <button onClick="{{ createTask }}" style="{{ createStyle }}">Buat task</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ wsOpen }}">
+      <div style="position:absolute; left:0; right:0; bottom:0; border-radius:32px 32px 0 0; background:var(--bg); padding:14px 22px 30px; box-shadow:0 -18px 50px rgba(20,17,14,.28); animation:upIn .3s cubic-bezier(.2,.9,.3,1) both; z-index:60">
+        <span style="display:block; width:44px; height:5px; border-radius:999px; background:var(--line); margin:0 auto 18px"></span>
+        <div style="margin-bottom:16px">
+          <h2 style="margin:0; font-size:22px; font-weight:800; letter-spacing:-0.03em">Pindah workspace</h2>
+          <p style="margin:4px 0 0; font-size:13.5px; color:var(--ink2)">Semua perusahaan kamu di satu akun.</p>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:9px">
+          <sc-for list="{{ wsList }}" as="w" hint-placeholder-count="4">
+            <button onClick="{{ w.pick }}" style="{{ w.style }}">
+              <span style="{{ w.avatar }}">{{ w.ch }}</span>
+              <span style="flex:1; min-width:0; display:block">
+                <span style="display:block; font-size:15px; font-weight:700; letter-spacing:-0.015em; color:var(--ink)">{{ w.name }}</span>
+                <span style="display:block; margin-top:2px; font-size:12.5px; color:var(--ink3)">{{ w.role }}</span>
+              </span>
+              <span style="display:flex; align-items:center; gap:9px; flex:none">
+                <span style="font-size:12px; font-weight:600; color:var(--ink3); white-space:nowrap">{{ w.n }}</span>
+                <sc-if value="{{ w.active }}">
+                  <span style="display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:var(--acc); color:#fff">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 6"></path></svg>
+                  </span>
+                </sc-if>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <button onClick="{{ closeSheet }}" style="margin-top:16px; width:100%; display:flex; align-items:center; justify-content:center; gap:9px; height:50px; border-radius:999px; background:var(--surf2); font-size:14.5px; font-weight:700; color:var(--ink2)" style-hover="color:var(--ink)" style-active="transform:scale(.99)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          Tambah workspace
+        </button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ notifOpen }}">
+      <div style="position:absolute; left:0; right:0; bottom:0; border-radius:32px 32px 0 0; background:var(--bg); padding:14px 22px 30px; box-shadow:0 -18px 50px rgba(20,17,14,.28); animation:upIn .3s cubic-bezier(.2,.9,.3,1) both; z-index:60">
+        <span style="display:block; width:44px; height:5px; border-radius:999px; background:var(--line); margin:0 auto 18px"></span>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px">
+          <h2 style="margin:0; flex:1; font-size:22px; font-weight:800; letter-spacing:-0.03em">Notifikasi</h2>
+          <button onClick="{{ readAll }}" style="font-size:13px; font-weight:600; color:var(--ink2)" style-hover="color:var(--acc)">Tandai dibaca</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="3">
+            <div style="{{ n.style }}">
+              <span style="{{ n.avatar }}">{{ n.ch }}</span>
+              <div style="flex:1; min-width:0">
+                <p style="margin:0; font-size:14px; font-weight:600; line-height:1.4">{{ n.text }}</p>
+                <p style="margin:3px 0 0; font-size:12.5px; color:var(--ink3)">{{ n.when }}</p>
+              </div>
+              <sc-if value="{{ n.unread }}"><span style="width:7px; height:7px; flex:none; margin-top:6px; border-radius:999px; background:var(--acc)"></span></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ notifsEmpty }}">
+            <div style="border-radius:20px; background:var(--surf2); padding:28px 18px; text-align:center">
+              <p style="margin:0; font-size:14.5px; font-weight:700">Bersih</p>
+              <p style="margin:5px 0 0; font-size:13px; color:var(--ink3)">Ga ada notifikasi baru.</p>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Tampilan&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#E8622C&quot;,&quot;#1C1A17&quot;,&quot;#4F6D7A&quot;,&quot;#6E7A66&quot;],&quot;default&quot;:&quot;#E8622C&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tampilan&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;home&quot;,&quot;board&quot;,&quot;tasks&quot;,&quot;schedule&quot;,&quot;kpi&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+const AV = { R:'#8A7F73', D:'#A8927C', A:'#6E7A66', M:'#9B8B7A', S:'#7C6F82' };
+const WS = [
+  { id:'studio', name:'Rakit Studio',  role:'Design & web agency',   ch:'RS', color:'#E8622C' },
+  { id:'kopi',   name:'Kopi Lintas',   role:'Coffee retail · 6 outlet', ch:'KL', color:'#8A6A4B' },
+  { id:'nusa',   name:'Nusa Logistik', role:'Freight & warehousing', ch:'NL', color:'#4F6D7A' }
+];
+const PROJ = [
+  { id:'web',   ws:'studio', name:'Website Redesign',    desc:'Analysing drop-off rates and metrics.', value:'Rp 48.500.000',  due:'Due 22 Aug' },
+  { id:'q3',    ws:'studio', name:'Q3 Content Calendar', desc:'19 posts scheduled across 3 pillars.',  value:'Rp 22.000.000',  due:'Due 30 Sep' },
+  { id:'brand', ws:'studio', name:'Brand Refresh',       desc:'Logo lockup, palette, and tone kit.',   value:'Rp 61.750.000',  due:'Due 12 Oct' },
+  { id:'outlet',ws:'kopi',   name:'Outlet Bandung 3',    desc:'Fit-out, perizinan, dan soft launch.',  value:'Rp 310.000.000', due:'Due 5 Sep' },
+  { id:'menu',  ws:'kopi',   name:'Menu Q4',             desc:'8 SKU baru dan repricing margin.',      value:'Rp 24.000.000',  due:'Due 18 Sep' },
+  { id:'fleet', ws:'nusa',   name:'Fleet Tracking v2',   desc:'GPS dan ETA akurat buat 42 armada.',    value:'Rp 187.000.000', due:'Due 30 Aug' },
+  { id:'sop',   ws:'nusa',   name:'SOP Gudang Cakung',   desc:'Standarisasi inbound dan stock opname.',value:'Rp 45.000.000',  due:'Due 12 Sep' }
+];
+const COLS = [
+  { id:'backlog',  label:'Backlog',     bar:'var(--ink3)' },
+  { id:'progress', label:'In Progress', bar:'var(--acc)'  },
+  { id:'review',   label:'Review',      bar:'var(--green)'},
+  { id:'done',     label:'Done',        bar:'var(--ink)'  }
+];
+const SEED = [
+  { id:1,  title:'Finalise homepage hero copy', note:'Value prop harus jelas dalam 5 detik. Tone: percaya diri, ga jargon.', p:'web', s:'progress', tag:'Copy', due:'Today · 10:15am', day:31, time:'09:15 AM - 10:15 AM', ppl:['R','D','A'] },
+  { id:2,  title:'Wireframing & brainstorming', note:'Eksplorasi 3 arah layout buat landing baru.', p:'web', s:'progress', tag:'Design', due:'Today · 09:15am', day:31, time:'09:15 AM - 10:15 AM', ppl:['R','D'] },
+  { id:3,  title:'Design system: tombol + form states', note:'', p:'web', s:'progress', tag:'Design', due:'Aug 4', day:0, time:'', ppl:['A'] },
+  { id:4,  title:'Migrasi 40 artikel blog ke CMS baru', note:'Cek redirect biar ga ada 404.', p:'web', s:'backlog', tag:'Content', due:'Aug 8', day:0, time:'', ppl:['M'] },
+  { id:5,  title:'Audit performa Lighthouse', note:'', p:'web', s:'backlog', tag:'Eng', due:'Aug 6', day:0, time:'', ppl:['R'] },
+  { id:6,  title:'Setup analytics funnel', note:'', p:'web', s:'backlog', tag:'Eng', due:'Aug 11', day:0, time:'', ppl:['S'] },
+  { id:7,  title:'Review hi-fi mockups klien', note:'Simplify login flow, adjust sidebar nav. Approval pending buat final color.', p:'web', s:'review', tag:'Design', due:'Today · 02:00pm', day:31, time:'02:00 PM - 04:00 PM', ppl:['R','A'] },
+  { id:8,  title:'Riset kompetitor', note:'', p:'web', s:'done', tag:'Research', due:'Jul 24', day:0, time:'', ppl:['D'] },
+  { id:9,  title:'Sitemap final', note:'', p:'web', s:'done', tag:'Design', due:'Jul 28', day:0, time:'', ppl:['R'] },
+  { id:10, title:'Kalender konten Agustus', note:'', p:'q3', s:'progress', tag:'Content', due:'Today · 04:30pm', day:31, time:'04:30 PM - 05:30 PM', ppl:['M','S'] },
+  { id:11, title:'Brief 6 carousel Instagram', note:'', p:'q3', s:'backlog', tag:'Content', due:'Aug 5', day:1, time:'10:00 AM - 11:00 AM', ppl:['M'] },
+  { id:12, title:'Approve thumbnail YouTube', note:'', p:'q3', s:'review', tag:'Design', due:'Aug 1', day:1, time:'01:00 PM - 01:30 PM', ppl:['S'] },
+  { id:13, title:'Copy newsletter #12', note:'', p:'q3', s:'done', tag:'Copy', due:'Jul 29', day:0, time:'', ppl:['D'] },
+  { id:14, title:'Logo lockup variations', note:'Tiga arah: geometric, humanist, monospace.', p:'brand', s:'backlog', tag:'Design', due:'Aug 14', day:2, time:'11:00 AM - 12:30 PM', ppl:['A','D'] },
+  { id:15, title:'Moodboard palette hangat', note:'', p:'brand', s:'progress', tag:'Design', due:'Jul 30', day:30, time:'03:00 PM - 04:00 PM', ppl:['A'] },
+
+  { id:20, title:'Nego kontrak sewa unit 3', note:'Target turun 12% dari penawaran awal, plus grace period 2 bulan.', p:'outlet', s:'progress', tag:'Finance', due:'Jul 28', day:0, time:'', ppl:['S'], late:true },
+  { id:21, title:'Review desain interior v2', note:'', p:'outlet', s:'review', tag:'Design', due:'Today · 11:00am', day:31, time:'11:00 AM - 12:00 PM', ppl:['A','D'] },
+  { id:22, title:'Urus izin PIRT dan sertifikat halal', note:'', p:'outlet', s:'progress', tag:'Ops', due:'Aug 9', day:0, time:'', ppl:['M'] },
+  { id:23, title:'Rekrut 4 barista', note:'', p:'outlet', s:'progress', tag:'People', due:'Today · 03:00pm', day:31, time:'03:00 PM - 04:00 PM', ppl:['S'] },
+  { id:24, title:'Survey kompetitor radius 1 km', note:'', p:'outlet', s:'done', tag:'Research', due:'Jul 22', day:0, time:'', ppl:['D'] },
+  { id:25, title:'Cupping 6 sampel biji baru', note:'', p:'menu', s:'progress', tag:'Product', due:'Aug 2', day:1, time:'10:30 AM - 11:30 AM', ppl:['R'] },
+  { id:26, title:'Hitung ulang COGS per SKU', note:'', p:'menu', s:'backlog', tag:'Finance', due:'Aug 7', day:0, time:'', ppl:['S'] },
+  { id:27, title:'Foto menu untuk katalog', note:'', p:'menu', s:'done', tag:'Design', due:'Jul 26', day:0, time:'', ppl:['A'] },
+
+  { id:30, title:'Integrasi API GPS vendor', note:'Latency ETA masih 40 detik, target di bawah 10.', p:'fleet', s:'progress', tag:'Eng', due:'Today · 01:00pm', day:31, time:'01:00 PM - 02:00 PM', ppl:['R','M'] },
+  { id:31, title:'UAT dashboard dispatcher', note:'', p:'fleet', s:'review', tag:'Eng', due:'Aug 5', day:1, time:'02:00 PM - 03:30 PM', ppl:['A'] },
+  { id:32, title:'Training 12 driver batch 1', note:'', p:'fleet', s:'backlog', tag:'Ops', due:'Aug 10', day:0, time:'', ppl:['M'] },
+  { id:33, title:'Pilih vendor GPS', note:'', p:'fleet', s:'done', tag:'Ops', due:'Jul 18', day:0, time:'', ppl:['S'] },
+  { id:34, title:'Draft SOP inbound gudang', note:'Blocked: nunggu layout rak final dari tim warehouse.', p:'sop', s:'progress', tag:'Ops', due:'Jul 29', day:0, time:'', ppl:['S'], late:true },
+  { id:35, title:'Audit stok opname Juli', note:'', p:'sop', s:'backlog', tag:'Finance', due:'Aug 6', day:0, time:'', ppl:['D'] }
+];
+const APPROVALS = [
+  { id:'a1', ws:'studio', ch:'D', who:'Dinda Ayu', what:'Check-in 4 jam · Design system tombol + form states' },
+  { id:'a2', ws:'studio', ch:'M', who:'Maya Putri', what:'Check-in 2.5 jam · Migrasi artikel batch 1' },
+  { id:'a3', ws:'studio', ch:'S', who:'Sandi Rahman', what:'Reimburse Rp 480.000 · Lisensi font brand' },
+  { id:'a4', ws:'kopi',   ch:'S', who:'Sandi Rahman', what:'Reimburse Rp 2.400.000 · DP kontraktor unit 3' },
+  { id:'a5', ws:'nusa',   ch:'M', who:'Maya Putri', what:'Check-in 6 jam · Integrasi API GPS vendor' }
+];
+const NOTIFS = [
+  { id:'n1', ws:'studio', ch:'A', text:'Adit assign kamu ke "Review hi-fi mockups klien"', when:'2 menit lalu', unread:true },
+  { id:'n2', ws:'kopi',   ch:'S', text:'Sandi minta approval DP kontraktor unit 3', when:'25 menit lalu', unread:true },
+  { id:'n3', ws:'nusa',   ch:'M', text:'Maya update "Integrasi API GPS vendor" jadi 80%', when:'1 jam lalu', unread:true },
+  { id:'n4', ws:'studio', ch:'D', text:'Dinda komentar di "Finalise homepage hero copy"', when:'Kemarin, 18:20', unread:false }
+];
+const DAYS = [
+  { n:27, name:'Mon' }, { n:28, name:'Tue' }, { n:29, name:'Wed' }, { n:30, name:'Thu' },
+  { n:31, name:'Fri' }, { n:1, name:'Sat' }, { n:2, name:'Sun' }
+];
+const HOURS = ['9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM'];
+const DARK = '--bg:#16130F; --surf:#1B1813; --surf2:#221E19; --line:#2A251F; --ink:#F3EFE8; --ink2:#A8A199; --ink3:#7C756D; --acc-ink:#F19063; --green:#8A9A80; --inv:#F3EFE8; --inv-ink:#16130F; --nav:#2A251F; --sh-sm:0 1px 2px rgba(0,0,0,.34); --sh-md:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.34); --sh-nav:0 2px 4px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.5); --scrim:linear-gradient(180deg, rgba(22,19,15,0) 0%, #16130F 55%)';
+
+class Component extends DCLogic {
+  state = {
+    themeOverride: null,
+    screen: null,
+    ws: 'all',
+    wsOpen: false,
+    tasks: SEED.map(t => ({ ...t })),
+    project: 'web',
+    col: 'progress',
+    myFilter: 'all',
+    day: 31,
+    q: '',
+    detailId: null,
+    addOpen: false,
+    notifOpen: false,
+    nt: { title:'', p:'web', s:'backlog', today:true },
+    email: 'reza@rakit.id',
+    pw: '',
+    err: '',
+    loading: false,
+    toast: '',
+    approvals: APPROVALS.slice(),
+    notifs: NOTIFS.map(n => ({ ...n })),
+    nextId: 100
+  };
+
+  componentWillUnmount() { clearTimeout(this._tt); clearTimeout(this._lt); }
+
+  say(msg) {
+    clearTimeout(this._tt);
+    this.setState({ toast: msg });
+    this._tt = setTimeout(() => this.setState({ toast: '' }), 1900);
+  }
+
+  go(screen) { this.setState({ screen, detailId:null, addOpen:false, notifOpen:false, wsOpen:false, q:'' }); }
+
+  avatars(list, size, overlapBg) {
+    const s = size || 22;
+    return (list || []).map((ch, i) => ({
+      ch,
+      style: `display:flex; height:${s}px; width:${s}px; align-items:center; justify-content:center; border-radius:999px; border:2px solid ${overlapBg || 'var(--surf)'}; font-size:${s > 24 ? 10 : 9}px; font-weight:700; color:#fff; background:${AV[ch] || '#8A7F73'}; ${i ? `margin-left:-${Math.round(s / 3)}px` : ''}`
+    }));
+  }
+
+  meta(s) { return COLS.find(c => c.id === s) || COLS[0]; }
+
+  taskVM(t) {
+    const m = this.meta(t.s);
+    const done = t.s === 'done';
+    const proj = PROJ.find(p => p.id === t.p) || PROJ[0];
+    const w = WS.find(x => x.id === proj.ws) || WS[0];
+    const hot = /Today/.test(t.due) && !done;
+    return {
+      id: t.id, title: t.title, note: t.note, tag: t.tag, due: t.due, done,
+      status: m.label, projName: this._wsAll ? w.name + ' · ' + proj.name : proj.name,
+      wsName: w.name, wsColor: w.color,
+      wsTag: `display:inline-flex; align-items:center; gap:5px; border-radius:999px; background:var(--surf2); padding:4px 10px 4px 7px; font-size:11px; font-weight:700; color:var(--ink2)`,
+      wsDot: `width:7px; height:7px; border-radius:999px; flex:none; background:${w.color}`,
+      lead: (t.ppl && t.ppl[0]) || 'R',
+      bar: `width:3px; border-radius:999px; flex:none; background:${m.bar}`,
+      titleStyle: `margin:0; flex:1; font-size:14.5px; font-weight:600; line-height:1.35; color:var(--ink); ${done ? 'text-decoration:line-through; opacity:.45' : ''}`,
+      avatar: `display:flex; height:26px; width:26px; flex:none; align-items:center; justify-content:center; border-radius:999px; font-size:10px; font-weight:700; color:#fff; background:${AV[(t.ppl && t.ppl[0]) || 'R']}`,
+      pill: `border-radius:999px; background:var(--surf2); color:var(--ink2); padding:4px 10px; font-size:11.5px; font-weight:600`,
+      dueStyle: `display:flex; align-items:center; gap:5px; font-size:12px; font-weight:${hot ? 700 : 500}; color:${hot ? 'var(--acc-ink)' : 'var(--ink3)'}`,
+      checkStyle: `display:flex; align-items:center; justify-content:center; width:22px; height:22px; flex:none; border-radius:999px; ${done ? 'background:var(--inv); color:var(--inv-ink)' : 'background:transparent; color:transparent; box-shadow:inset 0 0 0 1.8px var(--line)'}`,
+      meta: `${proj.name} · ${m.label}`,
+      ppl: this.avatars(t.ppl),
+      open: () => this.setState({ detailId: t.id, addOpen:false, notifOpen:false }),
+      check: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(t.id); }
+    };
+  }
+
+  toggleDone(id) {
+    let msg = '';
+    this.setState(s => ({
+      tasks: s.tasks.map(t => {
+        if (t.id !== id) return t;
+        const done = t.s === 'done';
+        msg = done ? 'Dibalikin ke In Progress' : 'Task selesai ✓';
+        return { ...t, s: done ? 'progress' : 'done' };
+      })
+    }));
+    this.say(msg);
+  }
+
+  setStatus(id, s) {
+    this.setState(st => ({ tasks: st.tasks.map(t => t.id === id ? { ...t, s } : t) }));
+    this.say('Dipindah ke ' + this.meta(s).label);
+  }
+
+  removeTask(id) {
+    this.setState(st => ({ tasks: st.tasks.filter(t => t.id !== id), detailId: null }));
+    this.say('Task dihapus');
+  }
+
+  chip(active, label) {
+    return `border-radius:999px; padding:8px 15px; font-size:13px; font-weight:600; white-space:nowrap; flex:none; ${active ? 'background:var(--inv); color:var(--inv-ink)' : 'background:var(--surf2); color:var(--ink2)'}`;
+  }
+
+  seg(active) {
+    return `flex:1; border-radius:999px; padding:9px 0; font-size:12.5px; font-weight:700; white-space:nowrap; ${active ? 'background:var(--surf); color:var(--ink); box-shadow:var(--sh-sm)' : 'background:transparent; color:var(--ink3)'}`;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dark = (st.themeOverride ?? this.props.theme ?? 'light') === 'dark';
+    const acc = this.props.accent || '#E8622C';
+    const accVars = `--acc:${acc}; --acc-soft:color-mix(in oklab, ${acc} 14%, var(--surf))`;
+    const screen = st.screen ?? this.props.startScreen ?? 'login';
+    const wsAll = st.ws === 'all';
+    this._wsAll = wsAll;
+    const curWs = WS.find(w => w.id === st.ws) || null;
+    const wsOf = t => (PROJ.find(p => p.id === t.p) || PROJ[0]).ws;
+    const tasks = wsAll ? st.tasks : st.tasks.filter(t => wsOf(t) === st.ws);
+    const wsProjects = wsAll ? PROJ : PROJ.filter(p => p.ws === st.ws);
+    const q = st.q.trim().toLowerCase();
+
+    const pct = (list) => {
+      if (!list.length) return 0;
+      return Math.round(list.filter(t => t.s === 'done').length / list.length * 100);
+    };
+
+    const projects = wsProjects.map(p => {
+      const list = tasks.filter(t => t.p === p.id);
+      const v = pct(list);
+      const hs = [44, 100, 56];
+      return {
+        id: p.id, name: p.name, desc: p.desc, pct: v + '%',
+        bars: hs.map((h, i) => `flex:1; height:${i === 1 ? Math.max(28, v) : h}%; border-radius:6px; background:${i === 1 ? 'var(--inv)' : 'var(--line)'}`),
+        fill: `height:100%; width:${v}%; border-radius:999px; background:${v > 60 ? 'var(--inv)' : 'var(--acc)'}`,
+        open: () => this.setState({ screen:'board', project:p.id, col:'progress', q:'' })
+      };
+    });
+
+    const bp = wsProjects.find(p => p.id === st.project) || wsProjects[0] || PROJ[0];
+    const bList = tasks.filter(t => t.p === bp.id);
+    const bPct = pct(bList);
+    const board = {
+      name: bp.name, value: bp.value, due: bp.due, pct: bPct + '%',
+      fill: `height:100%; width:${bPct}%; border-radius:999px; background:var(--inv)`,
+      ratio: `${bList.filter(t => t.s === 'done').length} / ${bList.length} tasks`,
+      ppl: this.avatars(['R','D','A','M'], 26)
+    };
+    const cards = bList.filter(t => t.s === st.col).map(t => this.taskVM(t));
+
+    const myAll = tasks.slice();
+    const myToday = myAll.filter(t => t.day === st.day || /Today/.test(t.due));
+    const myDone = myAll.filter(t => t.s === 'done');
+    const pick = st.myFilter === 'today' ? myToday : st.myFilter === 'done' ? myDone : myAll;
+    const donePct = Math.round(myDone.length / Math.max(1, myAll.length) * 100);
+
+    const todayList = tasks.filter(t => /Today/.test(t.due)).map(t => this.taskVM(t));
+    const results = q ? tasks.filter(t => (t.title + ' ' + t.tag + ' ' + (PROJ.find(p => p.id === t.p) || {}).name).toLowerCase().includes(q)).map(t => this.taskVM(t)) : [];
+
+    const evs = tasks.filter(t => t.day === st.day && t.time).map(t => {
+      const vm = this.taskVM(t);
+      vm.time = t.time;
+      return vm;
+    });
+
+    const d = st.detailId ? tasks.find(t => t.id === st.detailId) : null;
+    let detail = null;
+    if (d) {
+      const vm = this.taskVM(d);
+      detail = {
+        ...vm,
+        titleStyle: `margin:4px 0 0; font-size:21px; font-weight:800; letter-spacing:-0.03em; line-height:1.2; color:var(--ink); ${d.s === 'done' ? 'text-decoration:line-through; opacity:.5' : ''}`,
+        ppl: this.avatars(d.ppl, 28),
+        steps: COLS.map(c => ({ label: c.label, style: this.seg(c.id === d.s), pick: () => this.setStatus(d.id, c.id) })),
+        mainLabel: d.s === 'done' ? 'Buka lagi' : 'Tandai selesai',
+        mainBtn: `flex:1; height:52px; border-radius:999px; font-size:15px; font-weight:700; ${d.s === 'done' ? 'background:var(--surf2); color:var(--ink)' : 'background:var(--inv); color:var(--inv-ink); box-shadow:0 8px 22px rgba(28,26,23,.2)'}`,
+        toggle: () => this.toggleDone(d.id),
+        remove: () => this.removeTask(d.id)
+      };
+    }
+
+    const spark = [3,4,2,5,3,6,7].map((n, i) => {
+      const on = i === 6;
+      return { style: `flex:1; height:${n * 9}px; border-radius:4px; background:${on ? 'var(--acc)' : 'var(--inv)'}; opacity:${on ? 1 : 0.85 - i * 0.06}` };
+    });
+    const weekVals = [42, 58, 35, 74, 61, 88, Math.max(20, donePct)];
+    const weekBars = weekVals.map((v, i) => ({
+      label: ['S','M','T','W','T','F','S'][i],
+      style: `width:100%; height:${v}%; border-radius:8px; background:${i === 6 ? 'var(--acc)' : 'var(--line)'}`,
+      labelStyle: `font-size:11px; font-weight:${i === 6 ? 700 : 500}; color:${i === 6 ? 'var(--ink)' : 'var(--ink3)'}`
+    }));
+
+    const navIcon = (on) => `display:flex; color:${on ? 'var(--ink)' : 'var(--ink3)'}`;
+    const navDot = (on) => `width:5px; height:5px; border-radius:999px; background:${on ? 'var(--acc)' : 'transparent'}`;
+
+    return {
+      vars: dark ? DARK + '; ' + accVars : accVars,
+      dark, light: !dark,
+      themeLabel: dark ? 'Mode terang' : 'Mode gelap',
+      clock: '9:41',
+      isLogin: screen === 'login', isHome: screen === 'home', isBoard: screen === 'board',
+      isTasks: screen === 'tasks', isSchedule: screen === 'schedule', isKpi: screen === 'kpi',
+      appMode: screen !== 'login',
+      greeting: 'Welcome, Reza',
+
+      email: st.email, pw: st.pw, err: st.err, loading: st.loading,
+      signInLabel: st.loading ? 'Masuk…' : 'Sign in',
+      setEmail: e => this.setState({ email: e.target.value, err: '' }),
+      setPw: e => this.setState({ pw: e.target.value, err: '' }),
+      signIn: () => {
+        if (!/@/.test(st.email)) return this.setState({ err: 'Email belum valid' });
+        if (st.pw.length < 4) return this.setState({ err: 'Password minimal 4 karakter' });
+        this.setState({ loading: true, err: '' });
+        this._lt = setTimeout(() => { this.setState({ loading: false, screen: 'home' }); this.say('Selamat datang kembali, Reza'); }, 950);
+      },
+      demo: () => { this.setState({ screen: 'home' }); },
+
+      q: st.q, searching: !!q, notSearching: !q,
+      setQ: e => this.setState({ q: e.target.value }),
+      clearQ: () => this.setState({ q: '' }),
+      results, noResults: !!q && !results.length,
+      resultLabel: results.length + ' hasil untuk “' + st.q.trim() + '”',
+
+      spark, projects, projCount: wsProjects.length + ' aktif',
+      today: todayList, todayEmpty: !todayList.length,
+
+      board, cards, cardsEmpty: !cards.length,
+      cols: COLS.map(c => ({
+        label: c.label, n: bList.filter(t => t.s === c.id).length,
+        style: this.chip(st.col === c.id), pick: () => this.setState({ col: c.id })
+      })),
+      cycleProject: () => {
+        const i = (wsProjects.findIndex(p => p.id === bp.id) + 1) % wsProjects.length;
+        this.setState({ project: wsProjects[i].id });
+        this.say('Pindah ke ' + wsProjects[i].name);
+      },
+
+      myList: pick.map(t => this.taskVM(t)), myEmpty: !pick.length,
+      mySummary: `${myDone.length} selesai · ${myAll.length - myDone.length} tersisa`,
+      myPct: donePct + '%',
+      ring: `display:flex; align-items:center; justify-content:center; width:54px; height:54px; flex:none; border-radius:999px; background:conic-gradient(var(--acc) ${donePct * 3.6}deg, var(--line) 0)`,
+      myFilters: [
+        { id:'all', label:'Semua', n: myAll.length },
+        { id:'today', label:'Hari ini', n: myToday.length },
+        { id:'done', label:'Selesai', n: myDone.length }
+      ].map(f => ({ label:f.label, n:f.n, style:this.chip(st.myFilter === f.id), pick: () => this.setState({ myFilter: f.id }) })),
+
+      days: DAYS.map(dd => {
+        const on = dd.n === st.day;
+        const has = tasks.some(t => t.day === dd.n && t.time);
+        return {
+          name: dd.name, n: dd.n,
+          style: `flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 0; border-radius:16px; ${on ? 'background:var(--surf); box-shadow:var(--sh-sm)' : 'background:transparent'}`,
+          dow: `font-size:12.5px; font-weight:500; color:${on ? 'var(--ink2)' : 'var(--ink3)'}`,
+          num: `font-size:16px; font-weight:${on ? 700 : 600}; color:${on ? 'var(--ink)' : 'var(--ink2)'}`,
+          dot: `width:4px; height:4px; margin-top:2px; border-radius:999px; background:${has ? 'var(--acc)' : 'transparent'}`,
+          pick: () => this.setState({ day: dd.n })
+        };
+      }),
+      hours: HOURS.map((h, i) => ({ label: h, style: `height:40px; font-size:12.5px; font-weight:${i === 5 ? 700 : 500}; color:${i === 5 ? 'var(--ink)' : 'var(--ink3)'}` })),
+      events: evs, eventsEmpty: !evs.length,
+
+      kpiDone: myDone.length, kpiTotal: myAll.length, weekBars,
+      approvals: st.approvals.filter(a => wsAll || a.ws === st.ws).map(a => ({
+        ch: a.ch, who: a.who, what: a.what,
+        avatar: `display:flex; height:38px; width:38px; flex:none; align-items:center; justify-content:center; border-radius:999px; font-size:13px; font-weight:700; color:#fff; background:${AV[a.ch]}`,
+        approve: () => { this.setState(s => ({ approvals: s.approvals.filter(x => x.id !== a.id) })); this.say('Approved · ' + a.who); },
+        reject: () => { this.setState(s => ({ approvals: s.approvals.filter(x => x.id !== a.id) })); this.say('Ditolak · ' + a.who); }
+      })),
+      approvalsEmpty: !st.approvals.filter(a => wsAll || a.ws === st.ws).length,
+
+      isOverview: screen === 'home' && wsAll,
+      isHomeWs: screen === 'home' && !wsAll,
+      wsName: curWs ? curWs.name : 'Semua workspace',
+      wsRole: curWs ? curWs.role : WS.length + ' perusahaan · ' + PROJ.length + ' project aktif',
+      wsChip: curWs ? curWs.ch : '',
+      wsChipAvatar: `display:flex; align-items:center; justify-content:center; width:22px; height:22px; flex:none; border-radius:999px; font-size:8.5px; font-weight:800; color:#fff; letter-spacing:0.02em; background:${curWs ? curWs.color : 'linear-gradient(135deg,#E8622C 0%,#8A6A4B 52%,#4F6D7A 100%)'}`,
+      openWs: () => this.setState({ wsOpen: true, detailId: null, addOpen: false, notifOpen: false }),
+      wsOpen: st.wsOpen,
+      wsList: [{ id:'all', name:'Semua workspace', role:'Monitor semua perusahaan sekaligus', color:'linear-gradient(135deg,#E8622C 0%,#8A6A4B 52%,#4F6D7A 100%)', ch:'' }].concat(WS).map(w => {
+        const on = st.ws === w.id;
+        const list = w.id === 'all' ? st.tasks : st.tasks.filter(t => wsOf(t) === w.id);
+        return {
+          name: w.name, role: w.role, ch: w.ch,
+          n: list.filter(t => t.s !== 'done').length + ' task aktif',
+          active: on,
+          style: `display:flex; align-items:center; gap:13px; width:100%; border-radius:20px; padding:14px 16px; text-align:left; background:${on ? 'var(--surf)' : 'transparent'}; box-shadow:${on ? 'var(--sh-sm)' : 'inset 0 0 0 1px var(--line)'}`,
+          avatar: `display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border-radius:14px; font-size:13px; font-weight:800; color:#fff; background:${w.color}`,
+          pick: () => {
+            const first = PROJ.find(p => w.id === 'all' || p.ws === w.id) || PROJ[0];
+            this.setState({ ws: w.id, wsOpen: false, screen: 'home', project: first.id, col: 'progress', q: '', myFilter: 'all' });
+            this.say(w.id === 'all' ? 'Monitor semua workspace' : 'Masuk ' + w.name);
+          }
+        };
+      }),
+
+      ovActive: st.tasks.filter(t => t.s !== 'done').length,
+      ovDone: st.tasks.filter(t => t.s === 'done').length,
+      ovLate: st.tasks.filter(t => t.late && t.s !== 'done').length,
+      ovApprovals: st.approvals.length,
+      wsCards: WS.map(w => {
+        const list = st.tasks.filter(t => wsOf(t) === w.id);
+        const dn = list.filter(t => t.s === 'done').length;
+        const late = list.filter(t => t.late && t.s !== 'done').length;
+        const v = Math.round(dn / Math.max(1, list.length) * 100);
+        return {
+          name: w.name, role: w.role, ch: w.ch, pct: v + '%',
+          avatar: `display:flex; align-items:center; justify-content:center; width:42px; height:42px; flex:none; border-radius:15px; font-size:13.5px; font-weight:800; color:#fff; background:${w.color}`,
+          fill: `height:100%; width:${v}%; border-radius:999px; background:${w.color}`,
+          line: `${list.length - dn} aktif · ${dn} selesai · ${PROJ.filter(p => p.ws === w.id).length} project`,
+          hasLate: !!late,
+          lateLabel: late + ' telat',
+          open: () => {
+            const first = PROJ.find(p => p.ws === w.id);
+            this.setState({ ws: w.id, screen: 'home', project: first.id, col: 'progress', q: '', myFilter: 'all' });
+            this.say('Masuk ' + w.name);
+          }
+        };
+      }),
+      attention: st.tasks.filter(t => (t.late || t.s === 'review') && t.s !== 'done').map(t => {
+        const vm = this.taskVM(t);
+        vm.flag = t.late ? 'Telat' : 'Nunggu review';
+        vm.flagStyle = `display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; ${t.late ? 'background:var(--acc-soft); color:var(--acc-ink)' : 'background:var(--surf2); color:var(--ink2)'}`;
+        return vm;
+      }),
+      attentionEmpty: !st.tasks.filter(t => (t.late || t.s === 'review') && t.s !== 'done').length,
+      crossToday: st.tasks.filter(t => /Today/.test(t.due) && t.s !== 'done').map(t => this.taskVM(t)),
+      crossTodayEmpty: !st.tasks.filter(t => /Today/.test(t.due) && t.s !== 'done').length,
+
+      nav: {
+        home: navIcon(screen === 'home'), homeDot: navDot(screen === 'home'),
+        board: navIcon(screen === 'board' || screen === 'kpi'), boardDot: navDot(screen === 'board' || screen === 'kpi'),
+        tasks: navIcon(screen === 'tasks'), tasksDot: navDot(screen === 'tasks'),
+        sched: navIcon(screen === 'schedule'), schedDot: navDot(screen === 'schedule')
+      },
+      goHome: () => this.go('home'),
+      goBoard: () => this.go('board'),
+      goTasks: () => this.go('tasks'),
+      goSchedule: () => this.go('schedule'),
+      goKpi: () => this.go('kpi'),
+      toggleTheme: () => this.setState({ themeOverride: dark ? 'light' : 'dark' }),
+      reset: () => { clearTimeout(this._tt); this.setState({ tasks: SEED.map(t => ({ ...t })), approvals: APPROVALS.slice(), notifs: NOTIFS.map(n => ({ ...n })), screen: 'login', ws: 'all', pw: '', err: '', q: '', detailId: null, addOpen: false, notifOpen: false, wsOpen: false, toast: '' }); },
+
+      detail, addOpen: st.addOpen, notifOpen: st.notifOpen,
+      sheetOpen: !!(detail || st.addOpen || st.notifOpen || st.wsOpen),
+      closeSheet: () => this.setState({ detailId: null, addOpen: false, notifOpen: false, wsOpen: false }),
+      openAdd: () => this.setState({ addOpen: true, detailId: null, notifOpen: false, nt: { title:'', p: st.project, s:'backlog', today:true } }),
+      openNotif: () => this.setState({ notifOpen: true }),
+      hasNotif: st.notifs.some(n => n.unread && (wsAll || n.ws === st.ws)),
+      notifs: st.notifs.filter(n => wsAll || n.ws === st.ws).map(n => ({
+        ch: n.ch, text: n.text, when: n.when, unread: n.unread,
+        style: `display:flex; align-items:flex-start; gap:12px; border-radius:20px; padding:14px 16px; background:${n.unread ? 'var(--surf)' : 'var(--surf2)'}; box-shadow:${n.unread ? 'var(--sh-sm)' : 'none'}`,
+        avatar: `display:flex; height:34px; width:34px; flex:none; align-items:center; justify-content:center; border-radius:999px; font-size:12px; font-weight:700; color:#fff; background:${AV[n.ch]}`
+      })),
+      notifsEmpty: !st.notifs.filter(n => wsAll || n.ws === st.ws).length,
+      readAll: () => { this.setState(s => ({ notifs: s.notifs.map(n => ({ ...n, unread: false })) })); this.say('Semua ditandai dibaca'); },
+
+      nt: st.nt,
+      setNtTitle: e => { const v = e.target.value; this.setState(s => ({ nt: { ...s.nt, title: v } })); },
+      ntProjects: PROJ.map(p => ({
+        name: p.name,
+        style: `border-radius:999px; padding:9px 15px; font-size:13px; font-weight:600; white-space:nowrap; flex:none; ${st.nt.p === p.id ? 'background:var(--inv); color:var(--inv-ink)' : 'background:var(--surf2); color:var(--ink2)'}`,
+        pick: () => this.setState(s => ({ nt: { ...s.nt, p: p.id } }))
+      })),
+      ntCols: COLS.map(c => ({ label: c.label, style: this.seg(st.nt.s === c.id), pick: () => this.setState(s => ({ nt: { ...s.nt, s: c.id } })) })),
+      ntTodayStyle: 'margin-top:18px; width:100%; display:flex; align-items:center; gap:12px; border-radius:18px; background:var(--surf); box-shadow:var(--sh-sm); padding:14px 16px; font-size:14.5px; font-weight:600; color:var(--ink)',
+      ntTodayBox: `display:flex; align-items:center; justify-content:center; width:22px; height:22px; flex:none; border-radius:7px; ${st.nt.today ? 'background:var(--inv); color:var(--inv-ink)' : 'background:transparent; color:transparent; box-shadow:inset 0 0 0 1.8px var(--line)'}`,
+      toggleNtToday: () => this.setState(s => ({ nt: { ...s.nt, today: !s.nt.today } })),
+      createStyle: `margin-top:18px; width:100%; height:54px; border-radius:999px; font-size:15.5px; font-weight:700; ${st.nt.title.trim() ? 'background:var(--acc); color:#fff; box-shadow:0 8px 24px rgba(232,98,44,.35)' : 'background:var(--surf2); color:var(--ink3); cursor:not-allowed'}`,
+      createTask: () => {
+        const title = st.nt.title.trim();
+        if (!title) return;
+        const t = {
+          id: st.nextId, title, note: '', p: st.nt.p, s: st.nt.s, tag: 'Baru',
+          due: st.nt.today ? 'Today · 05:00pm' : 'Aug 15',
+          day: st.nt.today ? st.day : 0, time: st.nt.today ? '05:00 PM - 06:00 PM' : '', ppl: ['R']
+        };
+        this.setState(s => ({ tasks: [t, ...s.tasks], nextId: s.nextId + 1, addOpen: false, project: t.p, col: t.s }));
+        this.say('Task ditambahin');
+      },
+
+      toast: st.toast
+    };
+  }
+}
+
+</script>
+</body>
+</html>
