@@ -10,6 +10,9 @@ export type Task = {
   workspaceId: string | null
   workspaceName: string
   due: string | null
+  /** Completed tasks are loaded too now, for the Selesai filter and the
+   *  checkbox's checked state. */
+  done: boolean
 }
 
 /** One rendered section of the My Tasks list. Every grouping mode produces this

@@ -22,6 +22,7 @@ export type DashProject = {
   id: string
   title: string
   wsName: string
+  wsId: string | null
   progress: number
   done: number
   total: number
@@ -34,9 +35,11 @@ export type DashPriority = {
   title: string
   boardTitle: string
   wsName: string
+  /** Null for boards with no workspace — they only show in 'all' scope. */
+  wsId: string | null
   bucket: 'Overdue' | 'Due today' | 'Due tomorrow' | 'Due soon'
 }
-export type DashTask = { id: string; title: string; boardTitle: string }
+export type DashTask = { id: string; title: string; boardTitle: string; wsId: string | null }
 
 export type DashboardData = {
   name: string | null
@@ -239,25 +242,25 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
             if (d < 0) {
               overdue++
               if (mine) myOverdue++
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Overdue' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Overdue' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d === 0) {
               dueToday++
-              today_.push({ id: c.id, title: c.title, boardTitle: b.title })
+              today_.push({ id: c.id, title: c.title, boardTitle: b.title, wsId: ws })
               if (mine) {
                 myDueToday++
-                myToday_.push({ id: c.id, title: c.title, boardTitle: b.title })
+                myToday_.push({ id: c.id, title: c.title, boardTitle: b.title, wsId: ws })
               }
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due today' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due today' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d === 1) {
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due tomorrow' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due tomorrow' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d <= 5) {
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due soon' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due soon' }
               priority.push(p)
               if (mine) myPriority.push(p)
             }
@@ -270,6 +273,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         id: b.id,
         title: b.title,
         wsName: (ws && wsName.get(ws)) || '',
+        wsId: ws,
         progress: bProgress,
         done: bDone,
         total: bTotal,

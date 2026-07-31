@@ -12,6 +12,7 @@ import {
   Target,
 } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
+import { inScope, useScope } from '#/lib/workspace-scope'
 import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
 import { deleteNoteFn } from '#/lib/actions'
 import {
@@ -263,6 +264,7 @@ function SelfGoalForm({ onDone }: { onDone: () => void }) {
 function Home() {
   const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: MyGoals }
   const router = useRouter()
+  const scope = useScope()
 
   async function removeNote(id: string) {
     if (!window.confirm('Delete this note?')) return
@@ -297,6 +299,12 @@ function Home() {
     await submitKrCheckinFn({ data: { krId, proposedValue, note } })
     router.invalidate()
   }
+
+  // Everything the workspace pill can narrow is filtered here. The headline
+  // counts that come out of the aggregation (myStats, projectProgress) stay
+  // cross-workspace — they aren't broken down per workspace server-side.
+  const myToday = d.myToday.filter((t) => inScope(scope, t.wsId))
+  const projects = d.projects.filter((p) => inScope(scope, p.wsId))
 
   const total = d.myStats.total
   const overallPct = total ? Math.round((d.myStats.completed / total) * 100) : 0
@@ -398,10 +406,10 @@ function Home() {
               </div>
             </div>
             <div className="flex flex-col">
-              {d.myToday.length === 0 && (
+              {myToday.length === 0 && (
                 <p className="py-3 text-[14px] text-[var(--ink3)]">Nothing due today 🎉</p>
               )}
-              {d.myToday.map((t) => (
+              {myToday.map((t) => (
                 <div
                   key={t.id}
                   className="flex items-center gap-3.5 border-b border-[var(--line-soft)] py-3.5 last:border-0"
@@ -437,11 +445,11 @@ function Home() {
                 See all
               </Link>
             </div>
-            {d.projects.length === 0 ? (
+            {projects.length === 0 ? (
               <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>
             ) : (
               <div className="gt-scroll -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0">
-                {d.projects.slice(0, 3).map((p) => (
+                {projects.slice(0, 3).map((p) => (
                   <Link
                     key={p.id}
                     to="/board/$boardId"

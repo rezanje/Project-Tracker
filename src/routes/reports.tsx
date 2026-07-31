@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import { inScope, useScope } from '#/lib/workspace-scope'
 import {
   fetchAssignedGoalsFn,
   fetchMyGoalsFn,
@@ -131,6 +132,9 @@ function pct(current: number, target: number): number {
 function Reports() {
   const { dashboard: d, goals, assigned } = Route.useLoaderData() as ReportsData
   const router = useRouter()
+  const scope = useScope()
+  const workspaces = d.workspaces.filter((w) => inScope(scope, w.id))
+  const projects = d.projects.filter((p) => inScope(scope, p.wsId))
   const total = d.stats.totalTasks
   const completion = total ? Math.round((d.stats.completed / total) * 100) : 0
   const pp = d.projectProgress
@@ -329,8 +333,8 @@ function Reports() {
               Workspace performance
             </p>
             <div className="flex flex-col gap-4">
-              {d.workspaces.length === 0 && <p className="text-[14px] text-[var(--ink3)]">No workspaces yet.</p>}
-              {d.workspaces.map((w) => (
+              {workspaces.length === 0 && <p className="text-[14px] text-[var(--ink3)]">No workspaces yet.</p>}
+              {workspaces.map((w) => (
                 <Bar
                   key={w.id}
                   label={w.name}
@@ -368,8 +372,8 @@ function Reports() {
             Project completion
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {d.projects.length === 0 && <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>}
-            {d.projects.map((p) => (
+            {projects.length === 0 && <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>}
+            {projects.map((p) => (
               <Bar key={p.id} label={p.title} sub={p.wsName} pct={p.progress} color={progressColor(p.progress)} />
             ))}
           </div>

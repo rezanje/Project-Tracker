@@ -12,8 +12,9 @@ import {
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn } from '#/lib/home'
 import { listSchedule, type ScheduleEvent } from '#/lib/events'
+import { inScope, useScope } from '#/lib/workspace-scope'
 
-type CalTask = { id: string; title: string; boardTitle: string; boardId: string; due: string; done: boolean }
+type CalTask = { id: string; title: string; boardTitle: string; boardId: string; wsId: string | null; due: string; done: boolean }
 type CalendarData = { tasks: CalTask[]; events: ScheduleEvent[] }
 
 const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
@@ -32,7 +33,7 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
     const [{ data: boards }, events] = await Promise.all([
       supabase
         .from('boards')
-        .select('id,title,columns(title,cards(id,title,due_date))')
+        .select('id,title,workspace_id,columns(title,cards(id,title,due_date))')
         .neq('status', 'archived'),
       listSchedule(supabase),
     ])
@@ -41,13 +42,22 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
     for (const b of (boards ?? []) as Array<{
       id: string
       title: string
+      workspace_id: string | null
       columns?: Array<{ title: string; cards?: Array<{ id: string; title: string; due_date: string | null }> }>
     }>) {
       for (const col of b.columns ?? []) {
         const done = isDoneColumn(col.title)
         for (const c of col.cards ?? []) {
           if (c.due_date)
-            tasks.push({ id: c.id, title: c.title, boardTitle: b.title, boardId: b.id, due: c.due_date, done })
+            tasks.push({
+              id: c.id,
+              title: c.title,
+              boardTitle: b.title,
+              boardId: b.id,
+              wsId: b.workspace_id,
+              due: c.due_date,
+              done,
+            })
         }
       }
     }
@@ -91,8 +101,10 @@ function prettyTime(hhmm: string): string {
 }
 
 function CalendarPage() {
-  const { tasks, events } = Route.useLoaderData() as CalendarData
+  const { tasks: allTasks, events } = Route.useLoaderData() as CalendarData
   const navigate = useNavigate()
+  const scope = useScope()
+  const tasks = allTasks.filter((t) => inScope(scope, t.wsId))
   const [view, setView] = useState<'day' | 'month'>('day')
   // Everything below needs "now", so it is client-derived: start null and fill
   // in an effect so SSR and the first client render match.
