@@ -5,7 +5,9 @@ import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { Check } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn, localDateStr } from '#/lib/home'
-import { completeStandaloneTaskFn } from '#/lib/actions'
+import { completeCardFn, completeStandaloneTaskFn, setCardColumnFn } from '#/lib/actions'
+import { fetchBoardAssigneesFn, type BoardColumn } from '#/lib/nav'
+import Popover from '#/components/Popover'
 import { bucketize, type Task } from '#/lib/my-tasks'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import { toast } from '#/components/Toast'
@@ -111,20 +113,79 @@ function ProgressRing({ pct }: { pct: number }) {
   )
 }
 
-/** One task row. The checkbox completes standalone tasks in place; board tasks
- *  live in a column, so their row opens the board instead. */
+/** The lane chip. For a board task it opens a picker so the status can be
+ *  changed from here — the lanes are fetched on first open, since a row only
+ *  knows the lane it is currently in. */
+function StatusChip({ task, onPick }: { task: Task; onPick: (columnId: string, title: string) => void }) {
+  const [lanes, setLanes] = useState<BoardColumn[] | null>(null)
+
+  if (!task.boardId) return <span className="chip text-[11.5px]">{task.colTitle}</span>
+
+  return (
+    <Popover
+      align="left"
+      panelClassName="w-48 max-w-[calc(100vw-2.5rem)] p-1.5"
+      renderTrigger={(open, toggle) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!open && !lanes) {
+              fetchBoardAssigneesFn({ data: { boardId: task.boardId! } })
+                .then((r) => setLanes(r.columns))
+                .catch(() => setLanes([]))
+            }
+            toggle()
+          }}
+          className="chip text-[11.5px] transition hover:bg-[var(--sunk)]"
+        >
+          {task.colTitle}
+        </button>
+      )}
+      renderPanel={(close) => (
+        <>
+          {lanes === null && <p className="px-2.5 py-2 text-[12px] text-[var(--ink3)]">Memuat…</p>}
+          {lanes?.length === 0 && (
+            <p className="px-2.5 py-2 text-[12px] text-[var(--ink3)]">Ga ada kolom.</p>
+          )}
+          {lanes?.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                close()
+                if (c.title !== task.colTitle) onPick(c.id, c.title)
+              }}
+              className={`flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-2 text-left text-[13px] font-semibold hover:bg-[var(--col)] ${
+                c.title === task.colTitle ? 'text-[var(--ink)]' : 'text-[var(--ink2)]'
+              }`}
+            >
+              {c.title}
+              {c.title === task.colTitle && <Check size={13} strokeWidth={3} aria-hidden="true" />}
+            </button>
+          ))}
+        </>
+      )}
+    />
+  )
+}
+
+/** One task row. The checkbox completes the task in place — a personal task
+ *  flips its done flag, a board task moves to its board's Done lane. */
 function TaskRow({
   task,
   overdue,
   showWorkspace,
   onToggle,
   onOpen,
+  onSetColumn,
 }: {
   task: Task
   overdue: boolean
   showWorkspace: boolean
   onToggle: (() => void) | null
   onOpen: () => void
+  onSetColumn: (columnId: string, title: string) => void
 }) {
   const project = [showWorkspace ? task.workspaceName : null, task.boardTitle].filter(Boolean).join(' · ')
   return (
@@ -142,16 +203,20 @@ function TaskRow({
       >
         <Check size={13} strokeWidth={3.2} aria-hidden="true" />
       </button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <span
-          className={`block truncate text-[14.5px] font-semibold ${
+      {/* The title is the button; the meta row sits outside it so the status
+          chip can be its own control rather than a button inside a button. */}
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={onOpen}
+          className={`block w-full truncate text-left text-[14.5px] font-semibold ${
             task.done ? 'text-[var(--ink)] line-through opacity-45' : 'text-[var(--ink)]'
           }`}
         >
           {task.title}
-        </span>
-        <span className="mt-[7px] flex flex-wrap items-center gap-2.5">
-          {task.colTitle && <span className="chip text-[11.5px]">{task.colTitle}</span>}
+        </button>
+        <div className="mt-[7px] flex flex-wrap items-center gap-2.5">
+          {task.colTitle && <StatusChip task={task} onPick={onSetColumn} />}
           <span className="text-[12px] font-medium text-[var(--ink3)]">{project}</span>
           {task.due && (
             <span
@@ -162,8 +227,8 @@ function TaskRow({
               {fmtDue(task.due)}
             </span>
           )}
-        </span>
-      </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -209,24 +274,40 @@ function MyTasks() {
     if (task.boardId) navigate({ to: '/board/$boardId', params: { boardId: task.boardId } })
   }
 
-  /** Ticking a personal task marks it done in place — it moves to the Selesai
-   *  filter rather than vanishing. Only completion is wired: the server
-   *  function has no un-complete counterpart yet. */
-  async function completeStandalone(task: Task) {
+  /** Ticking a task marks it done in place — it moves to the Selesai filter
+   *  rather than vanishing. Only completion is wired for personal tasks: the
+   *  server function has no un-complete counterpart yet. */
+  async function complete(task: Task) {
     if (task.done) {
-      toast('Belum bisa dibuka lagi dari sini')
+      toast(task.boardId ? 'Pindahin lewat status buat buka lagi' : 'Belum bisa dibuka lagi dari sini')
       return
     }
     pendingCompleteRef.current.add(task.id)
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, done: true } : t)))
-    toast('Task selesai')
+    toast('Task selesai ✓')
     try {
-      await completeStandaloneTaskFn({ data: { id: task.id } })
+      if (task.boardId) await completeCardFn({ data: { cardId: task.id } })
+      else await completeStandaloneTaskFn({ data: { id: task.id } })
     } catch {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, done: false } : t)))
       toast('Gagal — coba lagi')
     } finally {
       pendingCompleteRef.current.delete(task.id)
+    }
+  }
+
+  /** Status chip → move the card to another lane without leaving the list. */
+  async function setColumn(task: Task, columnId: string, title: string) {
+    const before = { colTitle: task.colTitle, done: task.done }
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, colTitle: title, done: isDoneColumn(title) } : t)),
+    )
+    toast(`Dipindah ke ${title}`)
+    try {
+      await setCardColumnFn({ data: { cardId: task.id, columnId } })
+    } catch {
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, ...before } : t)))
+      toast('Gagal — coba lagi')
     }
   }
 
@@ -289,8 +370,9 @@ function MyTasks() {
                   task={t}
                   overdue={!t.done && !!t.due && t.due < today}
                   showWorkspace={scope === 'all'}
-                  onToggle={t.boardId ? null : () => completeStandalone(t)}
+                  onToggle={() => complete(t)}
                   onOpen={() => openTask(t)}
+                  onSetColumn={(columnId, title) => setColumn(t, columnId, title)}
                 />
               ))}
             </div>

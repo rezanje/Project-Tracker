@@ -168,6 +168,54 @@ export const createWorkspaceFn = createServerFn({ method: 'POST' })
     return { id: ws.id, name: data.name }
   })
 
+/** The lanes of the board a card belongs to, in order. Shared by the two
+ *  functions below so "which board is this card on" is written once. */
+async function boardLanes(
+  supabase: Parameters<typeof createCard>[0],
+  cardId: string,
+): Promise<Array<{ id: string; title: string }>> {
+  const { data: card, error: cardErr } = await supabase
+    .from('cards')
+    .select('id, columns(board_id)')
+    .eq('id', cardId)
+    .single()
+  if (cardErr) throw cardErr
+  const boardId = ((card?.columns as unknown) as { board_id: string } | null)?.board_id
+  if (!boardId) throw new Error('Card has no board')
+  const { data: cols, error: colErr } = await supabase
+    .from('columns')
+    .select('id,title')
+    .eq('board_id', boardId)
+    .order('position', { ascending: true })
+  if (colErr) throw colErr
+  return (cols ?? []) as Array<{ id: string; title: string }>
+}
+
+// Move a card to another lane from outside the board — the status chip in My
+// tasks. The target must belong to the card's own board; RLS still decides
+// whether the caller may touch the card at all.
+export const setCardColumnFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { cardId, columnId } = (d ?? {}) as { cardId?: unknown; columnId?: unknown }
+    if (typeof cardId !== 'string' || !cardId) throw new Error('cardId required')
+    if (typeof columnId !== 'string' || !columnId) throw new Error('columnId required')
+    return { cardId, columnId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const lanes = await boardLanes(supabase, data.cardId)
+    if (!lanes.some((c) => c.id === data.columnId))
+      throw new Error('That column belongs to another project')
+    const { error } = await supabase
+      .from('cards')
+      .update({ column_id: data.columnId })
+      .eq('id', data.cardId)
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
+  })
+
 // The dashboards' "due today" checkbox. RLS decides whether the caller may
 // touch the card; this only resolves *which* lane counts as done, using the
 // same title heuristic the stats do.
@@ -180,24 +228,7 @@ export const completeCardFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { supabase } = await requireUser(getRequest(), headers)
-    const { data: card, error: cardErr } = await supabase
-      .from('cards')
-      .select('id, columns(board_id)')
-      .eq('id', data.cardId)
-      .single()
-    if (cardErr) throw cardErr
-    const boardId = ((card?.columns as unknown) as { board_id: string } | null)?.board_id
-    if (!boardId) throw new Error('Card has no board')
-
-    const { data: cols, error: colErr } = await supabase
-      .from('columns')
-      .select('id,title')
-      .eq('board_id', boardId)
-      .order('position', { ascending: true })
-    if (colErr) throw colErr
-    const done = ((cols ?? []) as Array<{ id: string; title: string }>).find((c) =>
-      isDoneColumn(c.title),
-    )
+    const done = (await boardLanes(supabase, data.cardId)).find((c) => isDoneColumn(c.title))
     if (!done) throw new Error('This project has no Done column')
 
     const { error } = await supabase
