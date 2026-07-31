@@ -5,6 +5,7 @@ import { requireUser } from './auth'
 export type NavWorkspace = { id: string; name: string }
 export type NavBoard = { id: string; title: string; workspaceId: string | null }
 export type BoardAssignee = { id: string; name: string }
+export type BoardColumn = { id: string; title: string }
 
 /** Sidebar nav data: every workspace + active board the user can see.
  * Swallows auth errors so it can be called from any page, including bare
@@ -101,14 +102,23 @@ export const fetchBoardAssigneesFn = createServerFn({ method: 'GET' })
     if (typeof boardId !== 'string' || !boardId) throw new Error('boardId required')
     return { boardId }
   })
-  .handler(async ({ data }): Promise<{ meId: string; members: BoardAssignee[] }> => {
+  .handler(async ({ data }): Promise<{ meId: string; members: BoardAssignee[]; columns: BoardColumn[] }> => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
     try {
-      const { data: members, error } = await supabase
-        .from('board_members')
-        .select('user_id, profiles(id,name)')
-        .eq('board_id', data.boardId)
+      // Columns ride along so the quick-add sheet can offer its lane picker
+      // without a second round-trip per project chip.
+      const [{ data: members, error }, { data: cols }] = await Promise.all([
+        supabase
+          .from('board_members')
+          .select('user_id, profiles(id,name)')
+          .eq('board_id', data.boardId),
+        supabase
+          .from('columns')
+          .select('id,title')
+          .eq('board_id', data.boardId)
+          .order('position', { ascending: true }),
+      ])
       if (error) throw error
       const list = (members ?? []).map((m) => {
         const p = (m.profiles as unknown) as { id: string; name: string } | null
@@ -122,8 +132,12 @@ export const fetchBoardAssigneesFn = createServerFn({ method: 'GET' })
         list.unshift({ id: user.id, name: me?.name ?? 'Me' })
       }
       for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
-      return { meId: user.id, members: list }
+      return {
+        meId: user.id,
+        members: list,
+        columns: (cols ?? []).map((c) => ({ id: c.id as string, title: c.title as string })),
+      }
     } catch {
-      return { meId: user.id, members: [] }
+      return { meId: user.id, members: [], columns: [] }
     }
   })
