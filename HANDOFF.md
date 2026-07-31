@@ -7,11 +7,13 @@ Paste this file's path into a fresh Claude Code session and say:
 
 ## Where the work lives
 
-- **Branch:** `feat/soft-ui-redesign` (9 commits ahead of `main`, nothing pushed, nothing deployed).
+- **Branch:** `feat/soft-ui-redesign` (12 commits ahead of `main`, nothing pushed, nothing deployed).
   `main` still has the old pixel/8-bit UI. Production is untouched.
 - Typecheck, build and the 110 vitest tests all pass on this branch.
 
 ```
+117dda1 Reshape quick-add into the comp's sheet
+b3c3fed Fold the board toolbar into sliders and more sheets
 74be570 Move notifications from a popover into the bell's sheet
 3cd977d Turn card detail into the comp's bottom sheet
 b02a804 Reshape Reports into the comp's Performance screen
@@ -59,8 +61,8 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 | Reports / KPI | Home KPI card → "Check now" | done |
 | Desktop sidebar | Mirrors the four mobile tabs + workspaces; Settings/Log out in the profile menu; Favorites removed (it never worked) | done |
 | Comments & attachments | Inside the task-detail sheet | done |
-| Board filter / sort / search | Sliders button in the board header → sheet | **not built** |
-| Edit project, Team, owner KPIs | More button in the board header → sheet | **not built** |
+| Board filter / sort / search | Sliders button in the board header → sheet | done |
+| Edit project, Team, owner KPIs | More button in the board header → sheet | done (KPIs are a link to Reports — the KPI UI is workspace-scoped, not board-scoped) |
 | Notes & Announcements | Bottom of Home | **not moved yet** |
 | Heatmap, portfolio, weekly | Reports | weekly done, rest **not moved** |
 | Workspace page | To be dissolved; Team + KPI move to Reports | **not done** |
@@ -96,16 +98,25 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 11. **Notifications sheet** — `src/components/NotificationSheet.tsx`. The bell (`NotificationsBell`,
     exported from `Header.tsx`, `compact` for the Command Center) opens it. "Notifikasi | Pesan"
     segments; message rows deep-link into `/inbox?t=<threadId>`.
+12. **Board sheets** — `src/components/BoardSheets.tsx`. Three round buttons in the board header:
+    swap (next project in the same workspace), sliders (`BoardFilterSheet` — search, view, grouping,
+    sort, category), more (`BoardMoreSheet` — edit project, KPI link, invite / add member). The old
+    toolbar row is now `hidden md:flex`; swap and sliders sit outside the owner check.
+13. **Quick add** — `src/components/QuickTaskForm.tsx` restyled to the comp: title block, scrolling
+    project / lane / assignee chips, "Jadwalkan hari ini", accent 54px submit that greys out on an
+    empty title. `fetchBoardAssigneesFn` now also returns the board's columns; `quickCreateTaskFn`
+    takes an optional `columnId` (validated against the board) and `dueDate`.
 
-## Next up (build order from the handoff README, step 6 onward)
+## Next up
 
-1. **Board** — swap button cycles projects within the current workspace; sliders and more buttons
-   open the filter and owner-action sheets (board filter/sort/search; edit project, Team, owner KPIs).
-2. **Quick add sheet** — the FAB sheet still uses the old `TaskCreate` form. The comp wants a title
-   input, scrolling project chips, a column segmented control, a "Jadwalkan hari ini" checkbox, and
-   a 54px accent `Buat task` button that greys out on an empty title.
-3. **Move Notes / Announcements / heatmap / portfolio** to their agreed homes; dissolve the
-   workspace page into Home + Reports.
+1. **Move Notes / Announcements / heatmap / portfolio** to their agreed homes; dissolve the
+   workspace page into Home + Reports, taking `TeamPanel` (workspace members + KPI assignment)
+   with it. The board's "more" sheet already links to `/reports` for KPIs, so that link lands
+   correctly once the panel moves.
+2. **Desktop pass.** Everything above was built mobile-first from the prototype. Section 05 of
+   `Rakit Redesign.dc.html` holds the desktop layouts and has not been worked through.
+3. **`QuickProjectForm`** is still on the old shadcn `Input`/`Button` — the task half of that sheet
+   is now the comp's, the project half is not.
 
 ## Known data gaps — do not invent numbers for these
 
