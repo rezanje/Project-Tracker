@@ -18,7 +18,10 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  MoreHorizontal,
+  Repeat,
   Search,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
@@ -34,8 +37,10 @@ import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/l
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
 import { setBoardPics } from '#/lib/board-pics'
+import { fetchNavDeduped, type NavBoard } from '#/lib/nav'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
+import { BoardFilterSheet, BoardMoreSheet } from '#/components/BoardSheets'
 import ProjectEdit from '#/components/ProjectEdit'
 import TaskCreate from '#/components/TaskCreate'
 import CalendarView from '#/components/CalendarView'
@@ -540,6 +545,10 @@ function BoardView() {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // The comp's swap button cycles projects inside the current workspace.
+  const [siblingBoards, setSiblingBoards] = useState<NavBoard[]>([])
   // Which list-view row (if any) currently has its swipe-action tray open.
   const [openListRowId, setOpenListRowId] = useState<string | null>(null)
   const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
@@ -584,6 +593,20 @@ function BoardView() {
     }
   }, [isOwner, board.id])
   const isContent = board.kind === 'content'
+  const roundBtn =
+    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)] transition hover:-translate-y-px active:scale-[.94]'
+
+  useEffect(() => {
+    fetchNavDeduped()
+      .then((nav) => setSiblingBoards(nav.boards))
+      .catch(() => {})
+  }, [])
+
+  // Next project in the same workspace, wrapping around. Null when this board
+  // is the only one there — the swap button has nowhere to go.
+  const wsBoards = siblingBoards.filter((b) => b.workspaceId === board.workspaceId)
+  const here = wsBoards.findIndex((b) => b.id === board.id)
+  const siblingBoard = wsBoards.length > 1 && here !== -1 ? wsBoards[(here + 1) % wsBoards.length] : null
 
   function openAddContent(date: string) {
     setAddInitialDate(date)
@@ -1053,9 +1076,11 @@ function BoardView() {
           </div>
         )}
 
-        {canEdit ? (
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
+        {/* Swap and filter stay available to clients — on mobile this row is the
+            only way to reach them, since the toolbar below is desktop-only. */}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {canEdit && (
               <button
                 type="button"
                 onClick={() => openAddContent('')}
@@ -1063,99 +1088,163 @@ function BoardView() {
               >
                 {isContent ? '+ Add content' : '+ Add task'}
               </button>
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  disabled={!boardMeta}
-                  className="btn btn-ghost shrink-0"
-                >
-                  Edit project
-                </button>
-              )}
-            </div>
+            )}
+            {siblingBoard && (
+              <button
+                type="button"
+                onClick={() => router.navigate({ to: '/board/$boardId', params: { boardId: siblingBoard.id } })}
+                aria-label={`Pindah ke ${siblingBoard.title}`}
+                title={siblingBoard.title}
+                className={roundBtn}
+              >
+                <Repeat size={17} aria-hidden="true" />
+              </button>
+            )}
+            {!isContent && (
+              <button
+                type="button"
+                onClick={() => setFilterOpen(true)}
+                aria-label="Filter & urutan"
+                className={roundBtn}
+              >
+                <SlidersHorizontal size={17} aria-hidden="true" />
+              </button>
+            )}
             {isOwner && (
-              <>
-                <form onSubmit={onInvite} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
-                  <input
-                    type="email"
-                    placeholder="Invite by email…"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="field flex-1 rounded-full px-4 py-2.5 text-[13px] sm:w-[190px]"
-                  />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'client')}
-                    className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
-                  >
-                    <option value="member">Member</option>
-                    <option value="client">Client</option>
-                  </select>
-                  <button type="submit" className="btn btn-primary shrink-0">
-                    Invite
-                  </button>
-                </form>
-                <form onSubmit={onAddMember} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
-                  <select
-                    value={addUserId}
-                    onChange={(e) => setAddUserId(e.target.value)}
-                    disabled={addable.length === 0}
-                    aria-label="Add someone from this workspace"
-                    className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
-                  >
-                    {addable.length === 0 ? (
-                      <option value="">Everyone in this workspace is already on this project</option>
-                    ) : (
-                      <>
-                        <option value="">Add from workspace…</option>
-                        {addable.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={!addUserId || addingMember}
-                    className="btn btn-primary shrink-0"
-                  >
-                    Add
-                  </button>
-                </form>
-                {result && (
-                  <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
-                )}
-                {inviteLink && (
-                  <div className="flex w-full items-center gap-2 sm:w-[360px]">
-                    <input
-                      readOnly
-                      value={inviteLink}
-                      onFocus={(e) => e.target.select()}
-                      className="field flex-1 rounded-full px-3 py-2 text-[12px]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(inviteLink)}
-                      className="btn btn-ghost shrink-0 px-3 py-2 text-xs"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                )}
-              </>
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-label="Kelola project"
+                className={roundBtn}
+              >
+                <MoreHorizontal size={18} aria-hidden="true" />
+              </button>
             )}
           </div>
-        ) : (
-          <p className="max-w-[290px] rounded-[14px] border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-[13px] leading-relaxed text-[var(--ink2)]">
-            You're viewing as a{' '}
-            <b className="text-[var(--ink)]">client</b> — read-only. You can still
-            comment and upload files.
-          </p>
-        )}
+          {!canEdit && (
+            <p className="max-w-[290px] rounded-[14px] border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-[13px] leading-relaxed text-[var(--ink2)]">
+              You're viewing as a{' '}
+              <b className="text-[var(--ink)]">client</b> — read-only. You can still
+              comment and upload files.
+            </p>
+          )}
+        </div>
       </div>
+
+      {moreOpen && (
+        <BoardMoreSheet onClose={() => setMoreOpen(false)}>
+          <div className="flex flex-col items-stretch gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false)
+                setEditing(true)
+              }}
+              disabled={!boardMeta}
+              className="btn btn-ghost w-full rounded-full"
+            >
+              Edit project
+            </button>
+            <Link
+              to="/reports"
+              onClick={() => setMoreOpen(false)}
+              className="btn btn-ghost w-full rounded-full no-underline"
+            >
+              KPI &amp; target tim
+            </Link>
+
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+              Orang di project ini
+            </p>
+            <form onSubmit={onInvite} className="flex flex-wrap gap-2">
+              <input
+                type="email"
+                placeholder="Undang lewat email…"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field min-w-0 flex-1 rounded-full px-4 py-2.5 text-[13px]"
+              />
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as 'member' | 'client')}
+                className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
+              >
+                <option value="member">Member</option>
+                <option value="client">Client</option>
+              </select>
+              <button type="submit" className="btn btn-primary shrink-0">
+                Undang
+              </button>
+            </form>
+            <form onSubmit={onAddMember} className="flex flex-wrap gap-2">
+              <select
+                value={addUserId}
+                onChange={(e) => setAddUserId(e.target.value)}
+                disabled={addable.length === 0}
+                aria-label="Tambah dari workspace"
+                className="field min-w-0 flex-1 rounded-full px-3 py-2.5 text-[13px]"
+              >
+                {addable.length === 0 ? (
+                  <option value="">Semua orang di workspace sudah ada di project ini</option>
+                ) : (
+                  <>
+                    <option value="">Tambah dari workspace…</option>
+                    {addable.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <button
+                type="submit"
+                disabled={!addUserId || addingMember}
+                className="btn btn-primary shrink-0"
+              >
+                Tambah
+              </button>
+            </form>
+            {result && (
+              <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
+            )}
+            {inviteLink && (
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={inviteLink}
+                  onFocus={(e) => e.target.select()}
+                  className="field min-w-0 flex-1 rounded-full px-3 py-2 text-[12px]"
+                />
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(inviteLink)}
+                  className="btn btn-ghost shrink-0 px-3 py-2 text-xs"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+          </div>
+        </BoardMoreSheet>
+      )}
+
+      {filterOpen && (
+        <BoardFilterSheet
+          onClose={() => setFilterOpen(false)}
+          view={view}
+          onView={setView}
+          groupBy={groupBy}
+          onGroupBy={setGroupBy}
+          search={search}
+          onSearch={setSearch}
+          category={filterCat}
+          onCategory={setFilterCat}
+          categories={categories}
+          sortBy={sortBy}
+          onSortBy={setSortBy}
+        />
+      )}
 
       {!isContent && (
         <>
@@ -1232,7 +1321,7 @@ function BoardView() {
       )}
 
       {!isContent && (
-      <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
+      <div className="mx-auto mb-4 hidden max-w-[1400px] flex-wrap items-center gap-3 px-1 md:flex">
         {/* view tabs */}
         <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
           {(['board', 'list'] as const).map((v) => (
