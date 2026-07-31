@@ -6,6 +6,7 @@ import { createWorkspace } from './workspaces'
 import { createBoard } from './boards'
 import { createCard } from './cards'
 import { createStandaloneTask, completeStandaloneTask } from './standalone-tasks'
+import { isDoneColumn } from './home'
 
 // Shared client-callable mutations used by the chrome (sidebar / dashboards).
 
@@ -165,4 +166,45 @@ export const createWorkspaceFn = createServerFn({ method: 'POST' })
     const ws = await createWorkspace(supabase, user.id, data.name)
     flush(headers)
     return { id: ws.id, name: data.name }
+  })
+
+// The dashboards' "due today" checkbox. RLS decides whether the caller may
+// touch the card; this only resolves *which* lane counts as done, using the
+// same title heuristic the stats do.
+export const completeCardFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const cardId = (d as { cardId?: unknown })?.cardId
+    if (typeof cardId !== 'string' || !cardId) throw new Error('cardId required')
+    return { cardId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { supabase } = await requireUser(getRequest(), headers)
+    const { data: card, error: cardErr } = await supabase
+      .from('cards')
+      .select('id, columns(board_id)')
+      .eq('id', data.cardId)
+      .single()
+    if (cardErr) throw cardErr
+    const boardId = ((card?.columns as unknown) as { board_id: string } | null)?.board_id
+    if (!boardId) throw new Error('Card has no board')
+
+    const { data: cols, error: colErr } = await supabase
+      .from('columns')
+      .select('id,title')
+      .eq('board_id', boardId)
+      .order('position', { ascending: true })
+    if (colErr) throw colErr
+    const done = ((cols ?? []) as Array<{ id: string; title: string }>).find((c) =>
+      isDoneColumn(c.title),
+    )
+    if (!done) throw new Error('This project has no Done column')
+
+    const { error } = await supabase
+      .from('cards')
+      .update({ column_id: done.id })
+      .eq('id', data.cardId)
+    if (error) throw error
+    flush(headers)
+    return { ok: true }
   })

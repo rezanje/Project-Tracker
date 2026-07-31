@@ -39,7 +39,18 @@ export type DashPriority = {
   wsId: string | null
   bucket: 'Overdue' | 'Due today' | 'Due tomorrow' | 'Due soon'
 }
-export type DashTask = { id: string; title: string; boardTitle: string; wsId: string | null }
+export type DashTask = {
+  id: string
+  title: string
+  boardTitle: string
+  boardId: string
+  /** The lane the card sits in — the comp's status line under the title. */
+  status: string
+  /** Resolved from the board's member list. Null when unassigned, or when the
+   *  assignee has no board_members row (workspace-level access). */
+  assignee: DashProjectMember | null
+  wsId: string | null
+}
 
 export type DashboardData = {
   name: string | null
@@ -247,10 +258,22 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
               if (mine) myPriority.push(p)
             } else if (d === 0) {
               dueToday++
-              today_.push({ id: c.id, title: c.title, boardTitle: b.title, wsId: ws })
+              const task: DashTask = {
+                id: c.id,
+                title: c.title,
+                boardTitle: b.title,
+                boardId: b.id,
+                status: col.title,
+                assignee:
+                  (c.assignee_id &&
+                    (membersByBoard.get(b.id) ?? []).find((m) => m.id === c.assignee_id)) ||
+                  null,
+                wsId: ws,
+              }
+              today_.push(task)
               if (mine) {
                 myDueToday++
-                myToday_.push({ id: c.id, title: c.title, boardTitle: b.title, wsId: ws })
+                myToday_.push(task)
               }
               const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due today' }
               priority.push(p)

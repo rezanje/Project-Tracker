@@ -6,7 +6,8 @@ import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
 import { setScope } from '#/lib/workspace-scope'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
-import { deleteNoteFn } from '#/lib/actions'
+import { completeCardFn, deleteNoteFn } from '#/lib/actions'
+import { toast } from '#/components/Toast'
 import { NotificationsBell } from '#/components/Header'
 import NoteDetail from '#/components/NoteDetail'
 import Popover from '#/components/Popover'
@@ -82,6 +83,20 @@ function CommandCenter() {
   const router = useRouter()
   const [wsOpen, setWsOpen] = useState(false)
   const [selectedNote, setSelectedNote] = useState<CommandCenterData['notes'][number] | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function complete(id: string) {
+    setBusyId(id)
+    try {
+      await completeCardFn({ data: { cardId: id } })
+      toast('Task selesai ✓')
+      router.invalidate()
+    } catch {
+      toast('Gagal menandai selesai')
+    } finally {
+      setBusyId(null)
+    }
+  }
   const noteCategories = useMemo(
     () => Array.from(new Set(d.notes.map((n) => n.category).filter((c): c is string => !!c))).sort(),
     [d.notes],
@@ -243,12 +258,15 @@ function CommandCenter() {
                   key={t.id}
                   className="flex items-start gap-3.5 rounded-[20px] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)]"
                 >
-                  <span
-                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)]"
-                    aria-hidden="true"
+                  <button
+                    type="button"
+                    onClick={() => complete(t.id)}
+                    disabled={busyId === t.id}
+                    aria-label={`Tandai "${t.title}" selesai`}
+                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
                   >
-                    <Check size={12} strokeWidth={3.2} />
-                  </span>
+                    <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+                  </button>
                   <div className="min-w-0 flex-1">
                     <p className="text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">{t.title}</p>
                     <div className="mt-2 flex items-center gap-2">

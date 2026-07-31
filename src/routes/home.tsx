@@ -1,8 +1,20 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Flame } from 'lucide-react'
+import { useState } from 'react'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { Check } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
+import { completeCardFn } from '#/lib/actions'
+import { isDoneColumn, isInProgressColumn } from '#/lib/home'
 import { inScope, useScope } from '#/lib/workspace-scope'
-import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
+import { fetchDashboard, type DashboardData, type DashProjectMember, type DashTask } from '#/lib/dashboard'
+import { toast } from '#/components/Toast'
+
+/** The 3px lane bar, same reading as the task-detail sheet's. */
+function barColor(title: string): string {
+  if (isDoneColumn(title)) return 'var(--ink)'
+  if (isInProgressColumn(title)) return 'var(--accent)'
+  if (/review|approv/i.test(title)) return 'var(--done)'
+  return 'var(--ink3)'
+}
 
 // The comp's Home is three things and nothing else: the KPI teaser, the
 // projects of the current workspace, and what's due today. Goals moved to
@@ -72,9 +84,84 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
   )
 }
 
+/** A "due today" card: lane bar, title, round checkbox, lane name, assignee. */
+function TodayCard({
+  task,
+  onComplete,
+  busy,
+}: {
+  task: DashTask
+  onComplete: (id: string) => void
+  busy: boolean
+}) {
+  return (
+    <div className="flex gap-3 rounded-[20px] bg-[var(--card)] px-4 py-[15px] shadow-[var(--shadow-sm)] transition hover:-translate-y-px">
+      <span
+        className="w-[3px] shrink-0 self-stretch rounded-full"
+        style={{ background: barColor(task.status) }}
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-2">
+          <Link
+            to="/board/$boardId"
+            params={{ boardId: task.boardId }}
+            className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)] no-underline"
+          >
+            {task.title}
+          </Link>
+          <button
+            type="button"
+            onClick={() => onComplete(task.id)}
+            disabled={busy}
+            aria-label={`Tandai "${task.title}" selesai`}
+            className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
+          >
+            <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="mt-[3px] text-[13px] text-[var(--ink3)]">{task.status}</p>
+        <div className="mt-2.5 flex items-center justify-between gap-2.5">
+          {task.assignee ? (
+            <span
+              title={task.assignee.name}
+              className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-white"
+              style={{ background: accentFor(task.assignee.id) }}
+            >
+              {task.assignee.avatar_url ? (
+                <img src={task.assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+              ) : (
+                (task.assignee.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()
+              )}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[12.5px] font-medium text-[var(--ink2)]">{task.boardTitle}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Home() {
   const d = Route.useLoaderData() as DashboardData
+  const router = useRouter()
   const scope = useScope()
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function complete(id: string) {
+    setBusyId(id)
+    try {
+      await completeCardFn({ data: { cardId: id } })
+      toast('Task selesai ✓')
+      router.invalidate()
+    } catch {
+      toast('Gagal menandai selesai')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const myToday = d.myToday.filter((t) => inScope(scope, t.wsId))
   const projects = d.projects.filter((p) => inScope(scope, p.wsId))
@@ -158,52 +245,33 @@ function Home() {
           )}
         </section>
 
-        {/* TODAY */}
-        <section className="panel p-6">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="flex items-center gap-2 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
-                <Flame size={18} className="text-[var(--ink3)]" aria-hidden="true" />
-                Today
-              </h2>
-              <p className="mt-1 text-[13.5px] text-[var(--ink3)]">
-                {total} tasks · {d.myStats.overdue} overdue · {d.myStats.dueToday} due today
+        {/* TASK HARI INI — one card per task, as the comp draws it. The comp's
+            clock time ("Today · 10:15am") is omitted: cards carry a due date,
+            not a due time. */}
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Task hari ini</h2>
+            <Link
+              to="/my-tasks"
+              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--accent)]"
+            >
+              See all
+            </Link>
+          </div>
+          {myToday.length === 0 ? (
+            <div className="rounded-[20px] bg-[var(--col)] px-[18px] py-7 text-center">
+              <p className="text-[14.5px] font-bold text-[var(--ink)]">Clear semua 🎉</p>
+              <p className="mt-1 text-[13px] text-[var(--ink3)]">
+                {total} task total · {d.myStats.overdue} telat · {overallPct}% selesai
               </p>
             </div>
-            <div className="flex w-full items-center gap-3 sm:w-[240px]">
-              <Bar pct={overallPct} />
-              <span className="whitespace-nowrap text-[15px] font-bold tracking-[-0.02em] text-[var(--ink)]">
-                {overallPct}%
-              </span>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {myToday.map((t) => (
+                <TodayCard key={t.id} task={t} onComplete={complete} busy={busyId === t.id} />
+              ))}
             </div>
-          </div>
-          <div className="flex flex-col">
-            {myToday.length === 0 && (
-              <p className="py-3 text-[14px] text-[var(--ink3)]">Nothing due today 🎉</p>
-            )}
-            {myToday.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-3.5 border-b border-[var(--line-soft)] py-3.5 last:border-0"
-              >
-                <span
-                  className="h-[22px] w-[22px] shrink-0 rounded-[12px] border-[1.8px] border-[var(--line-strong)]"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{t.title}</p>
-                  <span className="text-[12.5px] text-[var(--ink3)]">{t.boardTitle}</span>
-                </div>
-                <span className="chip chip-warn shrink-0">Due today</span>
-              </div>
-            ))}
-          </div>
-          <Link
-            to="/my-tasks"
-            className="mt-4 inline-block text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
-          >
-            View all tasks →
-          </Link>
+          )}
         </section>
       </div>
     </main>
