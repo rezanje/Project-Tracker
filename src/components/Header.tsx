@@ -16,7 +16,9 @@ import { searchFn, type SearchResults } from '#/lib/search'
 import { fetchNotificationsFn } from '#/lib/notifications'
 import NotificationSheet from './NotificationSheet'
 import Popover from './Popover'
+import QuickNoteForm from './QuickNoteForm'
 import QuickProjectForm from './QuickProjectForm'
+import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
 import { WorkspacePill, WorkspaceSwitcherSheet } from './WorkspaceSwitcher'
@@ -99,8 +101,18 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
   )
 }
 
+const NEW_TABS = [
+  ['task', 'Task'],
+  ['project', 'Project'],
+  ['note', 'Note'],
+  ['reminder', 'Reminder'],
+] as const
+type NewTab = (typeof NEW_TABS)[number][0]
+
+// Note and Reminder used to live in Home's "Quick actions" grid; Home is the
+// comp's three sections now, so creation collects here and in the FAB sheet.
 function NewMenu() {
-  const [tab, setTab] = useState<'task' | 'project'>('task')
+  const [tab, setTab] = useState<NewTab>('task')
 
   return (
     <Popover
@@ -121,26 +133,23 @@ function NewMenu() {
       renderPanel={(close) => (
         <>
           <div className="mb-3 flex gap-1 rounded-full bg-[var(--col)] p-1">
-            <button
-              type="button"
-              onClick={() => setTab('task')}
-              className={`flex-1 rounded-full py-1.5 text-[12.5px] font-semibold ${
-                tab === 'task' ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              Task
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('project')}
-              className={`flex-1 rounded-full py-1.5 text-[12.5px] font-semibold ${
-                tab === 'project' ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              Project
-            </button>
+            {NEW_TABS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                className={`flex-1 rounded-full py-1.5 text-[11.5px] font-semibold ${
+                  tab === id ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          {tab === 'task' ? <QuickTaskForm onDone={close} /> : <QuickProjectForm onDone={close} />}
+          {tab === 'task' && <QuickTaskForm onDone={close} />}
+          {tab === 'project' && <QuickProjectForm onDone={close} />}
+          {tab === 'note' && <QuickNoteForm onDone={close} />}
+          {tab === 'reminder' && <QuickReminderForm onDone={close} />}
         </>
       )}
     />

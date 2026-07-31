@@ -1,5 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 import BackButton from '#/components/BackButton'
+import Popover from '#/components/Popover'
+import { SelfGoalForm } from '#/components/Goals'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import {
@@ -223,12 +226,21 @@ function Reports() {
         <section>
           <div className="mb-3.5 flex items-baseline justify-between">
             <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">My goals</h2>
-            <a
-              href="/home#my-goals"
-              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
-            >
-              + New goal
-            </a>
+            {/* Right-aligned: the trigger sits at the right edge of the row, so
+                a left-aligned panel runs off a phone screen. */}
+            <Popover
+              panelClassName="w-72 max-w-[calc(100vw-2.5rem)]"
+              renderTrigger={(_open, toggle) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="flex items-center gap-1 text-[13.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
+                >
+                  <Plus size={14} aria-hidden="true" /> New goal
+                </button>
+              )}
+              renderPanel={(close) => <SelfGoalForm onDone={close} />}
+            />
           </div>
           {goalRows.length === 0 ? (
             <p className="panel p-8 text-center text-[14px] text-[var(--ink3)]">No goals assigned yet.</p>

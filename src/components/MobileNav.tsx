@@ -2,7 +2,9 @@ import { useEffect, useState, type ComponentType } from 'react'
 import { useRouterState, Link } from '@tanstack/react-router'
 import { Calendar, CheckSquare, Home, PieChart, Plus, X } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
+import QuickNoteForm from './QuickNoteForm'
 import QuickProjectForm from './QuickProjectForm'
+import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
 import { Sheet } from './WorkspaceSwitcher'
 
@@ -27,7 +29,7 @@ const BAR_NAV: Array<{
 export default function MobileNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [createTab, setCreateTab] = useState<'task' | 'project'>('task')
+  const [createTab, setCreateTab] = useState<'task' | 'project' | 'note' | 'reminder'>('task')
 
   // Close the sheet whenever the route changes (e.g. after a create navigates).
   useEffect(() => {
@@ -98,13 +100,15 @@ export default function MobileNav() {
               </button>
             </div>
 
+            {/* Note and Reminder moved here (and to the header's "+ New") when
+                Home lost its Quick actions grid. */}
             <div className="mb-4 flex gap-1.5 rounded-full bg-[var(--col)] p-1">
-              {(['task', 'project'] as const).map((tab) => (
+              {(['task', 'project', 'note', 'reminder'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setCreateTab(tab)}
-                  className={`flex-1 rounded-full py-2 text-[13px] font-semibold capitalize ${
+                  className={`flex-1 rounded-full py-2 text-[12px] font-semibold capitalize ${
                     createTab === tab
                       ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
                       : 'text-[var(--ink3)]'
@@ -115,11 +119,10 @@ export default function MobileNav() {
               ))}
             </div>
 
-            {createTab === 'task' ? (
-              <QuickTaskForm onDone={() => setSheetOpen(false)} />
-            ) : (
-              <QuickProjectForm onDone={() => setSheetOpen(false)} />
-            )}
+            {createTab === 'task' && <QuickTaskForm onDone={() => setSheetOpen(false)} />}
+            {createTab === 'project' && <QuickProjectForm onDone={() => setSheetOpen(false)} />}
+            {createTab === 'note' && <QuickNoteForm onDone={() => setSheetOpen(false)} />}
+            {createTab === 'reminder' && <QuickReminderForm onDone={() => setSheetOpen(false)} />}
           </Sheet>
         </div>
       )}

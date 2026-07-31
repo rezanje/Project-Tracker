@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import {
   Check,
   Clock,
+  Target,
   X,
 } from 'lucide-react'
+import { selfAssignKpiFn, selfAssignObjectiveFn } from '#/lib/goals'
 import type { Kpi, Kr, Objective, AssignedKpi, AssignedObjective } from '#/lib/goals'
 
 const pct = (c: number, t: number) => (t ? Math.min(100, Math.round((c / t) * 100)) : 0)
@@ -284,5 +287,109 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
         </ul>
       </div>
     </div>
+  )
+}
+
+// ---- Self-service goal creation ----
+// Lived on Home until Home was cut back to the comp's three sections; Reports
+// is where goals are read, so it is where they are added now.
+
+export function SelfGoalForm({ onDone }: { onDone: () => void }) {
+  const [kind, setKind] = useState<'kpi' | 'objective'>('kpi')
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [unit, setUnit] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      if (kind === 'kpi') {
+        await selfAssignKpiFn({
+          data: { name: name.trim(), target: Number(target) || 0, unit, startDate, endDate },
+        })
+      } else {
+        await selfAssignObjectiveFn({ data: { title: name.trim(), startDate, endDate } })
+      }
+      router.invalidate()
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save goal')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2">
+      <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+        <Target size={14} aria-hidden="true" /> New goal
+      </p>
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={() => setKind('kpi')}
+          className={`btn btn-square flex-1 text-xs ${kind === 'kpi' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          KPI
+        </button>
+        <button
+          type="button"
+          onClick={() => setKind('objective')}
+          className={`btn btn-square flex-1 text-xs ${kind === 'objective' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          Objective
+        </button>
+      </div>
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={kind === 'kpi' ? 'KPI name' : 'Objective title'}
+        className="field text-[13px]"
+      />
+      {kind === 'kpi' && (
+        <div className="flex gap-2">
+          <input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            type="number"
+            placeholder="Target"
+            className="field w-24 text-[13px]"
+          />
+          <input
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            placeholder="Unit"
+            className="field flex-1 text-[13px]"
+          />
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          type="date"
+          className="field flex-1 text-[13px]"
+        />
+        <input
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          type="date"
+          className="field flex-1 text-[13px]"
+        />
+      </div>
+      {error && <p className="text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
+      <button type="submit" disabled={saving || !name.trim()} className="btn btn-primary btn-square w-full">
+        {saving ? 'Saving…' : 'Add goal'}
+      </button>
+    </form>
   )
 }

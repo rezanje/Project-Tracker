@@ -1,12 +1,16 @@
-import { useState } from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ChevronRight, Check } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Check, ChevronRight, Megaphone, Plus, StickyNote } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
 import { setScope } from '#/lib/workspace-scope'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
+import { deleteNoteFn } from '#/lib/actions'
 import { NotificationsBell } from '#/components/Header'
+import NoteDetail from '#/components/NoteDetail'
+import Popover from '#/components/Popover'
+import QuickNoteForm from '#/components/QuickNoteForm'
 import ThemeToggle from '#/components/ThemeToggle'
 import { WorkspacePill, WorkspaceSwitcherSheet } from '#/components/WorkspaceSwitcher'
 
@@ -75,7 +79,13 @@ function Empty({ title, sub }: { title: string; sub: string }) {
 function CommandCenter() {
   const d = Route.useLoaderData() as CommandCenterData
   const navigate = useNavigate()
+  const router = useRouter()
   const [wsOpen, setWsOpen] = useState(false)
+  const [selectedNote, setSelectedNote] = useState<CommandCenterData['notes'][number] | null>(null)
+  const noteCategories = useMemo(
+    () => Array.from(new Set(d.notes.map((n) => n.category).filter((c): c is string => !!c))).sort(),
+    [d.notes],
+  )
 
   const active = Math.max(0, d.stats.totalTasks - d.stats.completed)
   // "Butuh perhatian" in the design is late ∪ in-review. The aggregation
@@ -255,7 +265,106 @@ function CommandCenter() {
             )}
           </div>
         </section>
+
+        {/* Announcements and notes were Home's right rail until Home was cut
+            back to the comp's three sections. Both are account-wide rather than
+            per-workspace, so the cross-workspace monitor is where they belong.
+            fetchDashboard already carries them — no extra query. */}
+        <section>
+          <h2 className="mb-3 flex items-center gap-1.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+            <Megaphone size={17} className="text-[var(--ink3)]" aria-hidden="true" />
+            Pengumuman
+          </h2>
+          {d.announcements.length === 0 ? (
+            <Empty title="Belum ada pengumuman" sub="Kabar buat tim muncul di sini." />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {d.announcements.map((a) => (
+                <div key={a.id} className="flex gap-3 rounded-[20px] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)]">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                    style={{ background: accentFor(a.author ?? 'Team') }}
+                  >
+                    {(a.author ?? 'Team').trim().split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-semibold text-[var(--ink)]">{a.author ?? 'Team'}</p>
+                    <p className="mt-0.5 text-[13.5px] leading-[1.45] text-[var(--ink2)]">{a.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="flex items-center gap-1.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+              <StickyNote size={17} className="text-[var(--ink3)]" aria-hidden="true" />
+              Catatan
+            </h2>
+            <Popover
+              panelClassName="w-64 max-w-[calc(100vw-2.5rem)]"
+              renderTrigger={(_open, toggle) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="flex items-center gap-1 text-[13.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
+                >
+                  <Plus size={14} aria-hidden="true" /> Baru
+                </button>
+              )}
+              renderPanel={(close) => (
+                <QuickNoteForm
+                  categorySuggestions={noteCategories}
+                  onDone={() => {
+                    close()
+                    router.invalidate()
+                  }}
+                />
+              )}
+            />
+          </div>
+          {d.notes.length === 0 ? (
+            <Empty title="Belum ada catatan" sub="Simpan yang penting sebelum lupa." />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {d.notes.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => setSelectedNote(n)}
+                  className="rounded-[20px] bg-[var(--card)] px-4 py-3.5 text-left shadow-[var(--shadow-sm)] transition hover:-translate-y-px"
+                >
+                  <p className="text-[13.5px] leading-[1.45] text-[var(--ink)]">{n.body}</p>
+                  {n.category && (
+                    <span className="mt-2.5 inline-block rounded-full bg-[var(--col)] px-2.5 py-[3px] text-[11px] font-semibold text-[var(--ink2)]">
+                      {n.category}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+
+      {selectedNote && (
+        <NoteDetail
+          note={selectedNote}
+          categorySuggestions={noteCategories}
+          onClose={() => setSelectedNote(null)}
+          onSaved={() => {
+            setSelectedNote(null)
+            router.invalidate()
+          }}
+          onDelete={async () => {
+            await deleteNoteFn({ data: { id: selectedNote.id } })
+            setSelectedNote(null)
+            router.invalidate()
+          }}
+        />
+      )}
 
       <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
     </main>

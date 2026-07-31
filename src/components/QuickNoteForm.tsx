@@ -4,13 +4,15 @@ import { createNoteFn } from '#/lib/actions'
 
 export default function QuickNoteForm({
   onDone,
-  categorySuggestions,
+  categorySuggestions = [],
 }: {
   onDone: () => void
-  categorySuggestions: string[]
+  /** Existing categories to autocomplete. Omitted where the caller has no
+   *  dashboard data to hand, e.g. the header's "+ New" menu. */
+  categorySuggestions?: string[]
 }) {
-  // This form can be mounted twice at once (Quick Actions tile + Notes
-  // section popover) — a static datalist id would collide between them.
+  // This form can be mounted twice at once (the "+ New" menu and the Notes
+  // popover) — a static datalist id would collide between them.
   const categoryListId = useId()
   const [body, setBody] = useState('')
   const [category, setCategory] = useState('')
