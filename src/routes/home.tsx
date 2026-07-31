@@ -310,7 +310,42 @@ function Home() {
     { label: 'Completion', val: `${ppPct}%` },
   ]
 
-  /** Revenue hero — leads the page on mobile, sits in the rail on desktop. */
+  /** KPI teaser — what the prototype's Home leads with on mobile. The trend
+   *  badge the comp shows is omitted: there is no revenue history to derive it
+   *  from, and a hard-coded percentage would read as real. */
+  const kpiTeaser = (
+    <section className="panel flex items-center gap-3.5 p-[18px]">
+      <div className="w-[118px] flex-none">
+        <p className="mb-3 text-[15.5px] font-bold leading-[1.25] tracking-[-0.015em] text-[var(--ink)]">
+          Lihat progres
+          <br />
+          KPI kamu
+        </p>
+        <Link
+          to="/reports"
+          className="inline-flex items-center rounded-full bg-[var(--btn)] px-4 py-[9px] text-[13px] font-bold text-[var(--btn-ink)] no-underline transition hover:opacity-90 active:scale-[.96]"
+        >
+          Check now
+        </Link>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="mt-4 flex h-[66px] items-end gap-[5px]">
+          {KPI_BARS.map((v, i) => (
+            <span
+              key={i}
+              className="flex-1 rounded-[5px]"
+              style={{
+                height: `${(v / Math.max(...KPI_BARS)) * 100}%`,
+                background: i === KPI_BARS.length - 1 ? 'var(--accent)' : 'var(--sunk)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+
+  /** Revenue hero — the desktop rail card from the spec sheet's section 05. */
   const revenueHero = (
     <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
@@ -341,7 +376,7 @@ function Home() {
       <div className="mx-auto flex max-w-[1400px] flex-col gap-5 lg:flex-row">
         {/* left / main */}
         <div className="flex min-w-0 flex-1 flex-col gap-5">
-          <div className="lg:hidden">{revenueHero}</div>
+          <div className="lg:hidden">{kpiTeaser}</div>
 
           {/* TODAY */}
           <section className="panel p-6">
