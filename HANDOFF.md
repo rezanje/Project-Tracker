@@ -7,11 +7,21 @@ Paste this file's path into a fresh Claude Code session and say:
 
 ## Where the work lives
 
-- **Branch:** `feat/soft-ui-redesign` (14 commits ahead of `main`, nothing pushed, nothing deployed).
-  `main` still has the old pixel/8-bit UI. Production is untouched.
+- **Branch:** `feat/soft-ui-redesign`, pushed, with an open PR (#6). `main` still has the old
+  pixel/8-bit UI — the branch has **not** been merged.
+- **Production runs this branch.** Deployed 2026-07-31 to https://rakit.rezarezanje.workers.dev.
+  Migration `0036_workspace_member_cascade.sql` was applied by Reza beforehand — without its
+  trigger, someone removed from a workspace keeps access to projects they were added to.
+  Deploying again from a branch that is behind `main` would take the old UI back to production.
 - Typecheck, build and the 110 vitest tests all pass on this branch.
 
 ```
+f8fbce5 Let My tasks change status without opening the board
+e478d24 Draw "Task hari ini" the way the comp draws it
+def1bf2 Cut Home back to the comp's three sections
+b05278a Make the second nav tab the comp's projects tab
+5ad2466 Make the back arrows on Performance and Schedule actually go back
+24bf795 Let the header scroll away with the page
 ff1d752 Fix the sheets found broken once the app could be walked
 117dda1 Reshape quick-add into the comp's sheet
 b3c3fed Fold the board toolbar into sliders and more sheets
