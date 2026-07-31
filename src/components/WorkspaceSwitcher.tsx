@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
@@ -195,7 +196,12 @@ function Row({
   )
 }
 
-/** Shared bottom-sheet chrome: scrim, grab handle, slide-up, escape to close. */
+/** Shared bottom-sheet chrome: scrim, grab handle, slide-up, escape to close.
+ *
+ *  Portalled to `document.body` on purpose. The app header carries a
+ *  `backdrop-filter`, which makes it a containing block for `position: fixed`
+ *  descendants — a sheet opened from the header bell would otherwise pin itself
+ *  to the bottom of the *header* instead of the viewport. */
 export function Sheet({
   onClose,
   label,
@@ -215,7 +221,9 @@ export function Sheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div className="fixed inset-0 z-50">
       <button
         type="button"
@@ -232,6 +240,7 @@ export function Sheet({
         <span className="mx-auto mb-[18px] block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

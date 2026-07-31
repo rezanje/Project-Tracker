@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import {
@@ -32,18 +32,20 @@ function Chips<T extends string>({
   options,
   onPick,
   label,
+  rowRef,
 }: {
   value: T
   options: Array<{ id: T; label: string }>
   onPick: (id: T) => void
   label: string
+  rowRef?: React.Ref<HTMLDivElement>
 }) {
   return (
     <div className="mb-3">
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         {label}
       </p>
-      <div className="gt-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div ref={rowRef} className="gt-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {options.map((o) => (
           <button
             key={o.id}
@@ -83,6 +85,15 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
   const [assigneeId, setAssigneeId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const projectRowRef = useRef<HTMLDivElement>(null)
+
+  // The prefilled project can sit past the right edge of the chip row. Bring it
+  // into view, or the sheet opens looking like nothing is selected.
+  useEffect(() => {
+    const row = projectRowRef.current
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (row && chip) row.scrollLeft = chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2
+  }, [boardId, boards.length])
 
   useEffect(() => {
     fetchNav().then((nav) => {
@@ -90,7 +101,11 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
       setWorkspaces(nav.workspaces)
       const wsId = routeWorkspaceId(pathname, nav.boards) ?? nav.workspaces[0]?.id ?? ''
       setWorkspaceId(wsId)
-      setBoardId(nav.boards.find((b) => b.workspaceId === wsId)?.id ?? NO_PROJECT)
+      // Opened from a board? Prefill with that project, not merely the first
+      // one in its workspace.
+      const onBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1]
+      const current = onBoardId && nav.boards.find((b) => b.id === onBoardId)
+      setBoardId(current ? current.id : (nav.boards.find((b) => b.workspaceId === wsId)?.id ?? NO_PROJECT))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -172,6 +187,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
 
       <Chips
         label="Project"
+        rowRef={projectRowRef}
         value={boardId}
         onPick={setBoardId}
         options={[

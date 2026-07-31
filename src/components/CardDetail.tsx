@@ -115,6 +115,7 @@ export default function CardDetail({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [noteOpen, setNoteOpen] = useState(false)
 
   function toggleLabel(id: string) {
     setSelectedLabelIds((prev) =>
@@ -224,10 +225,25 @@ export default function CardDetail({
         </div>
       )}
 
+      {/* Clamped by default: real notes run to shopping lists and pasted links,
+          and an unclamped one pushes Status and the primary action off-screen. */}
       {card.description && (
-        <p className="mt-3.5 whitespace-pre-wrap rounded-[16px] bg-[var(--col)] px-4 py-3.5 text-[13.5px] leading-[1.55] text-[var(--ink2)]">
-          {card.description}
-        </p>
+        <div className="mt-3.5 rounded-[16px] bg-[var(--col)] px-4 py-3.5">
+          <p
+            className={`whitespace-pre-wrap break-words text-[13.5px] leading-[1.55] text-[var(--ink2)] ${
+              noteOpen ? '' : 'line-clamp-5'
+            }`}
+          >
+            {card.description}
+          </p>
+          <button
+            type="button"
+            onClick={() => setNoteOpen((v) => !v)}
+            className="mt-2 text-[12.5px] font-bold text-[var(--accent-ink)]"
+          >
+            {noteOpen ? 'Ringkas' : 'Selengkapnya'}
+          </button>
+        </div>
       )}
 
       <div className="mt-[18px] flex items-center justify-between gap-3">
