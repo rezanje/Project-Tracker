@@ -93,10 +93,10 @@ export default function TaskCreate({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(28,26,23,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-[560px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+      <div className="w-full max-w-[560px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="display-title text-2xl font-extrabold text-[var(--ink)]">
             {isContent ? 'Add content' : 'Add task'}

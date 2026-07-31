@@ -1,105 +1,116 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
-@import "./styles/_dotto-core.css";
 
 @custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
 
-/* Rakit's 8bit display face — self-hosted (public/fonts), see
-   public/fonts/OFL.txt for the license. Single weight (400) only. */
-@font-face {
-  font-family: "Press Start 2P";
-  src: url("/fonts/PressStart2P-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-display: swap;
-}
-
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Press Start 2P", "Hanken Grotesk", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Rakit "meadow" design tokens — light + dark, CSS-variable driven so the
-   theme toggle keeps working. Light values come straight from the redesign
-   comp; dark is an authored counterpart that holds AA contrast. */
+/* Rakit "soft" design tokens — light + dark, CSS-variable driven so the theme
+   toggle keeps working. Values come straight from the redesign comp
+   (redesign-project-dengan-ui-ux-baru). Hierarchy is tone + radius + shadow;
+   there are no hard borders. */
 :root {
-  --bg: #f7f4ec;
-  --card: #ffffff;
-  --col: #efece1;
-  --ink: #14241c;
-  --ink2: #586a60;
-  --ink3: #8a978f;
-  --line: #e6e1d3;
-  --accent: #1f9d55;
-  --accent-ink: #137a3f;
-  --accent-soft: #dcf3e5;
-  --pop: #f5c451;
-  --pop-soft: #fdf0cf;
-  --pop-ink: #7a5600;
-  --btn: #16211b;
-  --btn-ink: #ffffff;
-  --ring: rgba(31, 157, 85, 0.3);
-  --header-bg: rgba(255, 255, 255, 0.72);
-  --radius: 10px;
+  --bg: #ede9e3;
+  --card: #fbfaf8;
+  --col: #f4f1ec;
+  --sunk: #e7e2da;
+  --ink: #1c1a17;
+  --ink2: #6e6862;
+  --ink3: #a39c94;
+  --line: #e4dfd7;
+  --line-soft: #efebe4;
+  --line-strong: #d8d2c9;
+  --accent: #e8622c;
+  --accent-ink: #b8501f;
+  --accent-soft: #fbede5;
+  --pop: #c1913a;
+  --pop-soft: #f7eedc;
+  --pop-ink: #8a6417;
+  --done: #6e7a66;
+  --done-soft: #ebeee8;
+  --done-ink: #4f5c48;
+  --danger: #b8442c;
+  --danger-soft: #f7e7e2;
+  --danger-ink: #96331d;
+  --btn: #1c1a17;
+  --btn-ink: #fbfaf8;
+  --ring: rgba(232, 98, 44, 0.28);
+  --header-bg: rgba(251, 250, 248, 0.78);
+  --radius: 20px;
+  --r-lg: 24px;
+  --r-md: 18px;
+  --r-sm: 12px;
   --pad: 16px;
   --gap: 14px;
-  --danger: #c0392b;
-  --shadow-pixel: 4px 4px 0 var(--ink);
-  --shadow-pixel-sm: 3px 3px 0 var(--ink);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --shadow: 0 1px 2px rgba(28, 26, 23, 0.04), 0 10px 28px rgba(28, 26, 23, 0.055);
+  --shadow-sm: 0 1px 2px rgba(28, 26, 23, 0.05);
+  --shadow-lift: 0 2px 4px rgba(28, 26, 23, 0.05), 0 14px 34px rgba(28, 26, 23, 0.1);
+  --shadow-float: 0 1px 2px rgba(28, 26, 23, 0.04), 0 12px 30px rgba(28, 26, 23, 0.11);
+  /* shadcn primitives — kept in sync with the tokens above so the few ui/* parts
+     that read them don't fall back to the stock grey palette. */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --popover: var(--card);
+  --popover-foreground: var(--ink);
+  --primary: var(--btn);
+  --primary-foreground: var(--btn-ink);
+  --secondary: var(--col);
+  --secondary-foreground: var(--ink);
+  --muted: var(--col);
+  --muted-foreground: var(--ink2);
+  --accent-foreground: #ffffff;
+  --destructive: var(--danger);
+  --border: var(--line);
+  --input: var(--line);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--btn);
+  --sidebar-primary-foreground: var(--btn-ink);
+  --sidebar-accent: var(--col);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--ring);
 }
 
 /* Dark tokens shared by the explicit toggle and the system-preference path. */
 :root[data-theme="dark"],
 .dark {
-  --bg: #0c1410;
-  --card: #16211b;
-  --col: #111a15;
-  --ink: #e7efe9;
-  --ink2: #9fb0a6;
-  --ink3: #728578;
-  --line: #26332c;
-  --accent: #25b463;
-  --accent-ink: #54d98c;
-  --accent-soft: #12301f;
-  --pop: #f5c451;
+  --bg: #16130f;
+  --card: #211d18;
+  --col: #1b1813;
+  --sunk: #2a251f;
+  --ink: #f3efe8;
+  --ink2: #a8a199;
+  --ink3: #79726a;
+  --line: #2e2822;
+  --line-soft: #262019;
+  --line-strong: #3b342c;
+  --accent: #f5763c;
+  --accent-ink: #f5763c;
+  --accent-soft: #3a2318;
+  --pop: #d9ac57;
   --pop-soft: #332916;
-  --pop-ink: #f5c451;
-  --btn: #e9f1ec;
-  --btn-ink: #0d1512;
-  --ring: rgba(37, 180, 99, 0.35);
-  --header-bg: rgba(14, 22, 18, 0.72);
-  --danger: #f0908a;
-  --shadow-pixel: 4px 4px 0 var(--ink);
-  --shadow-pixel-sm: 3px 3px 0 var(--ink);
+  --pop-ink: #d9ac57;
+  --done: #8b9781;
+  --done-soft: #1f2a1d;
+  --done-ink: #8b9781;
+  --danger: #d96a50;
+  --danger-soft: #3a201a;
+  --danger-ink: #d96a50;
+  --btn: #f3efe8;
+  --btn-ink: #16130f;
+  --ring: rgba(245, 118, 60, 0.32);
+  --header-bg: rgba(33, 29, 24, 0.78);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.32), 0 14px 34px rgba(0, 0, 0, 0.45);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -118,13 +129,18 @@ body {
   background: var(--bg);
   font-family: var(--font-sans);
   overflow-x: hidden;
+  text-wrap: pretty;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  color: var(--accent-ink);
-  text-underline-offset: 2px;
+/* Layered so any `text-*` utility on a link still wins — an unlayered element
+   selector would beat every Tailwind utility. */
+@layer base {
+  a {
+    color: var(--accent-ink);
+    text-underline-offset: 2px;
+  }
 }
 
 .page-wrap {
@@ -132,38 +148,45 @@ a {
   margin-inline: auto;
 }
 
+/* Display weight of the one sans — headings and big numerals. */
 .display-title {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---- Product component classes ---- */
 
+/* Default surface: list rows, task cards, kanban cards. Separation is tone +
+   a hairline shadow, never a border. */
 .card {
-  border: 2px solid var(--ink);
   border-radius: var(--radius);
   background: var(--card);
-  box-shadow: var(--shadow-pixel);
+  box-shadow: var(--shadow-sm);
+}
+/* Big sections, sheets, hero panels — rounder and with the ambient shadow. */
+.panel {
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow);
 }
 .card-hover {
-  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.25, 1), box-shadow 180ms ease;
   cursor: pointer;
 }
 .card-hover:hover {
-  transform: translate(2px, 2px);
-  box-shadow: var(--shadow-pixel-sm);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
 }
 
 .field {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--card);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--col);
   color: var(--ink);
-  padding: 0.65rem 0.8rem;
-  font-size: 0.875rem;
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   outline: none;
   transition: border-color 150ms ease, box-shadow 150ms ease;
@@ -178,168 +201,125 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  border: 0;
   border-radius: 999px;
-  padding: 0.55rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.875rem;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  border: 2px solid var(--ink);
-  box-shadow: var(--shadow-pixel-sm);
-  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end), opacity 150ms ease;
+  transition: background-color 180ms ease, color 180ms ease, opacity 150ms ease,
+    box-shadow 180ms ease;
 }
-.btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
-.btn-primary { background: var(--btn); color: var(--btn-ink); }
-.btn-ghost { background: var(--card); color: var(--ink2); }
-.btn-ghost:hover:not(:disabled) { color: var(--ink); }
-.btn-danger {
-  background: transparent;
-  border-color: color-mix(in oklab, var(--danger) 40%, transparent);
-  color: var(--danger);
-}
-/* Squared variant for form submits / modal actions (matches the comp). */
-.btn-square { border-radius: 11px; padding: 0.7rem 1.1rem; font-weight: 700; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.btn-primary { background: var(--btn); color: var(--btn-ink); box-shadow: 0 6px 18px rgba(28, 26, 23, 0.16); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-ghost { background: var(--col); color: var(--ink); }
+.btn-ghost:hover:not(:disabled) { background: var(--sunk); }
+.btn-danger { background: var(--danger-soft); color: var(--danger-ink); }
+/* Softly squared variant for form submits / modal actions. */
+.btn-square { border-radius: var(--r-md); padding: 0.8rem 1.2rem; }
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  border: 1.5px solid var(--ink);
+  border: 0;
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--col);
+  color: var(--ink2);
 }
+.chip-accent { background: var(--accent-soft); color: var(--accent-ink); }
+.chip-warn { background: var(--pop-soft); color: var(--pop-ink); }
+.chip-done { background: var(--done-soft); color: var(--done-ink); }
+.chip-danger { background: var(--danger-soft); color: var(--danger-ink); }
+.chip-solid { background: var(--btn); color: var(--btn-ink); }
 
-/* Recessed column lane so the white cards read as the protagonist. */
+/* Recessed column lane so the cards read as the protagonist. */
 .col-surface {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--r-lg);
   background: var(--col);
 }
 
-/* Soft meadow backdrop behind the boards grid (light mode only — the photo is a
-   bright sky/field, so dark mode falls back to the flat --bg). */
-.meadow-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    url("/meadow.png") center bottom / cover no-repeat,
-    linear-gradient(180deg, #c7e0f4 0%, #dfeef9 40%, #edf5fb 60%, #e9f3ec 100%);
+/* Continuous progress track. */
+.progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sunk);
+  overflow: hidden;
 }
-:root[data-theme="dark"] .meadow-bg,
-.dark .meadow-bg { display: none; }
-
-/* LCD-style countdown readout (Pomodoro). Fixed dark screen + glowing digits
-   regardless of light/dark theme — reads as a physical retro timer, and a
-   true monospace face stays legible at large sizes where Pixelify Sans's
-   pixel-art strokes blur together. */
-.lcd-screen {
-  border: 3px solid var(--ink);
-  border-radius: 10px;
-  background: #0f1f16;
-  box-shadow: var(--shadow-pixel-sm);
-  padding: 0.65rem 0.5rem;
-}
-.lcd-digits {
-  font-family: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.12em;
-  color: #6be89a;
-  text-shadow: 0 0 8px rgba(107, 232, 154, 0.55);
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms cubic-bezier(0.2, 0.8, 0.25, 1);
 }
 
-/* ---- Pixel-game auth scene (login / signup) ---- */
+/* KPI / summary cell. */
+.stat-tile {
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  padding: var(--pad);
+}
+
+/* Overlapping avatars. Direct children are the circles; they tuck left. */
+.avatar-stack { display: inline-flex; }
+.avatar-stack > * { margin-left: -8px; border: 2px solid var(--card); border-radius: 999px; }
+.avatar-stack > *:first-child { margin-left: 0; }
+
+/* ---- Auth (login / signup / reset) ---- */
 .auth-card {
-  border: 4px solid var(--ink);
-  border-radius: 16px;
-  background: #f3ecd8; /* parchment */
-  box-shadow: 8px 8px 0 var(--ink);
-  padding: 30px;
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  padding: 32px;
 }
-:root[data-theme="dark"] .auth-card { background: #201d15; }
 
-/* Field with a leading pixel icon + optional trailing button (eye toggle). */
+/* Field with a leading icon + optional trailing button (eye toggle). */
 .auth-field {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  border: 2px solid var(--ink);
-  border-radius: 12px;
+  gap: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
   background: var(--card);
-  padding: 0.1rem 0.75rem;
-  box-shadow: var(--shadow-pixel-sm);
+  padding: 0.15rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-.auth-field:focus-within { box-shadow: 0 0 0 3px var(--ring), var(--shadow-pixel-sm); }
+.auth-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .auth-field input {
   flex: 1;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--ink);
-  padding: 0.6rem 0;
-  font-size: 0.9rem;
+  padding: 0.85rem 0;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 .auth-field input::placeholder { color: var(--ink3); }
 .auth-field .auth-ic { color: var(--ink3); flex: none; }
 
-/* Robot mascot + speech bubble. */
-.auth-mascot {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  box-shadow: var(--shadow-pixel-sm);
-  flex: none;
-}
-.auth-bubble {
-  position: relative;
-  align-self: center;
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  background: var(--card);
-  padding: 0.35rem 0.6rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--ink);
-  box-shadow: var(--shadow-pixel-sm);
-}
-.auth-bubble::after {
-  content: "";
-  position: absolute;
-  right: -8px;
-  top: 50%;
-  margin-top: -5px;
-  border: 5px solid transparent;
-  border-left-color: var(--ink);
-}
-
-/* Big green pixel submit — matches the comp's "Log in" button. */
-.btn-pixel {
+/* Full-width primary submit on the auth screens. */
+.btn-auth {
   width: 100%;
-  border: 3px solid var(--ink);
-  border-radius: 12px;
-  background: var(--accent);
-  color: #fff;
-  padding: 0.85rem 1rem;
-  font-size: 1rem;
-  font-weight: 800;
-  box-shadow: var(--shadow-pixel);
-  transition: transform 120ms steps(2, end), box-shadow 120ms steps(2, end);
+  border: 0;
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--btn-ink);
+  padding: 1.1rem 1rem;
+  font-size: 0.97rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(28, 26, 23, 0.2);
+  transition: opacity 150ms ease, box-shadow 180ms ease;
 }
-.btn-pixel:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
-.btn-pixel:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-auth:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* Thin, unobtrusive horizontal scrollbar for the board lane row. */
 .gt-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -362,31 +342,6 @@ a {
 .gt-pop { animation: gtpop 0.24s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 .gt-back { animation: gtback 0.2s ease both; }
 
-/* Segmented pixel progress bar. Render `blocks` children with .progress-seg-block;
-   filled ones also get .is-on. Fill count from segFill(). */
-.progress-seg { display: inline-flex; gap: 3px; }
-.progress-seg-block {
-  width: 10px;
-  height: 12px;
-  border: 1.5px solid var(--ink);
-  background: var(--col);
-}
-.progress-seg-block.is-on { background: var(--accent); }
-
-/* KPI / summary cell. */
-.stat-tile {
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: var(--shadow-pixel-sm);
-  padding: var(--pad);
-}
-
-/* Overlapping avatars. Direct children are the circles; they tuck left. */
-.avatar-stack { display: inline-flex; }
-.avatar-stack > * { margin-left: -8px; border: 2px solid var(--card); border-radius: 999px; }
-.avatar-stack > *:first-child { margin-left: 0; }
-
 @theme inline {
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -397,11 +352,6 @@ a {
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -420,44 +370,13 @@ a {
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --radius-xl: var(--r-lg);
+  --radius-2xl: var(--r-lg);
+  --radius-3xl: 28px;
+  --radius-4xl: 32px;
 }
 
 @layer base {

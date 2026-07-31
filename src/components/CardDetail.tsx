@@ -137,10 +137,10 @@ export default function CardDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(28,26,23,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
         {/* Header */}
         <div className="relative px-6 pt-6">
           <button
@@ -161,15 +161,11 @@ export default function CardDetail({
                       key={label.id}
                       type="button"
                       onClick={() => toggleLabel(label.id)}
-                      className="rounded-full border px-3 py-1 text-xs font-bold text-white transition"
+                      className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-[var(--card)] transition"
                       style={
                         active
-                          ? { backgroundColor: label.color, borderColor: label.color }
-                          : {
-                              backgroundColor: 'transparent',
-                              borderColor: 'var(--line)',
-                              color: 'var(--ink2)',
-                            }
+                          ? { backgroundColor: label.color }
+                          : { backgroundColor: 'var(--col)', color: 'var(--ink2)' }
                       }
                     >
                       {label.name}
@@ -187,7 +183,7 @@ export default function CardDetail({
                   return (
                     <span
                       key={cl.label_id}
-                      className="rounded-full px-3 py-1 text-xs font-bold text-white"
+                      className="rounded-full px-3 py-1 text-xs font-bold text-[var(--card)]"
                       style={{ backgroundColor: label.color }}
                     >
                       {label.name}
@@ -250,7 +246,7 @@ export default function CardDetail({
               ) : (
                 <div className="flex items-center gap-2 pt-0.5">
                   {assignee && (
-                    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-[var(--card)]">
                       {initials(assignee.name)}
                     </span>
                   )}

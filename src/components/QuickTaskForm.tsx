@@ -93,7 +93,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={submit}>
-      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         <CheckSquare size={14} aria-hidden="true" /> New task
       </p>
       <Input

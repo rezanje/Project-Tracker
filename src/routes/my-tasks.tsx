@@ -99,10 +99,13 @@ function fmtDue(due: string | null): string {
 function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: boolean; showChevron: boolean }) {
   return (
     <>
-      <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+      <span
+        className="h-[22px] w-[22px] shrink-0 rounded-[12px] border-[1.8px] border-[var(--line-strong)]"
+        aria-hidden="true"
+      />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-bold text-[var(--ink)]">{task.title}</p>
-        <p className="truncate text-[11px] text-[var(--ink3)]">
+        <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{task.title}</p>
+        <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
           {task.boardId ? `${task.workspaceName} · ${task.boardTitle} · ${task.colTitle}`
             : task.workspaceId ? `${task.workspaceName} · ${task.boardTitle}`
             : task.boardTitle}
@@ -110,13 +113,14 @@ function TaskRowContent({ task, overdue, showChevron }: { task: Task; overdue: b
       </div>
       {task.due && (
         <span
-          className="shrink-0 text-[11px] font-bold tabular-nums"
-          style={{ color: overdue ? 'var(--danger)' : 'var(--ink2)' }}
+          className={`shrink-0 whitespace-nowrap text-[12.5px] tabular-nums ${
+            overdue ? 'font-bold text-[var(--danger)]' : 'font-semibold text-[var(--ink2)]'
+          }`}
         >
           {fmtDue(task.due)}
         </span>
       )}
-      {showChevron && <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />}
+      {showChevron && <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />}
     </>
   )
 }
@@ -164,15 +168,19 @@ function MyTasks() {
   }
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[900px] flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <CheckSquare size={22} className="text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="display-title text-2xl font-extrabold text-[var(--ink)]">My Tasks</h1>
-          <span className="chip ml-1">{tasks.length} open</span>
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="mx-auto flex max-w-[900px] flex-col gap-5">
+        <div className="flex items-center gap-2.5">
+          <CheckSquare size={22} className="text-[var(--ink3)]" aria-hidden="true" />
+          <div>
+            <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">My Tasks</h1>
+            <p className="text-[13.5px] text-[var(--ink3)]">
+              {tasks.length} open · {tasks.filter((t) => !!t.due && t.due < today).length} overdue
+            </p>
+          </div>
         </div>
 
-        <div className="flex w-fit gap-0 overflow-hidden rounded-full border border-[var(--line)]">
+        <div className="flex flex-wrap gap-2">
           {([
             ['due', 'Due date'],
             ['project', 'Project'],
@@ -183,10 +191,10 @@ function MyTasks() {
               type="button"
               onClick={() => setMode(value)}
               aria-pressed={mode === value}
-              className={`px-3.5 py-1.5 text-[12px] font-bold ${
+              className={`rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
                 mode === value
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+                  ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                  : 'bg-[var(--col)] text-[var(--ink2)] hover:bg-[var(--sunk)]'
               }`}
             >
               {label}
@@ -195,27 +203,28 @@ function MyTasks() {
         </div>
 
         {tasks.length === 0 && (
-          <div className="card p-10 text-center text-[var(--ink2)]">
-            <p className="display-title text-lg font-bold">All clear 🎉</p>
-            <p className="mt-1 text-sm text-[var(--ink3)]">No open tasks across your boards.</p>
+          <div className="panel p-12 text-center">
+            <p className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">All clear 🎉</p>
+            <p className="mt-2 text-[14px] text-[var(--ink3)]">No open tasks across your boards.</p>
           </div>
         )}
 
         {groups.map((b) => (
-          <section key={b.key} className="card p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: b.tint }} />
-              <h2 className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">{b.label}</h2>
-              <span className="text-[12px] font-bold text-[var(--ink3)]">{b.tasks.length}</span>
-            </div>
-            <div className="flex flex-col">
+          <section key={b.key}>
+            <p
+              className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+              style={{ color: b.key === 'overdue' ? 'var(--danger)' : 'var(--ink3)' }}
+            >
+              {b.label} · {b.tasks.length}
+            </p>
+            <div className="flex flex-col gap-2.5">
               {b.tasks.map((t) =>
                 t.boardId ? (
                   <Link
                     key={t.id}
                     to="/board/$boardId"
                     params={{ boardId: t.boardId }}
-                    className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 no-underline last:border-0 hover:bg-[var(--col)]"
+                    className="card card-hover flex items-center gap-3.5 px-4 py-[15px] no-underline"
                   >
                     <TaskRowContent task={t} overdue={!!t.due && t.due < today} showChevron />
                   </Link>
@@ -224,7 +233,7 @@ function MyTasks() {
                     key={t.id}
                     type="button"
                     onClick={() => completeStandalone(t)}
-                    className="flex w-full items-center gap-3 border-b border-[var(--line)] py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                    className="card card-hover flex w-full items-center gap-3.5 px-4 py-[15px] text-left"
                   >
                     <TaskRowContent task={t} overdue={!!t.due && t.due < today} showChevron={false} />
                   </button>

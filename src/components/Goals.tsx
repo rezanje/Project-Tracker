@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { X, Check } from 'lucide-react'
-import { Clock } from '@/components/pixel-icons'
+import {
+  Check,
+  Clock,
+  X,
+} from 'lucide-react'
 import type { Kpi, Kr, Objective, AssignedKpi, AssignedObjective } from '#/lib/goals'
 
 const pct = (c: number, t: number) => (t ? Math.min(100, Math.round((c / t) * 100)) : 0)
@@ -61,7 +64,7 @@ function CheckinForm({ onSubmit }: { onSubmit: (value: number, note: string) => 
 export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: AssigneeProps) {
   return (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My KPIs</h3>
         {kpis.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">No KPIs assigned yet.</p>}
         <ul className="flex flex-col gap-3">
@@ -71,14 +74,13 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                 <span className="font-bold text-[var(--ink)]">{k.name}</span>
                 <span className="text-[var(--ink3)]">{k.current} / {k.target} {k.unit ?? ''}</span>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
+              <div className="mt-1.5 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
               </div>
               {k.pending ? (
                 <div className="mt-1.5">
                   <span
-                    className="chip gap-1 text-[11px]"
-                    style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}
+                    className="chip chip-warn gap-1 text-[11px]"
                   >
                     <Clock size={11} />
                     Pending review: {k.pending.proposedValue}
@@ -94,7 +96,7 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
         </ul>
       </div>
 
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My Objectives</h3>
         {objectives.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">No objectives assigned yet.</p>}
         <ul className="flex flex-col gap-4">
@@ -104,8 +106,8 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                 <span className="text-sm font-bold text-[var(--ink)]">{o.title}</span>
                 <span className="text-[12px] font-semibold text-[var(--ink3)]">{o.progress}%</span>
               </div>
-              <div className="mb-2 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
+              <div className="mb-2 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
               </div>
               <ul className="flex flex-col gap-2 pl-3">
                 {o.krs.map((k) => (
@@ -117,8 +119,7 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                     {k.pending ? (
                       <div className="mt-1">
                         <span
-                          className="chip gap-1 text-[11px]"
-                          style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}
+                          className="chip chip-warn gap-1 text-[11px]"
                         >
                           <Clock size={11} />
                           Pending review: {k.pending.proposedValue}
@@ -153,7 +154,7 @@ interface OwnerProps {
 function ReviewRow({ pending, onReview }: { pending: Kr['pending']; onReview: (checkinId: string, approve: boolean) => void }) {
   if (!pending) return null
   return (
-    <div className="mt-1.5 flex items-center gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--col)] p-2 text-[11px] gt-fade">
+    <div className="mt-1.5 flex items-center gap-1 rounded-[14px] bg-[var(--col)] p-3 text-[11px] gt-fade">
       <span className="flex-1">Proposed: <b>{pending.proposedValue}</b>{pending.note ? ` — ${pending.note}` : ''}</span>
       <button
         type="button"
@@ -222,7 +223,7 @@ function AddKrForm({ onAdd }: { onAdd: (title: string, target: number) => void }
 export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective, onAddKeyResult }: OwnerProps) {
   return (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">Assigned KPIs</h3>
         {kpis.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">Nothing assigned yet.</p>}
         <ul className="flex flex-col gap-3">
@@ -237,8 +238,8 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
                   </button>
                 </span>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
+              <div className="mt-1.5 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
               </div>
               <ReviewRow pending={k.pending} onReview={onReviewKpi} />
             </li>
@@ -246,7 +247,7 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
         </ul>
       </div>
 
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">Assigned Objectives</h3>
         {objectives.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">Nothing assigned yet.</p>}
         <ul className="flex flex-col gap-4">
@@ -261,8 +262,8 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
                   </button>
                 </span>
               </div>
-              <div className="mb-2 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
+              <div className="mb-2 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
               </div>
               <ul className="flex flex-col gap-2 pl-3">
                 {o.krs.map((k) => (

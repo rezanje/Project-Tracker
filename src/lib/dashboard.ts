@@ -4,7 +4,7 @@ import { requireUser } from './auth'
 import { myPicBoardIds, type PicMemberRow } from './board-pics'
 import { isDoneColumn, localDateStr, weekdayIndex, weekRange } from './home'
 
-// One aggregation feeding both dashboards (Command Center + Pixel Home). Panels
+// One aggregation feeding both dashboards (Command Center + Home). Panels
 // that need history or event data we don't store (timeline times, sparkline
 // trends, weekly bars, heatmaps) stay static in the UI — this returns only what
 // the schema can back.

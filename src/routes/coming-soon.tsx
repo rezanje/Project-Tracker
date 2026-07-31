@@ -7,9 +7,9 @@ export const Route = createFileRoute('/coming-soon')({
 function ComingSoon() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
-      <div className="card p-8">
-        <p className="display-title text-2xl font-bold">Coming Soon</p>
-        <p className="mt-2 text-sm text-[var(--ink2)]">
+      <div className="panel p-10">
+        <p className="text-[26px] font-extrabold tracking-[-0.03em]">Coming soon</p>
+        <p className="mt-2 text-[14px] text-[var(--ink2)]">
           This screen is on the roadmap. Check back soon.
         </p>
       </div>

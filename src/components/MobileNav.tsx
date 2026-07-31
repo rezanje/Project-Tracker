@@ -1,30 +1,33 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import {
+  BarChart3,
+  Calendar,
   CheckSquare,
   Home,
   Inbox,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
-  MoreHorizontal,
   Plus,
   Settings,
   UserCheck,
   X,
 } from 'lucide-react'
-import { BarChart3, Calendar } from '@/components/pixel-icons'
+import type { LucideProps } from 'lucide-react'
 import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { fetchInboxUnreadDeduped } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { accentFor } from './Sidebar'
+import QuickProjectForm from './QuickProjectForm'
+import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
 
 const BAR_NAV: Array<{
   label: string
-  icon: ComponentType<{ size?: number; className?: string }>
+  icon: ComponentType<LucideProps>
   to: '/home' | '/' | '/my-tasks' | '/calendar'
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
@@ -38,6 +41,7 @@ export default function MobileNav() {
   const router = useRouter()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [createTab, setCreateTab] = useState<'task' | 'project'>('task')
   const [workspaces, setWorkspaces] = useState<NavWorkspace[]>([])
   const [boards, setBoards] = useState<NavBoard[]>([])
   const [email, setEmail] = useState<string | null>(null)
@@ -102,35 +106,48 @@ export default function MobileNav() {
 
   return (
     <>
+      {/* Fade so content scrolls out from under the floating bar instead of
+          being clipped by a hard edge. */}
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-[120px] bg-[linear-gradient(180deg,transparent_0%,var(--bg)_55%)] md:hidden"
+        aria-hidden="true"
+      />
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t-2 border-[var(--ink)] bg-[var(--header-bg)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="fixed inset-x-5 bottom-[calc(env(safe-area-inset-bottom)+22px)] z-30 flex items-center gap-3 md:hidden"
         aria-label="Primary"
       >
-        {BAR_NAV.map(({ label, icon: Icon, to }) => {
-          const active = pathname === to
-          return (
-            <Link
-              key={label}
-              to={to}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-bold no-underline ${
-                active ? 'text-[var(--accent-ink)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              <Icon size={20} aria-hidden="true" />
-              {label}
-            </Link>
-          )
-        })}
+        <div className="flex flex-1 items-center justify-around rounded-full bg-[var(--card)] px-2.5 py-3.5 shadow-[var(--shadow-float)]">
+          {BAR_NAV.map(({ label, icon: Icon, to }) => {
+            const active = pathname === to
+            return (
+              <Link
+                key={label}
+                to={to}
+                aria-label={label}
+                title={label}
+                className={`flex items-center justify-center px-3 no-underline ${
+                  active ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
+                }`}
+              >
+                <Icon
+                  size={21}
+                  strokeWidth={1.8}
+                  fill={active ? 'currentColor' : 'none'}
+                  aria-hidden="true"
+                />
+              </Link>
+            )
+          })}
+        </div>
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          aria-label="More"
-          className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-bold ${
-            moreActive ? 'text-[var(--accent-ink)]' : 'text-[var(--ink3)]'
+          aria-label="New and more"
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--btn)] text-[var(--btn-ink)] shadow-[0_8px_24px_rgba(28,26,23,.28)] ${
+            moreActive ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]' : ''
           }`}
         >
-          <MoreHorizontal size={20} aria-hidden="true" />
-          More
+          <Plus size={24} strokeWidth={2} aria-hidden="true" />
         </button>
       </nav>
 
@@ -142,34 +159,68 @@ export default function MobileNav() {
             onClick={() => setSheetOpen(false)}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col overflow-y-auto rounded-t-2xl border-t-2 border-[var(--ink)] bg-[var(--card)] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="display-title text-base font-bold text-[var(--ink)]">Menu</span>
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[86dvh] flex-col overflow-y-auto rounded-t-[28px] bg-[var(--card)] p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-[var(--shadow)]">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">New</span>
               <button
                 type="button"
                 onClick={() => setSheetOpen(false)}
                 aria-label="Close menu"
-                className="rounded-full p-1.5 text-[var(--ink3)] hover:bg-[var(--col)]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)]"
               >
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
 
+            {/* Quick create — the FAB's primary job. */}
+            <div className="mb-3 flex gap-1 rounded-full bg-[var(--col)] p-1">
+              <button
+                type="button"
+                onClick={() => setCreateTab('task')}
+                className={`flex-1 rounded-full py-2 text-[13px] font-semibold ${
+                  createTab === 'task'
+                    ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--ink3)]'
+                }`}
+              >
+                Task
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateTab('project')}
+                className={`flex-1 rounded-full py-2 text-[13px] font-semibold ${
+                  createTab === 'project'
+                    ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--ink3)]'
+                }`}
+              >
+                Project
+              </button>
+            </div>
+            {createTab === 'task' ? (
+              <QuickTaskForm onDone={() => setSheetOpen(false)} />
+            ) : (
+              <QuickProjectForm onDone={() => setSheetOpen(false)} />
+            )}
+
+            <p className="mb-2 mt-6 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+              Go to
+            </p>
             <Link
               to="/reports"
-              className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
+              className="flex items-center gap-[11px] rounded-[14px] px-3 py-[11px] text-[14px] font-medium text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
             >
-              <BarChart3 size={17} className="shrink-0" aria-hidden="true" />
+              <BarChart3 size={18} className="shrink-0" aria-hidden="true" />
               Reports
             </Link>
             <Link
               to="/inbox"
-              className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
+              className="flex items-center gap-[11px] rounded-[14px] px-3 py-[11px] text-[14px] font-medium text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
             >
-              <Inbox size={17} className="shrink-0" aria-hidden="true" />
+              <Inbox size={18} className="shrink-0" aria-hidden="true" />
               <span className="flex-1">Inbox</span>
               {inboxUnread > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-bold text-[var(--card)]">
                   {inboxUnread}
                 </span>
               )}
@@ -177,12 +228,12 @@ export default function MobileNav() {
             {isSuperAdmin && (
               <Link
                 to="/admin/approvals"
-                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
+                className="flex items-center gap-[11px] rounded-[14px] px-3 py-[11px] text-[14px] font-medium text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
               >
-                <UserCheck size={17} className="shrink-0" aria-hidden="true" />
+                <UserCheck size={18} className="shrink-0" aria-hidden="true" />
                 <span className="flex-1">Approvals</span>
                 {pendingApprovals > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-bold text-[var(--card)]">
                     {pendingApprovals}
                   </span>
                 )}
@@ -190,7 +241,7 @@ export default function MobileNav() {
             )}
 
             {workspaces.length > 0 && (
-              <p className="mb-1 mt-3 px-2.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+              <p className="mb-2 mt-4 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                 Workspaces
               </p>
             )}
@@ -202,19 +253,21 @@ export default function MobileNav() {
                   <Link
                     to="/workspace/$workspaceId"
                     params={{ workspaceId: w.id }}
-                    className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold no-underline ${
-                      isActiveWs ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
+                    className={`flex items-center gap-[11px] rounded-[14px] px-3 py-[9px] text-[14px] no-underline ${
+                      isActiveWs
+                        ? 'bg-[var(--sunk)] font-semibold text-[var(--ink)]'
+                        : 'font-medium text-[var(--ink2)] hover:bg-[var(--col)]'
                     }`}
                   >
                     {workspaceLogoFor(w.name) ? (
                       <img
                         src={workspaceLogoFor(w.name) as string}
                         alt=""
-                        className="h-5 w-5 shrink-0 rounded-md object-cover"
+                        className="h-[22px] w-[22px] shrink-0 rounded-[7px] object-cover"
                       />
                     ) : (
                       <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold text-white"
+                        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-[var(--card)]"
                         style={{ background: accentFor(w.id) }}
                       >
                         {w.name.slice(0, 1).toUpperCase()}
@@ -223,16 +276,16 @@ export default function MobileNav() {
                     <span className="truncate">{w.name}</span>
                   </Link>
                   {isActiveWs && wsBoards.length > 0 && (
-                    <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--line)] pl-2.5">
+                    <div className="ml-[22px] mt-0.5 flex flex-col gap-px border-l border-[var(--line)] pl-3">
                       {wsBoards.map((b) => (
                         <Link
                           key={b.id}
                           to="/board/$boardId"
                           params={{ boardId: b.id }}
-                          className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold no-underline ${
+                          className={`flex items-center gap-2 rounded-[14px] px-2.5 py-[7px] text-[13.5px] no-underline ${
                             b.id === activeBoardId
-                              ? 'bg-[var(--col)] text-[var(--ink)]'
-                              : 'text-[var(--ink3)] hover:bg-[var(--col)] hover:text-[var(--ink2)]'
+                              ? 'font-semibold text-[var(--ink)]'
+                              : 'font-medium text-[var(--ink3)] hover:bg-[var(--col)] hover:text-[var(--ink2)]'
                           }`}
                         >
                           <LayoutGrid size={13} className="shrink-0" aria-hidden="true" />
@@ -247,30 +300,36 @@ export default function MobileNav() {
             <button
               type="button"
               onClick={addWorkspace}
-              className="mt-0.5 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-semibold text-[var(--ink3)] hover:bg-[var(--col)] hover:text-[var(--ink2)]"
+              className="mt-0.5 flex items-center gap-[11px] rounded-[14px] px-3 py-[9px] text-[14px] font-medium text-[var(--ink3)] hover:bg-[var(--col)] hover:text-[var(--ink2)]"
             >
-              <Plus size={17} className="shrink-0" aria-hidden="true" />
+              <Plus size={18} className="shrink-0" aria-hidden="true" />
               Add workspace
             </button>
 
             <Link
               to="/coming-soon"
-              className="mt-2 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] font-bold text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
+              className="mt-3 flex items-center gap-[11px] rounded-[14px] px-3 py-[11px] text-[14px] font-medium text-[var(--ink2)] no-underline hover:bg-[var(--col)]"
             >
-              <Settings size={17} className="shrink-0" aria-hidden="true" />
+              <Settings size={18} className="shrink-0" aria-hidden="true" />
               Settings
             </Link>
 
             {email && (
-              <div className="mt-3 flex items-center gap-2 border-t border-[var(--line)] pt-3">
-                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--ink2)]">{email}</span>
+              <div className="mt-4 flex items-center gap-2.5 border-t border-[var(--line)] pt-4">
+                <span
+                  className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-[var(--card)]"
+                  style={{ background: accentFor(email) }}
+                >
+                  {email.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-[var(--ink3)]">{email}</span>
                 <ThemeToggle compact />
                 <button
                   type="button"
                   onClick={logout}
                   aria-label="Log out"
                   title="Log out"
-                  className="btn btn-ghost px-2.5"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)]"
                 >
                   <LogOut size={16} aria-hidden="true" />
                 </button>

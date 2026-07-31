@@ -114,7 +114,7 @@ export default function SwipeableListRow({
                 onOpenChange(false)
                 a.onCommit()
               }}
-              className="flex h-full flex-1 items-center justify-center border-l-2 border-[var(--ink)] px-1 text-center text-[11px] font-bold leading-tight"
+              className="flex h-full flex-1 items-center justify-center border-l border-[var(--line-soft)] px-1 text-center text-[11px] font-bold leading-tight"
               style={{ background: a.bg, color: a.ink }}
             >
               {a.label}

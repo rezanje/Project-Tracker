@@ -6,7 +6,7 @@ import AuthShell from '#/components/AuthShell'
 
 export const Route = createFileRoute('/reset')({ component: Reset })
 
-const fieldLabel = 'mb-1.5 block text-xs font-bold text-[var(--ink)]'
+const fieldLabel = 'mb-2 block text-[12.5px] font-semibold text-[var(--ink2)]'
 
 function Reset() {
   const [password, setPassword] = useState('')
@@ -37,7 +37,7 @@ function Reset() {
   if (done) {
     return (
       <AuthShell heading="Password updated" subtitle="You can log in with your new password.">
-        <Link to="/login" className="btn-pixel block text-center no-underline">
+        <Link to="/login" className="btn-auth block text-center no-underline">
           Back to log in
         </Link>
       </AuthShell>
@@ -86,7 +86,7 @@ function Reset() {
           />
         </div>
         {error && <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-pixel">
+        <button type="submit" disabled={loading} className="btn-auth">
           {loading ? 'Saving…' : 'Update password'}
         </button>
       </form>

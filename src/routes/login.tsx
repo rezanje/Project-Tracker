@@ -1,13 +1,19 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Lock, Eye, EyeOff, ShieldCheck, ChevronRight } from 'lucide-react'
-import { Mail } from '@/components/pixel-icons'
+import {
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from 'lucide-react'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import AuthShell from '#/components/AuthShell'
 
 export const Route = createFileRoute('/login')({ component: Login })
 
-const fieldLabel = 'mb-1.5 block text-xs font-bold text-[var(--ink)]'
+const fieldLabel = 'mb-2 block text-[12.5px] font-semibold text-[var(--ink2)]'
 
 function Login() {
   const navigate = useNavigate()
@@ -33,9 +39,14 @@ function Login() {
 
   return (
     <AuthShell
-      heading="Welcome back!"
+      heading="Welcome back"
       subtitle="Track your work. Share the progress."
-      mascot="Let's get things done!"
+      footer={
+        <p className="flex items-center justify-center gap-2.5 rounded-[18px] bg-[var(--col)] px-4 py-3.5 text-center text-[12.5px] leading-[1.45] text-[var(--ink2)]">
+          <ShieldCheck size={17} className="shrink-0 text-[var(--ink2)]" />
+          Demo login: <b className="font-bold text-[var(--ink)]">demo@gmail.com</b>
+        </p>
+      }
     >
       <form onSubmit={onSubmit}>
         <label htmlFor="login-email" className={fieldLabel}>
@@ -74,41 +85,37 @@ function Login() {
             {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
         </div>
-        <div className="mb-4 flex items-center justify-between text-[13px]">
-          <label className="flex cursor-pointer items-center gap-2 font-semibold text-[var(--ink2)]">
+        <div className="mb-7 flex items-center justify-between text-[13.5px]">
+          <label className="flex cursor-pointer items-center gap-2.5 font-medium text-[var(--ink2)]">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="h-4 w-4 accent-[var(--accent)]"
+              className="h-5 w-5 rounded-[7px] accent-[var(--ink)]"
             />
             Remember me
           </label>
-          <Link to="/forgot" className="font-bold text-[var(--accent-ink)] no-underline">
+          <Link to="/forgot" className="font-semibold text-[var(--ink2)] no-underline">
             Forgot password?
           </Link>
         </div>
         {error && (
-          <p className="mb-2 text-[13px] font-semibold text-[var(--danger)]">{error}</p>
+          <p className="mb-3 text-[13px] font-semibold text-[var(--danger)]">{error}</p>
         )}
-        <button type="submit" disabled={loading} className="btn-pixel flex items-center justify-center gap-1.5">
+        <button type="submit" disabled={loading} className="btn-auth flex items-center justify-center gap-1.5">
           {loading ? 'Logging in…' : 'Log in'}
-          {!loading && <ChevronRight size={20} strokeWidth={3} />}
+          {!loading && <ChevronRight size={18} strokeWidth={2.5} />}
         </button>
       </form>
-      <p className="mt-4 text-center text-[13px] text-[var(--ink2)]">
+      <p className="mt-6 text-center text-[14px] text-[var(--ink2)]">
         New here?{' '}
         <Link
           to="/signup"
           search={{ invite: undefined, winvite: undefined }}
-          className="font-bold text-[var(--accent-ink)] no-underline"
+          className="font-bold text-[var(--ink)] no-underline"
         >
           Create an account
         </Link>
-      </p>
-      <p className="mt-4 flex items-center justify-center gap-1.5 rounded-[12px] border-2 border-[var(--ink)] bg-[var(--col)] px-3 py-2.5 text-center text-xs text-[var(--ink2)]">
-        <ShieldCheck size={15} className="text-[var(--accent-ink)]" />
-        Demo login: <b className="text-[var(--accent-ink)]">demo@gmail.com</b>
       </p>
     </AuthShell>
   )

@@ -39,7 +39,7 @@ function Pending() {
 
   return (
     <main className="page-wrap flex flex-1 flex-col items-center justify-center gap-3 pb-32 pt-9 text-center">
-      <h1 className="display-title text-3xl font-extrabold text-[var(--ink)]">
+      <h1 className="text-[34px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[var(--ink)]">
         Hi{name ? `, ${name}` : ''} — you're almost in
       </h1>
       <p className="max-w-[420px] text-[15px] text-[var(--ink2)]">

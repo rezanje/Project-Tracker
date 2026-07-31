@@ -116,7 +116,7 @@ function toObjective(r: ObjRow): Objective {
 const KPI_SELECT = 'id,name,target,current,unit,start_date,end_date,status,assignee_id,kpi_checkins(id,proposed_value,note,status)'
 const OBJ_SELECT = 'id,title,start_date,end_date,status,assignee_id,key_results(id,title,target,current,kr_checkins(id,proposed_value,note,status))'
 
-/** Goals assigned TO userId — the assignee's own view (e.g. Pixel Home). */
+/** Goals assigned TO userId — the assignee's own view (e.g. Home). */
 export async function listMyGoals(supabase: SupabaseClient, userId: string): Promise<MyGoals> {
   const [{ data: kpis }, { data: objectives }] = await Promise.all([
     supabase.from('kpis').select(KPI_SELECT).eq('assignee_id', userId).neq('status', 'archived').order('created_at'),

@@ -36,7 +36,7 @@ export default function Popover({
       {renderTrigger(open, () => setOpen((v) => !v))}
       {open && (
         <div
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-[calc(100%+6px)] z-30 ${panelClassName} rounded-[14px] border-2 border-[var(--ink)] bg-[var(--card)] p-3 shadow-[0_10px_30px_-10px_rgba(16,28,22,0.35)]`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-[calc(100%+8px)] z-30 ${panelClassName} gt-pop rounded-[var(--r-lg)] bg-[var(--card)] p-4 shadow-[var(--shadow-lift)]`}
         >
           {renderPanel(() => setOpen(false))}
         </div>

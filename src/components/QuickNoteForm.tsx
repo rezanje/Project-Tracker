@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { StickyNote } from '@/components/pixel-icons'
+import { StickyNote } from 'lucide-react'
 import { createNoteFn } from '#/lib/actions'
 
 export default function QuickNoteForm({
@@ -34,7 +34,7 @@ export default function QuickNoteForm({
 
   return (
     <form onSubmit={submit}>
-      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         <StickyNote size={14} aria-hidden="true" /> New note
       </p>
       <textarea

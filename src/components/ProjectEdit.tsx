@@ -79,10 +79,10 @@ export default function ProjectEdit({ board, typeSuggestions, members, onClose, 
   return (
     <>
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(28,26,23,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-[560px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+      <div className="w-full max-w-[560px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="display-title text-2xl font-extrabold text-[var(--ink)]">Edit project</h2>
           <button
@@ -238,10 +238,10 @@ export default function ProjectEdit({ board, typeSuggestions, members, onClose, 
 
     {confirming && (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(16,28,22,0.42)] px-5 backdrop-blur-[3px] gt-back"
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(28,26,23,0.42)] px-5 backdrop-blur-[3px] gt-back"
         onClick={(e) => e.target === e.currentTarget && !deleting && setConfirming(false)}
       >
-        <div className="w-full max-w-[420px] rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+        <div className="w-full max-w-[420px] rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
           <h3 className="display-title text-xl font-extrabold text-[var(--ink)]">
             Hapus “{board.title}”?
           </h3>

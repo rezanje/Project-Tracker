@@ -46,7 +46,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="flex min-h-screen font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--accent-soft)]">
         {!bare && <Sidebar />}
-        <div className={`flex min-w-0 flex-1 flex-col ${!bare ? 'pb-16 md:pb-0' : ''}`}>
+        {/* Mobile nav floats above the content, so leave room for the bar + FAB. */}
+        <div className={`flex min-w-0 flex-1 flex-col ${!bare ? 'pb-28 md:pb-0' : ''}`}>
           {!bare && <Header />}
           {children}
           {!bare && <Footer />}

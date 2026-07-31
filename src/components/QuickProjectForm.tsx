@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { FolderPlus } from '@/components/pixel-icons'
+import { FolderPlus } from 'lucide-react'
 import { fetchNav, type NavBoard, type NavWorkspace } from '#/lib/nav'
 import { createBoardFn } from '#/lib/actions'
 
@@ -53,7 +53,7 @@ export default function QuickProjectForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={submit}>
-      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         <FolderPlus size={14} aria-hidden="true" /> New project
       </p>
       <input

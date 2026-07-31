@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlarmClock } from '@/components/pixel-icons'
+import { AlarmClock } from 'lucide-react'
 import { createReminderFn } from '#/lib/reminders'
 
 // Default the picker to an hour from now, formatted for <input type="datetime-local">.
@@ -33,7 +33,7 @@ export default function QuickReminderForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={submit}>
-      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         <AlarmClock size={14} aria-hidden="true" /> Set reminder
       </p>
       <input

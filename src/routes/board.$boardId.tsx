@@ -14,8 +14,12 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { CalendarDays } from '@/components/pixel-icons'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
@@ -67,7 +71,7 @@ function flush(headers: Headers) {
 }
 
 // Deterministic accent per board (matches the boards grid) — derived from id.
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function accentFor(id: string): string {
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
@@ -478,7 +482,7 @@ const addPillarFn = createServerFn({ method: 'POST' })
     return {
       workspaceId,
       name: name.trim(),
-      color: typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#2563eb',
+      color: typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : 'var(--ink)',
     }
   })
   .handler(async ({ data }) => {
@@ -917,54 +921,27 @@ function BoardView() {
             Projects
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              className="h-3.5 w-3.5 rounded-full"
-              style={{ background: accentFor(board.id) }}
-              aria-hidden="true"
-            />
-            <h1 className="display-title text-[32px] font-extrabold text-[var(--ink)]">
+            <h1 className="text-[30px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
               {board.title}
             </h1>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
-                isOwner
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]'
-                  : 'bg-[var(--col)] text-[var(--ink2)]'
-              }`}
-            >
-              {board.role}
-            </span>
+            <span className={`chip capitalize ${isOwner ? 'chip-solid' : ''}`}>{board.role}</span>
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            {board.type && (
-              <span
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                style={{ background: `${accentFor(board.type)}22`, color: accentFor(board.type) }}
-              >
-                {board.type}
-              </span>
-            )}
-            <span className="rounded-full bg-[var(--col)] px-2.5 py-1 text-[11px] font-bold capitalize text-[var(--ink2)]">
-              {board.status.replace('_', ' ')}
-            </span>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {board.type && <span className="chip">{board.type}</span>}
+            <span className="chip capitalize">{board.status.replace('_', ' ')}</span>
             {board.priority && (
               <span
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold capitalize"
-                style={
-                  board.priority === 'urgent'
-                    ? { background: 'var(--danger)', color: '#fff' }
-                    : { background: 'var(--col)', color: 'var(--ink2)' }
-                }
+                className={`chip capitalize ${board.priority === 'urgent' ? 'chip-solid' : ''}`}
               >
                 {board.priority}{board.priority === 'urgent' ? '' : ' priority'}
               </span>
             )}
             {board.client_name && (
-              <span className="text-[12px] text-[var(--ink3)]">· {board.client_name}</span>
+              <span className="text-[12.5px] text-[var(--ink3)]">· {board.client_name}</span>
             )}
             {board.deadline && (
-              <span className="text-[12px] text-[var(--ink3)]">
+              <span className="text-[12.5px] text-[var(--ink3)]">
                 · Due {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               </span>
             )}
@@ -976,17 +953,17 @@ function BoardView() {
               // otherwise a board with both legacy text and account PICs shows
               // the legacy text first, then swaps to account names a beat later.
               const text = picNames.length > 0 ? picNames.join(', ') : boardMeta ? board.pic : null
-              return text ? <span className="text-[12px] text-[var(--ink3)]">· PIC {text}</span> : null
+              return text ? <span className="text-[12.5px] text-[var(--ink3)]">· PIC {text}</span> : null
             })()}
             {isOwner && board.value_idr != null && (
-              <span className="text-[12px] font-bold text-[var(--accent-ink)]">
+              <span className="text-[12.5px] font-bold tabular-nums text-[var(--ink)]">
                 · Rp {board.value_idr.toLocaleString('id-ID')}
               </span>
             )}
           </div>
 
           {board.description && (
-            <p className="mt-2.5 max-w-[640px] text-[14px] leading-relaxed text-[var(--ink2)]">
+            <p className="mt-3 max-w-[640px] text-[14.5px] leading-[1.6] text-[var(--ink2)]">
               {board.description}
             </p>
           )}
@@ -1000,7 +977,7 @@ function BoardView() {
                   <span
                     key={m.id}
                     title={m.name}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-[12px] font-bold text-[var(--card)]"
                     style={{ background: accentFor(m.id) }}
                   >
                     {m.avatar_url ? (
@@ -1011,30 +988,30 @@ function BoardView() {
                   </span>
                 ))}
                 {(boardMeta?.members.length ?? 0) > 4 && (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--col)] text-[10px] font-bold text-[var(--ink2)]">
+                  <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--sunk)] text-[11px] font-bold text-[var(--ink2)]">
                     +{(boardMeta?.members.length ?? 0) - 4}
                   </span>
                 )}
               </span>
             )}
             {board.deadline && (
-              <div className="stat-tile flex items-center gap-2 px-3 py-2">
-                <CalendarDays size={16} className="text-[var(--accent)]" aria-hidden="true" />
+              <div className="flex items-center gap-2.5">
+                <CalendarDays size={16} className="text-[var(--ink3)]" aria-hidden="true" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Deadline</p>
-                  <p className="text-[13px] font-extrabold text-[var(--ink)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Deadline</p>
+                  <p className="mt-0.5 text-[16px] font-bold tracking-[-0.02em] text-[var(--ink)]">
                     {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
               </div>
             )}
-            <div className="stat-tile min-w-[140px] px-3 py-2">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Progress</p>
-                <span className="text-[12px] font-extrabold text-[var(--accent-ink)]">{boardProgress}%</span>
+            <div className="min-w-[150px]">
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Progress</p>
+                <span className="text-[13px] font-bold tabular-nums text-[var(--ink)]">{boardProgress}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--col)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
+              <div className="progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
               </div>
             </div>
           </div>
@@ -1158,13 +1135,13 @@ function BoardView() {
       {!isContent && (
       <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
         {/* view tabs */}
-        <div className="flex overflow-hidden rounded-full border-2 border-[var(--ink)]">
+        <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
           {(['board', 'list'] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setView(v)}
-              className={`px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+              className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
                 view === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)]'
               }`}
             >
@@ -1173,14 +1150,14 @@ function BoardView() {
           ))}
         </div>
         {view === 'board' && (
-          <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
+          <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
             {(['phase', 'category'] as const).map((g) => (
               <button
                 key={g}
                 type="button"
                 onClick={() => setGroupBy(g)}
-                className={`px-3 py-1.5 text-[13px] font-bold capitalize ${
-                  groupBy === g ? 'bg-[var(--btn)] text-white' : 'text-[var(--ink2)]'
+                className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
+                  groupBy === g ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)]'
                 }`}
               >
                 {g}
@@ -1188,20 +1165,20 @@ function BoardView() {
             ))}
           </div>
         )}
-        <label className="flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5">
-          <Search size={14} className="text-[var(--ink3)]" aria-hidden="true" />
+        <label className="flex items-center gap-2.5 rounded-full bg-[var(--card)] px-4 py-2.5 shadow-[var(--shadow-sm)]">
+          <Search size={16} className="text-[var(--ink3)]" aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="search"
             placeholder="Search tasks…"
-            className="w-32 bg-transparent text-[13px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
+            className="w-32 bg-transparent text-[13.5px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
           />
         </label>
         <select
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
-          className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+          className="field w-auto rounded-full px-4 py-2.5 text-[13.5px]"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -1214,7 +1191,7 @@ function BoardView() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'none' | 'due' | 'title')}
-            className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+            className="field w-auto rounded-full px-4 py-2.5 text-[13.5px]"
           >
             <option value="none">Sort: default</option>
             <option value="due">Sort: due date</option>
@@ -1250,7 +1227,7 @@ function BoardView() {
                 key={v}
                 type="button"
                 onClick={() => setContentView(v)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+                className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
                   contentView === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
                 }`}
               >
@@ -1281,33 +1258,36 @@ function BoardView() {
           </div>
         </div>
       ) : board.columns.length === 0 ? (
-        <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
+        <div className="panel mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
           No columns yet.
         </div>
       ) : view === 'list' ? (
         <div className="mx-auto max-w-[1400px]">
-          <div className="card p-1.5">
+          <div className="panel p-3">
             {listCards.length === 0 ? (
-              <p className="p-6 text-center text-sm text-[var(--ink3)]">No matching tasks.</p>
+              <p className="p-6 text-center text-[14px] text-[var(--ink3)]">No matching tasks.</p>
             ) : (
               <div className="flex flex-col">
                 {listCards.map(({ card, colId, colTitle }) => {
                   const rowContent = (
                     <>
-                      <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                      <span
+                        className="h-[22px] w-[22px] shrink-0 rounded-[12px] border-[1.8px] border-[var(--line-strong)]"
+                        aria-hidden="true"
+                      />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-bold text-[var(--ink)]">{card.title}</p>
-                        <p className="truncate text-[11px] text-[var(--ink3)]">
+                        <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{card.title}</p>
+                        <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
                           {colTitle}
                           {card.category ? ` · ${card.category}` : ''}
                         </p>
                       </div>
                       {card.due_date && (
-                        <span className="shrink-0 text-[11px] font-bold tabular-nums text-[var(--ink2)]">
+                        <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[var(--ink2)]">
                           {new Date(card.due_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                         </span>
                       )}
-                      <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                      <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
                     </>
                   )
 
@@ -1337,7 +1317,7 @@ function BoardView() {
                         key={card.id}
                         type="button"
                         onClick={() => openCardDetail(card)}
-                        className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                        className="flex items-center gap-3.5 rounded-[var(--r-md)] border-b border-[var(--line-soft)] px-4 py-3.5 text-left last:border-0 hover:bg-[var(--col)]"
                       >
                         {rowContent}
                       </button>
@@ -1464,7 +1444,7 @@ function BoardView() {
       )}
 
       {pendingDelete && (
-        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(16,28,22,0.5)] gt-back">
+        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(28,26,23,0.42)] gt-back">
           <span>Card deleted</span>
           <button
             type="button"

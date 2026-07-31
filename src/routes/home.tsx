@@ -1,8 +1,17 @@
 import { useMemo, useState, type ComponentType } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { CheckSquare, Megaphone, MoreVertical, Plus, Target } from 'lucide-react'
-import { AlarmClock, Flame, FolderPlus, StickyNote } from '@/components/pixel-icons'
-import { segFill } from '#/lib/progress'
+import {
+  AlarmClock,
+  CheckSquare,
+  Flame,
+  FolderPlus,
+  Megaphone,
+  MoreVertical,
+  Plus,
+  StickyNote,
+  Target,
+} from 'lucide-react'
+import { accentFor } from '#/lib/accent'
 import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
 import { deleteNoteFn } from '#/lib/actions'
 import {
@@ -21,7 +30,7 @@ import QuickNoteForm from '#/components/QuickNoteForm'
 import QuickReminderForm from '#/components/QuickReminderForm'
 import NoteDetail from '#/components/NoteDetail'
 
-// ponytail: Pixel Home wires the schema-backed data (today tasks, active
+// ponytail: Home wires the schema-backed data (today tasks, active
 // projects, KPI headline numbers, project progress, announcements, notes).
 // Pomodoro is functional; Music and the KPI mini-bar shapes stay static (no
 // source / a later slice).
@@ -31,18 +40,16 @@ export const Route = createFileRoute('/home')({
     const [dashboard, goals] = await Promise.all([fetchDashboard(), fetchMyGoalsFn()])
     return { dashboard, goals }
   },
-  component: PixelHome,
+  component: Home,
 })
 
 function QuickTile({
   label,
   icon: Icon,
-  tint,
   panel,
 }: {
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  tint: string
   panel: (close: () => void) => React.ReactNode
 }) {
   return (
@@ -52,15 +59,12 @@ function QuickTile({
         <button
           type="button"
           onClick={toggle}
-          className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center hover:border-[var(--ink)]"
+          className="flex flex-col items-center gap-2 text-center"
         >
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
-            style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
-          >
-            <Icon size={16} />
+          <span className="flex h-[52px] w-full items-center justify-center rounded-[16px] bg-[var(--col)] text-[var(--ink)] transition-colors hover:bg-[var(--sunk)]">
+            <Icon size={19} />
           </span>
-          <span className="text-[10px] font-bold text-[var(--ink2)]">{label}</span>
+          <span className="text-[11.5px] font-semibold text-[var(--ink2)]">{label}</span>
         </button>
       )}
       renderPanel={panel}
@@ -69,38 +73,35 @@ function QuickTile({
 }
 
 const KPI_BARS = [4, 6, 5, 7, 6, 8, 9]
-const PROJECT_TINTS = ['var(--accent)', '#d97706', '#2563eb', '#7c3aed', '#db2777']
 
 function fmtRupiah(n: number): string {
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}jt`
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}rb`
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
-function SegBar({ pct, color }: { pct: number; color: string }) {
-  const on = segFill(pct, 12)
+/** Continuous progress track. */
+function Bar({ pct, color = 'var(--ink)' }: { pct: number; color?: string }) {
   return (
-    <span className="progress-seg w-full">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <span
-          key={i}
-          className="progress-seg-block flex-1"
-          style={i < on ? { background: color, borderColor: color } : undefined}
-        />
-      ))}
-    </span>
+    <div className="progress-track w-full">
+      <div className="progress-fill" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
+    </div>
   )
 }
 
-function MiniBars({ data, color }: { data: number[]; color: string }) {
+/** Bar sparkline. The tallest column carries the one accent; the rest are tone. */
+function MiniBars({ data, className = 'h-8' }: { data: number[]; className?: string }) {
   const max = Math.max(...data)
   return (
-    <div className="flex h-8 items-end gap-0.5">
+    <div className={`flex items-end gap-1.5 ${className}`}>
       {data.map((v, i) => (
         <span
           key={i}
-          className="w-1.5 rounded-sm"
-          style={{ height: `${(v / max) * 100}%`, background: color, opacity: 0.5 + (i / data.length) * 0.5 }}
+          className="flex-1 rounded-[3px]"
+          style={{
+            height: `${(v / max) * 100}%`,
+            background: v === max ? 'var(--accent)' : 'var(--sunk)',
+          }}
         />
       ))}
     </div>
@@ -124,18 +125,11 @@ function Donut({ pct }: { pct: number }) {
         strokeDasharray={`${(pct / 100) * c} ${c}`}
         transform="rotate(-90 48 48)"
       />
-      <text x="48" y="53" textAnchor="middle" className="display-title fill-[var(--ink)] text-lg font-extrabold">
+      <text x="48" y="53" textAnchor="middle" className="fill-[var(--ink)] text-lg font-extrabold">
         {pct}%
       </text>
     </svg>
   )
-}
-
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function accentFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
 }
 
 function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
@@ -147,7 +141,7 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
         <span
           key={m.id}
           title={m.name}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-[var(--card)]"
           style={{ background: accentFor(m.id) }}
         >
           {m.avatar_url ? (
@@ -158,7 +152,7 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
         </span>
       ))}
       {members.length > 3 && (
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--col)] text-[9px] font-bold text-[var(--ink2)]">
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[var(--sunk)] text-[9px] font-bold text-[var(--ink2)]">
           +{members.length - 3}
         </span>
       )}
@@ -201,7 +195,7 @@ function SelfGoalForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
-      <p className="mb-1 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
         <Target size={14} aria-hidden="true" /> New goal
       </p>
       <div className="flex gap-1">
@@ -266,7 +260,7 @@ function SelfGoalForm({ onDone }: { onDone: () => void }) {
   )
 }
 
-function PixelHome() {
+function Home() {
   const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: MyGoals }
   const router = useRouter()
 
@@ -310,133 +304,139 @@ function PixelHome() {
   const ppPct = pp.total ? Math.round((pp.completed / pp.total) * 100) : 0
 
   const KPIS = [
-    { label: 'Revenue', val: fmtRupiah(d.revenue), tint: 'var(--accent)' },
-    { label: 'Tasks Done', val: String(d.stats.completed), tint: '#2563eb' },
-    { label: 'On Progress', val: String(pp.inProgress), tint: '#d97706' },
-    { label: 'Overdue', val: String(d.stats.overdue), tint: 'var(--danger)' },
+    { label: 'Tasks done', val: String(d.stats.completed) },
+    { label: 'On progress', val: String(pp.inProgress) },
+    { label: 'Overdue', val: String(d.stats.overdue) },
+    { label: 'Completion', val: `${ppPct}%` },
   ]
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 lg:flex-row">
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 lg:flex-row">
         {/* left / main */}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
           {/* TODAY */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Flame size={18} className="text-[var(--danger)]" aria-hidden="true" />
-              <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">Today</h3>
-            </div>
-            <div className="mb-3 flex flex-wrap items-center gap-4 border-b-2 border-[var(--line)] pb-3">
-              <Stat n={String(total)} label="Tasks" />
-              <Stat n={String(d.myStats.overdue)} label="Overdue" tint="var(--danger)" />
-              <Stat n={String(d.myStats.dueToday)} label="Due today" tint="#d97706" />
-              <div className="ml-auto flex items-center gap-2">
-                <SegBar pct={overallPct} color="var(--accent)" />
-                <span className="whitespace-nowrap text-sm font-extrabold text-[var(--accent-ink)]">{overallPct}%</span>
+          <section className="panel p-6">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="flex items-center gap-2 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+                  <Flame size={18} className="text-[var(--ink3)]" aria-hidden="true" />
+                  Today
+                </h2>
+                <p className="mt-1 text-[13.5px] text-[var(--ink3)]">
+                  {total} tasks · {d.myStats.overdue} overdue · {d.myStats.dueToday} due today
+                </p>
+              </div>
+              <div className="flex w-full items-center gap-3 sm:w-[240px]">
+                <Bar pct={overallPct} />
+                <span className="whitespace-nowrap text-[15px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+                  {overallPct}%
+                </span>
               </div>
             </div>
             <div className="flex flex-col">
               {d.myToday.length === 0 && (
-                <p className="py-3 text-sm text-[var(--ink3)]">Nothing due today 🎉</p>
+                <p className="py-3 text-[14px] text-[var(--ink3)]">Nothing due today 🎉</p>
               )}
               {d.myToday.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
-                  <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                <div
+                  key={t.id}
+                  className="flex items-center gap-3.5 border-b border-[var(--line-soft)] py-3.5 last:border-0"
+                >
+                  <span
+                    className="h-[22px] w-[22px] shrink-0 rounded-[12px] border-[1.8px] border-[var(--line-strong)]"
+                    aria-hidden="true"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{t.title}</p>
-                    <span className="text-[11px] font-semibold text-[var(--ink3)]">{t.boardTitle}</span>
+                    <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{t.title}</p>
+                    <span className="text-[12.5px] text-[var(--ink3)]">{t.boardTitle}</span>
                   </div>
-                  <span className="chip shrink-0" style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}>
-                    Due today
-                  </span>
+                  <span className="chip chip-warn shrink-0">Due today</span>
                 </div>
               ))}
             </div>
-            <Link to="/my-tasks" className="mt-2 inline-block text-[12px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
+            <Link
+              to="/my-tasks"
+              className="mt-4 inline-block text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
+            >
               View all tasks →
             </Link>
           </section>
 
           {/* ACTIVE PROJECTS */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">Active Projects</h3>
-              <Link to="/projects" className="text-[11px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
-                View all projects →
+          <section>
+            <div className="mb-3.5 flex items-baseline justify-between">
+              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Active projects</h2>
+              <Link
+                to="/projects"
+                className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
+              >
+                View all
               </Link>
             </div>
             {d.projects.length === 0 ? (
-              <p className="text-sm text-[var(--ink3)]">No projects yet.</p>
+              <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {d.projects.slice(0, 3).map((p, i) => {
-                  const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
-                  return (
-                    <Link
-                      key={p.id}
-                      to="/board/$boardId"
-                      params={{ boardId: p.id }}
-                      className="rounded-[10px] border-2 border-[var(--ink)] p-3 no-underline hover:bg-[var(--col)]"
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
-                        <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
-                        <span className="ml-auto text-[12px] font-extrabold" style={{ color: tint }}>
-                          {p.progress}%
-                        </span>
-                      </div>
-                      <SegBar pct={p.progress} color={tint} />
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-[var(--ink3)]">
-                          {p.done} / {p.total} tasks
-                        </span>
-                        <ProjectAvatars members={p.members} />
-                      </div>
-                    </Link>
-                  )
-                })}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {d.projects.slice(0, 3).map((p) => (
+                  <Link
+                    key={p.id}
+                    to="/board/$boardId"
+                    params={{ boardId: p.id }}
+                    className="panel card-hover p-5 no-underline"
+                  >
+                    <MiniBars data={KPI_BARS} className="mb-4 h-[52px]" />
+                    <p className="truncate text-[16px] font-bold tracking-[-0.015em] text-[var(--ink)]">{p.title}</p>
+                    <p className="mt-1 text-[13px] text-[var(--ink3)]">
+                      {p.done} / {p.total} tasks
+                    </p>
+                    <div className="mt-4 flex items-center gap-3">
+                      <Bar pct={p.progress} />
+                      <span className="text-[13px] font-bold text-[var(--ink)]">{p.progress}%</span>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <ProjectAvatars members={p.members} />
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </section>
 
           {/* KPI + PROJECT PROGRESS */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <a href="#my-goals" className="card block p-4 no-underline hover:bg-[var(--col)]">
-              <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                📊 KPI Overview
-              </h3>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <a href="#my-goals" className="panel block p-6 no-underline">
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+                KPI overview
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 {KPIS.map((k) => (
-                  <div key={k.label} className="rounded-[10px] border-2 border-[var(--line)] p-3">
-                    <p className="text-[11px] font-semibold text-[var(--ink3)]">{k.label}</p>
-                    <p className="display-title text-lg font-extrabold leading-tight text-[var(--ink)]">{k.val}</p>
-                    <div className="mt-1">
-                      <MiniBars data={KPI_BARS} color={k.tint} />
-                    </div>
+                  <div key={k.label} className="rounded-[16px] bg-[var(--col)] p-4">
+                    <p className="text-[12.5px] text-[var(--ink3)]">{k.label}</p>
+                    <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{k.val}</p>
                   </div>
                 ))}
               </div>
             </a>
 
-            <section className="card p-4">
-              <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                <Target size={13} /> Project Progress
-              </h3>
-              <div className="flex items-center gap-4">
+            <section className="panel p-6">
+              <p className="mb-4 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+                <Target size={13} /> Project progress
+              </p>
+              <div className="flex items-center gap-5">
                 <Donut pct={ppPct} />
-                <div className="flex-1 space-y-2">
-                  <ProgRow label="Total Projects" n={pp.total} tint="var(--ink3)" />
-                  <ProgRow label="Completed" n={pp.completed} tint="var(--accent)" />
-                  <ProgRow label="In Progress" n={pp.inProgress} tint="#d97706" />
+                <div className="flex-1 space-y-2.5">
+                  <ProgRow label="Total projects" n={pp.total} tint="var(--ink3)" />
+                  <ProgRow label="Completed" n={pp.completed} tint="var(--ink)" />
+                  <ProgRow label="In progress" n={pp.inProgress} tint="var(--accent)" />
                 </div>
               </div>
             </section>
           </div>
 
           <div id="my-goals" className="scroll-mt-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">My Goals</h3>
+            <div className="mb-3.5 flex items-baseline justify-between">
+              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">My goals</h2>
               <Popover
                 align="left"
                 panelClassName="w-72"
@@ -444,9 +444,9 @@ function PixelHome() {
                   <button
                     type="button"
                     onClick={toggle}
-                    className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+                    className="flex items-center gap-1 text-[13.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
                   >
-                    <Plus size={12} /> New goal
+                    <Plus size={14} /> New goal
                   </button>
                 )}
                 renderPanel={(close) => <SelfGoalForm onDone={close} />}
@@ -462,29 +462,50 @@ function PixelHome() {
         </div>
 
         {/* right rail */}
-        <div className="flex w-full flex-col gap-4 lg:w-80">
+        <div className="flex w-full flex-col gap-5 lg:w-[340px] lg:shrink-0">
+          {/* REVENUE HERO */}
+          <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
+            <p className="mt-2 text-[30px] font-extrabold tracking-[-0.03em] tabular-nums">{fmtRupiah(d.revenue)}</p>
+            <div className="mt-5 flex h-16 items-end gap-1.5">
+              {KPI_BARS.map((v, i) => (
+                <span
+                  key={i}
+                  className="flex-1 rounded-[5px]"
+                  style={{
+                    height: `${(v / Math.max(...KPI_BARS)) * 100}%`,
+                    background: i === KPI_BARS.length - 1 ? 'var(--accent)' : 'rgba(251,250,248,.2)',
+                  }}
+                />
+              ))}
+            </div>
+            <a
+              href="#my-goals"
+              className="mt-5 inline-flex items-center rounded-full bg-[var(--bg)] px-5 py-2.5 text-[13.5px] font-bold text-[var(--ink)] no-underline"
+            >
+              Check now
+            </a>
+          </section>
+
           {/* QUICK ACTIONS */}
-          <section className="card p-4">
-            <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-              ⚡ Quick Actions
-            </h3>
-            <div className="grid grid-cols-4 gap-2">
+          <section className="panel p-[22px]">
+            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+              Quick actions
+            </p>
+            <div className="grid grid-cols-4 gap-2.5">
               <QuickTile
-                label="Add Task"
+                label="Task"
                 icon={CheckSquare}
-                tint="var(--accent)"
                 panel={(close) => <QuickTaskForm onDone={close} />}
               />
               <QuickTile
-                label="Add Project"
+                label="Project"
                 icon={FolderPlus}
-                tint="#d97706"
                 panel={(close) => <QuickProjectForm onDone={close} />}
               />
               <QuickTile
-                label="Add Note"
+                label="Note"
                 icon={StickyNote}
-                tint="#7c3aed"
                 panel={(close) => (
                   <QuickNoteForm
                     categorySuggestions={noteCategories}
@@ -496,37 +517,36 @@ function PixelHome() {
                 )}
               />
               <QuickTile
-                label="Set Reminder"
+                label="Reminder"
                 icon={AlarmClock}
-                tint="#2563eb"
                 panel={(close) => <QuickReminderForm onDone={close} />}
               />
             </div>
           </section>
 
           {/* ANNOUNCEMENTS */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+          <section className="panel p-[22px]">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                 <Megaphone size={13} /> Announcements
-              </h3>
-              <button type="button" className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
+              </p>
+              <button type="button" className="text-[12.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]">
                 View all
               </button>
             </div>
-            <div className="flex flex-col gap-2">
-              {d.announcements.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No announcements.</p>}
+            <div className="flex flex-col gap-3.5">
+              {d.announcements.length === 0 && <p className="text-[13px] text-[var(--ink3)]">No announcements.</p>}
               {d.announcements.map((a) => (
-                <div key={a.id} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
+                <div key={a.id} className="flex gap-3">
                   <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-[var(--card)]"
                     style={{ background: accentFor(a.author ?? 'Team') }}
                   >
                     {(a.author ?? 'Team').trim().split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-[var(--ink)]">{a.author ?? 'Team'}</p>
-                    <p className="text-[12px] text-[var(--ink2)]">{a.body}</p>
+                    <p className="text-[13.5px] font-semibold text-[var(--ink)]">{a.author ?? 'Team'}</p>
+                    <p className="mt-0.5 text-[13.5px] leading-[1.45] text-[var(--ink2)]">{a.body}</p>
                   </div>
                 </div>
               ))}
@@ -534,18 +554,16 @@ function PixelHome() {
           </section>
 
           {/* NOTES */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                📝 Notes
-              </h3>
+          <section className="panel p-[22px]">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Notes</p>
               <div className="flex items-center gap-3">
                 <select
                   value={noteSort}
                   onChange={(e) => setNoteSort(e.target.value as typeof noteSort)}
                   aria-label="Sort notes"
                   className="field"
-                  style={{ width: 'auto', padding: '0.3rem 0.5rem', fontSize: '11px' }}
+                  style={{ width: 'auto', padding: '0.35rem 0.6rem', fontSize: '12px' }}
                 >
                   <option value="newest">Newest</option>
                   <option value="oldest">Oldest</option>
@@ -558,9 +576,9 @@ function PixelHome() {
                     <button
                       type="button"
                       onClick={toggle}
-                      className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+                      className="flex items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
                     >
-                      <Plus size={12} /> New Note
+                      <Plus size={13} /> New
                     </button>
                   )}
                   renderPanel={(close) => (
@@ -575,8 +593,8 @@ function PixelHome() {
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              {sortedNotes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
+            <div className="flex flex-col gap-2.5">
+              {sortedNotes.length === 0 && <p className="text-[13px] text-[var(--ink3)]">No notes.</p>}
               {sortedNotes.map((n) => (
                 <div
                   key={n.id}
@@ -590,11 +608,15 @@ function PixelHome() {
                     // stop the keydown that already ran this handler).
                     if (e.target === e.currentTarget && e.key === 'Enter') setSelectedNote(n)
                   }}
-                  className="flex cursor-pointer items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
+                  className="flex cursor-pointer items-start gap-2 rounded-[16px] bg-[var(--col)] px-4 py-3.5"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
-                    {n.category && <span className="chip mt-1">{n.category}</span>}
+                    <p className="text-[13.5px] leading-[1.45] text-[var(--ink)]">{n.body}</p>
+                    {n.category && (
+                      <span className="mt-2.5 inline-block rounded-full bg-[var(--sunk)] px-2.5 py-[3px] text-[11px] font-semibold text-[var(--ink2)]">
+                        {n.category}
+                      </span>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -603,9 +625,9 @@ function PixelHome() {
                       removeNote(n.id)
                     }}
                     aria-label="Delete note"
-                    className="shrink-0 text-[var(--pop-ink)] hover:text-[var(--danger)]"
+                    className="shrink-0 text-[var(--ink3)] hover:text-[var(--danger)]"
                   >
-                    <MoreVertical size={14} />
+                    <MoreVertical size={16} />
                   </button>
                 </div>
               ))}
@@ -633,25 +655,14 @@ function PixelHome() {
   )
 }
 
-function Stat({ n, label, tint }: { n: string; label: string; tint?: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="display-title text-2xl font-extrabold" style={{ color: tint ?? 'var(--ink)' }}>
-        {n}
-      </span>
-      <span className="text-[11px] font-semibold text-[var(--ink3)]">{label}</span>
-    </div>
-  )
-}
-
 function ProgRow({ label, n, tint }: { label: string; n: number; tint: string }) {
   return (
-    <div className="flex items-center justify-between text-[12px]">
-      <span className="flex items-center gap-2 font-semibold text-[var(--ink2)]">
+    <div className="flex items-center justify-between text-[13px]">
+      <span className="flex items-center gap-2 font-medium text-[var(--ink2)]">
         <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
         {label}
       </span>
-      <span className="font-extrabold text-[var(--ink)]">{n}</span>
+      <span className="font-bold tabular-nums text-[var(--ink)]">{n}</span>
     </div>
   )
 }

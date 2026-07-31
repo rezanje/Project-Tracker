@@ -1,7 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowLeft, ArrowRight, MessageSquare, Paperclip, Tag } from 'lucide-react'
-import { Calendar } from '@/components/pixel-icons'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Calendar,
+  MessageSquare,
+  Paperclip,
+  Tag,
+} from 'lucide-react'
 import type { CardRow } from '#/lib/board-data'
 
 export type CardAssignee = { id: string; name: string; avatar_url: string | null }
@@ -29,12 +35,10 @@ function shortDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-const CAT_COLORS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-export function catColor(s: string): string {
-  let h = 0
-  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return CAT_COLORS[h % CAT_COLORS.length]
-}
+/** Identity tone for a category / assignee. Warm neutrals only — the single
+ *  orange accent is reserved for charts and calls to action. */
+export { accentFor as catColor } from '#/lib/accent'
+import { accentFor as catColor } from '#/lib/accent'
 
 function MoveButton({
   icon: Icon,
@@ -58,7 +62,7 @@ function MoveButton({
         e.stopPropagation()
         onMove()
       }}
-      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--card)] text-[var(--ink2)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:bg-[var(--sunk)] hover:text-[var(--ink)]"
     >
       <Icon size={13} aria-hidden="true" />
     </button>
@@ -103,10 +107,10 @@ export default function Card({
       {...attributes}
       {...(isDraggable ? listeners : {})}
       onClick={handleClick}
-      className="card card-hover p-3.5"
+      className="card card-hover rounded-[var(--r-md)] px-4 py-[15px]"
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 text-[14.5px] font-semibold leading-snug text-[var(--ink)]">
+      <div className="flex items-start justify-between gap-2.5">
+        <p className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">
           {card.title}
         </p>
         {onMovePrev && (
@@ -126,7 +130,7 @@ export default function Card({
         {assignee && (
           <span
             title={assignee.name}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--ink)] text-[9px] font-bold text-white"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-[var(--card)]"
             style={{ background: catColor(assignee.id) }}
           >
             {assignee.avatar_url ? (
@@ -138,43 +142,39 @@ export default function Card({
         )}
       </div>
 
-      {card.category && (
-        <span
-          className="mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold"
-          style={{ background: `${catColor(card.category)}22`, color: catColor(card.category) }}
-        >
-          {card.category}
-        </span>
-      )}
-
       {card.description && (
-        <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-snug text-[var(--ink2)]">
+        <p className="mt-2 line-clamp-2 text-[13.5px] leading-[1.5] text-[var(--ink2)]">
           {card.description}
         </p>
       )}
 
-      {(card.due_date || labelCount > 0 || card.attachment_count > 0 || card.comment_count > 0) && (
+      {(card.category ||
+        card.due_date ||
+        labelCount > 0 ||
+        card.attachment_count > 0 ||
+        card.comment_count > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2.5">
+          {card.category && <span className="chip">{card.category}</span>}
           {card.due_date && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-xs font-semibold text-[var(--accent-ink)]">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--ink3)]">
               <Calendar size={13} aria-hidden="true" />
               {shortDate(card.due_date)}
             </span>
           )}
           {labelCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
-              <Tag size={14} aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--ink3)]">
+              <Tag size={13} aria-hidden="true" />
               {labelCount}
             </span>
           )}
           {card.attachment_count > 0 && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--ink3)]">
               <Paperclip size={13} aria-hidden="true" />
               {card.attachment_count}
             </span>
           )}
           {card.comment_count > 0 && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink2)]">
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--ink3)]">
               <MessageSquare size={13} aria-hidden="true" />
               {card.comment_count}
             </span>

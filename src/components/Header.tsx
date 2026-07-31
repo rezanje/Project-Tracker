@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Bell,
-  Bot,
   CheckSquare,
   ChevronDown,
+  FolderKanban,
   LogOut,
   Plus,
   Search,
   Settings,
 } from 'lucide-react'
-import { CalendarDays, Clock, FolderKanban } from '@/components/pixel-icons'
+import { accentFor } from '#/lib/accent'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { searchFn, type SearchResults } from '#/lib/search'
 import {
@@ -69,10 +69,13 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
           <button
             type="button"
             onClick={toggle}
-            className="flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] py-1 pl-1 pr-2"
+            className="flex items-center gap-1.5 rounded-full bg-[var(--card)] py-1 pl-1 pr-2 shadow-[var(--shadow-sm)]"
             title={email ?? undefined}
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-[var(--card)]"
+              style={{ background: accentFor(email ?? name ?? '?') }}
+            >
               {initials(name, email)}
             </span>
             <ChevronDown size={14} className="text-[var(--ink3)]" aria-hidden="true" />
@@ -80,14 +83,14 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
         )}
         renderPanel={(close) => (
           <>
-            <p className="truncate px-2.5 py-2 text-[12px] font-semibold text-[var(--ink3)]">{email}</p>
+            <p className="truncate px-3 py-2 text-[12px] font-medium text-[var(--ink3)]">{email}</p>
             <button
               type="button"
               onClick={() => {
                 close()
                 navigate({ to: '/coming-soon' })
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-bold text-[var(--ink2)] hover:bg-[var(--col)]"
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--ink2)] hover:bg-[var(--col)]"
             >
               <Settings size={15} aria-hidden="true" />
               Settings
@@ -95,7 +98,7 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
             <button
               type="button"
               onClick={logout}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-bold text-[var(--danger)] hover:bg-[var(--col)]"
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--danger)] hover:bg-[var(--col)]"
             >
               <LogOut size={15} aria-hidden="true" />
               Log out
@@ -128,12 +131,12 @@ function NewMenu() {
       )}
       renderPanel={(close) => (
         <>
-          <div className="mb-2 flex gap-1 rounded-lg bg-[var(--col)] p-1">
+          <div className="mb-3 flex gap-1 rounded-full bg-[var(--col)] p-1">
             <button
               type="button"
               onClick={() => setTab('task')}
-              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
-                tab === 'task' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
+              className={`flex-1 rounded-full py-1.5 text-[12.5px] font-semibold ${
+                tab === 'task' ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
               }`}
             >
               Task
@@ -141,8 +144,8 @@ function NewMenu() {
             <button
               type="button"
               onClick={() => setTab('project')}
-              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
-                tab === 'project' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
+              className={`flex-1 rounded-full py-1.5 text-[12.5px] font-semibold ${
+                tab === 'project' ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
               }`}
             >
               Project
@@ -178,8 +181,8 @@ function SearchBox() {
       <Popover
         panelClassName="w-80 max-h-[70vh] overflow-y-auto p-1.5"
         renderTrigger={(open, toggle) => (
-          <label className="flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5">
-            <Search size={15} className="text-[var(--ink3)]" aria-hidden="true" />
+          <label className="flex items-center gap-2.5 rounded-full bg-[var(--card)] px-[18px] py-[11px] shadow-[var(--shadow-sm)]">
+            <Search size={17} className="text-[var(--ink3)]" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search anything…"
@@ -193,7 +196,7 @@ function SearchBox() {
               onFocus={() => {
                 if (q.trim().length >= 2 && !open) toggle()
               }}
-              className="w-36 bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
+              className="w-40 bg-transparent text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)] xl:w-52"
             />
           </label>
         )}
@@ -211,7 +214,7 @@ function SearchBox() {
               )}
               {results.workspaces.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Workspaces
                   </p>
                   {results.workspaces.map((w) => (
@@ -228,7 +231,7 @@ function SearchBox() {
               )}
               {results.boards.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Boards
                   </p>
                   {results.boards.map((b) => (
@@ -246,7 +249,7 @@ function SearchBox() {
               )}
               {results.tasks.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Tasks
                   </p>
                   {results.tasks.map((t) => (
@@ -308,20 +311,18 @@ function NotificationsBell() {
             toggle()
             fetchNotificationsFn().then(setItems).catch(() => {})
           }}
-          className="btn btn-ghost relative px-2.5"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
         >
-          <Bell size={16} aria-hidden="true" />
+          <Bell size={19} strokeWidth={1.7} aria-hidden="true" />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold text-white">
-              {unread}
-            </span>
+            <span className="absolute right-[9px] top-[9px] flex h-[9px] min-w-[9px] items-center justify-center rounded-full border-[1.5px] border-[var(--card)] bg-[var(--accent)]" />
           )}
         </button>
       )}
       renderPanel={(close) => (
         <>
           <div className="flex items-center justify-between px-2 py-1.5">
-            <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">Notifications</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Notifications</p>
             {unread > 0 && (
               <button type="button" onClick={markAll} className="text-[11px] font-bold text-[var(--accent-ink)]">
                 Mark all read
@@ -383,36 +384,20 @@ export default function Header() {
   const timeStr = now ? now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
   return (
-    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b-2 border-[var(--ink)] bg-[var(--header-bg)] px-4 py-2.5 backdrop-blur-md sm:px-6">
-      {/* greeting + robot bubble */}
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="min-w-0 leading-tight">
-          <p className="text-[11px] font-semibold text-[var(--ink3)]">{hello},</p>
-          <p className="display-title truncate text-xl font-extrabold text-[var(--ink)]">{who} 👋</p>
-        </div>
-        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-2 border-[var(--ink)] bg-[var(--accent-soft)] text-[var(--accent-ink)] sm:flex">
-          <Bot size={18} aria-hidden="true" />
-        </span>
-        <span className="hidden rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink2)] lg:inline">
-          Here's what matters today!
-        </span>
+    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-4 bg-[var(--header-bg)] px-5 py-4 backdrop-blur-md sm:px-7 sm:py-6">
+      <div className="min-w-0 flex-1">
+        {dateStr && (
+          <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
+            {dateStr}
+            <span className="hidden xl:inline"> · {timeStr}</span>
+          </p>
+        )}
+        <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
+          {hello}, {who}
+        </h1>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-2">
-        {/* date / time */}
-        {dateStr && (
-          <div className="mr-1 hidden text-right leading-tight xl:block">
-            <p className="flex items-center justify-end gap-1 text-[12px] font-bold text-[var(--ink)]">
-              <CalendarDays size={13} className="text-[var(--ink3)]" aria-hidden="true" />
-              {dateStr}
-            </p>
-            <p className="flex items-center justify-end gap-1 text-[11px] font-semibold text-[var(--ink3)]">
-              <Clock size={12} aria-hidden="true" />
-              {timeStr}
-            </p>
-          </div>
-        )}
-
+      <div className="flex items-center gap-2.5">
         <SearchBox />
         <NotificationsBell />
         <NewMenu />
@@ -426,9 +411,9 @@ export default function Header() {
             onClick={logout}
             aria-label="Log out"
             title="Log out"
-            className="btn btn-ghost px-2.5"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
           >
-            <LogOut size={16} aria-hidden="true" />
+            <LogOut size={18} aria-hidden="true" />
           </button>
         </div>
       </div>

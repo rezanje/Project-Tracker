@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { CalendarDays } from '@/components/pixel-icons'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn } from '#/lib/home'
 
 type CalTask = { id: string; title: string; boardId: string; due: string; done: boolean }
 
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function accentFor(id: string): string {
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
@@ -83,31 +86,31 @@ function CalendarPage() {
   }
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
         <div className="flex flex-wrap items-center gap-3">
-          <CalendarDays size={22} className="text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="display-title text-2xl font-extrabold text-[var(--ink)]">Calendar</h1>
+          <CalendarDays size={22} className="text-[var(--ink3)]" aria-hidden="true" />
+          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Calendar</h1>
           {cur && (
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 aria-label="Previous month"
                 onClick={() => setCur((c) => (c ? (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }) : c))}
-                className="btn btn-ghost px-2.5"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={18} />
               </button>
-              <span className="display-title min-w-[150px] text-center text-lg font-bold text-[var(--ink)]">
+              <span className="min-w-[160px] text-center text-[17px] font-bold tracking-[-0.02em] text-[var(--ink)]">
                 {MONTHS[cur.m]} {cur.y}
               </span>
               <button
                 type="button"
                 aria-label="Next month"
                 onClick={() => setCur((c) => (c ? (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 }) : c))}
-                className="btn btn-ghost px-2.5"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={18} />
               </button>
               <button
                 type="button"
@@ -124,10 +127,13 @@ function CalendarPage() {
         </div>
 
         {cur && (
-          <div className="card overflow-hidden p-0">
-            <div className="grid grid-cols-7 border-b-2 border-[var(--ink)]">
+          <div className="panel overflow-hidden p-0">
+            <div className="grid grid-cols-7 border-b border-[var(--line-soft)]">
               {DOW.map((d) => (
-                <div key={d} className="px-2 py-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                <div
+                  key={d}
+                  className="px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]"
+                >
                   {d}
                 </div>
               ))}
@@ -164,15 +170,16 @@ function MonthGrid({
   return (
     <div className="grid grid-cols-7">
       {cells.map((day, i) => {
-        if (day === null) return <div key={i} className="min-h-[104px] border-b border-r border-[var(--line)] bg-[var(--col)]" />
+        if (day === null)
+          return <div key={i} className="min-h-[110px] border-b border-r border-[var(--line-soft)] bg-[var(--col)]" />
         const dateStr = `${y}-${pad(m + 1)}-${pad(day)}`
         const dayTasks = byDay.get(dateStr) ?? []
         const isToday = dateStr === todayStr
         return (
-          <div key={i} className="min-h-[104px] border-b border-r border-[var(--line)] p-1.5">
+          <div key={i} className="min-h-[110px] border-b border-r border-[var(--line-soft)] p-2">
             <div
-              className={`mb-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[12px] font-bold ${
-                isToday ? 'bg-[var(--accent)] text-white' : 'text-[var(--ink2)]'
+              className={`mb-1.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[13px] font-semibold ${
+                isToday ? 'bg-[var(--ink)] font-bold text-[var(--card)]' : 'text-[var(--ink2)]'
               }`}
             >
               {day}
@@ -184,7 +191,7 @@ function MonthGrid({
                   type="button"
                   onClick={() => onOpen(t.boardId)}
                   title={t.title}
-                  className={`truncate rounded-[6px] border-2 border-[var(--ink)] px-1.5 py-0.5 text-left text-[11px] font-bold text-white ${
+                  className={`truncate rounded-[14px] px-2 py-1 text-left text-[11.5px] font-semibold text-[var(--card)] ${
                     t.done ? 'opacity-55 line-through' : ''
                   }`}
                   style={{ background: accentFor(t.boardId) }}
@@ -193,7 +200,7 @@ function MonthGrid({
                 </button>
               ))}
               {dayTasks.length > 3 && (
-                <span className="px-1 text-[10px] font-bold text-[var(--ink3)]">+{dayTasks.length - 3} more</span>
+                <span className="px-1 text-[11px] font-medium text-[var(--ink3)]">+{dayTasks.length - 3} more</span>
               )}
             </div>
           </div>
