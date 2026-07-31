@@ -1,4 +1,4 @@
-# Handoff — Rakit UI redesign (session ending 2026-07-31)
+# Handoff — Rakit UI redesign (updated 2026-07-31, second session)
 
 Paste this file's path into a fresh Claude Code session and say:
 **"Read HANDOFF.md and continue from 'Next up'."**
@@ -7,11 +7,13 @@ Paste this file's path into a fresh Claude Code session and say:
 
 ## Where the work lives
 
-- **Branch:** `feat/soft-ui-redesign` (7 commits ahead of `main`, nothing pushed, nothing deployed).
+- **Branch:** `feat/soft-ui-redesign` (9 commits ahead of `main`, nothing pushed, nothing deployed).
   `main` still has the old pixel/8-bit UI. Production is untouched.
 - Typecheck, build and the 110 vitest tests all pass on this branch.
 
 ```
+74be570 Move notifications from a popover into the bell's sheet
+3cd977d Turn card detail into the comp's bottom sheet
 b02a804 Reshape Reports into the comp's Performance screen
 8074546 Make the workspace pill actually scope the app
 68e0c39 Give the orphaned screens a doorway, and add toasts
@@ -56,7 +58,7 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 | All Projects | Home → Projects "See all" | done |
 | Reports / KPI | Home KPI card → "Check now" | done |
 | Desktop sidebar | Mirrors the four mobile tabs + workspaces; Settings/Log out in the profile menu; Favorites removed (it never worked) | done |
-| Comments & attachments | Inside the task-detail sheet | **not built** |
+| Comments & attachments | Inside the task-detail sheet | done |
 | Board filter / sort / search | Sliders button in the board header → sheet | **not built** |
 | Edit project, Team, owner KPIs | More button in the board header → sheet | **not built** |
 | Notes & Announcements | Bottom of Home | **not moved yet** |
@@ -87,18 +89,22 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
    month grid is still there behind the header button.
 8. **Bottom nav** — four icons with accent dots, accent FAB opening the "Task baru" sheet.
 9. **Toast** — `src/components/Toast.tsx`, single slot, 1.9s, mounted in `__root.tsx`.
+10. **Task detail sheet** — `src/components/CardDetail.tsx`, now built on `Sheet`. Lane bar,
+    project eyebrow, title, note block, deadline + assignee, a status segmented control driven by
+    the board's real lanes, `Tandai selesai` / `Buka lagi`, round delete. Everything the old modal
+    could edit lives in an "Edit detail" `<details>` block; comments and attachments sit below.
+11. **Notifications sheet** — `src/components/NotificationSheet.tsx`. The bell (`NotificationsBell`,
+    exported from `Header.tsx`, `compact` for the Command Center) opens it. "Notifikasi | Pesan"
+    segments; message rows deep-link into `/inbox?t=<threadId>`.
 
-## Next up (build order from the handoff README, steps 5–6)
+## Next up (build order from the handoff README, step 6 onward)
 
-1. **Task detail sheet** — the design's core interaction and the biggest remaining piece. Opens
-   from any task card. 3px status bar, project eyebrow, title, optional note, deadline + avatars,
-   a 4-way status segmented control, primary action + delete. Fold **comments and attachments**
-   in below Status. `src/components/CardDetail.tsx` is the existing modal to convert; reuse `Sheet`.
-2. **Notifications sheet** — bell opens a sheet with "Notifikasi | Pesan" segments, absorbing
-   `/inbox`. Rows: 34px avatar, text, timestamp, accent dot when unread.
-3. **Board** — swap button cycles projects within the current workspace; sliders and more buttons
-   open the filter and owner-action sheets.
-4. **Move Notes / Announcements / heatmap / portfolio** to their agreed homes; dissolve the
+1. **Board** — swap button cycles projects within the current workspace; sliders and more buttons
+   open the filter and owner-action sheets (board filter/sort/search; edit project, Team, owner KPIs).
+2. **Quick add sheet** — the FAB sheet still uses the old `TaskCreate` form. The comp wants a title
+   input, scrolling project chips, a column segmented control, a "Jadwalkan hari ini" checkbox, and
+   a 54px accent `Buat task` button that greys out on an empty title.
+3. **Move Notes / Announcements / heatmap / portfolio** to their agreed homes; dissolve the
    workspace page into Home + Reports.
 
 ## Known data gaps — do not invent numbers for these
@@ -111,6 +117,8 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 | "n task aktif" per workspace in the switcher | Not wired; the prop exists (`taskCounts`) and the row is omitted rather than showing a wrong zero. |
 | "Butuh perhatian" = late ∪ in-review | The aggregation exposes due buckets, not column names, so it is the late half only. |
 | Un-completing a personal task | `completeStandaloneTaskFn` has no counterpart. Tapping a done task says so rather than failing silently. Needs one new server function. |
+| Notification rows scoped to the current workspace, with the sender's face | `notifications` carries neither a workspace id nor an actor id. The sheet shows every notification and puts the kind's icon in the 34px slot. |
+| "Workspace · Project" eyebrow in the task detail sheet | Board data carries `workspaceId` but not the workspace name, so the eyebrow is the project alone. |
 
 ## Verification limits
 
