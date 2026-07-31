@@ -7,12 +7,12 @@ Paste this file's path into a fresh Claude Code session and say:
 
 ## Where the work lives
 
-- **Branch:** `feat/soft-ui-redesign`, pushed, with an open PR (#6). `main` still has the old
-  pixel/8-bit UI — the branch has **not** been merged.
-- **Production runs this branch.** Deployed 2026-07-31 to https://rakit.rezarezanje.workers.dev.
+- **Merged.** `feat/soft-ui-redesign` landed on `main` via PR #6 on 2026-07-31 (merge commit
+  `be48906`). `main` and the deployed tree are identical; the branch is kept but is now redundant.
+- **Live** at https://rakit.rezarezanje.workers.dev, deployed 2026-07-31 with `npm run deploy`.
   Migration `0036_workspace_member_cascade.sql` was applied by Reza beforehand — without its
   trigger, someone removed from a workspace keeps access to projects they were added to.
-  Deploying again from a branch that is behind `main` would take the old UI back to production.
+- Continue from `main`.
 - Typecheck, build and the 110 vitest tests all pass on this branch.
 
 ```
