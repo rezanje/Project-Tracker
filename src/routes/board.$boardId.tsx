@@ -1483,6 +1483,17 @@ function BoardView() {
           boardId={board.id}
           meta={boardMeta ?? { members: [], labels: [], milestones: [] }}
           isOwner={canEdit}
+          projectName={board.title}
+          columns={columns.map((c) => ({ id: c.id, title: c.title }))}
+          columnId={findColumnId(selectedCard.id)}
+          onMove={
+            canEdit
+              ? (toColumnId) => {
+                  const from = findColumnId(selectedCard.id)
+                  if (from) moveListCard(selectedCard.id, from, toColumnId)
+                }
+              : undefined
+          }
           onClose={closeCardDetail}
           onSaved={() => {
             router.invalidate()

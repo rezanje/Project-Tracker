@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import Attachments from '#/components/Attachments'
 import Comments from '#/components/Comments'
+import { Sheet } from '#/components/WorkspaceSwitcher'
+import { toast } from '#/components/Toast'
+import { accentFor } from '#/lib/accent'
 import {
   CONTENT_CHANNELS, CONTENT_FORMATS, CONTENT_STATUSES, type CardRow, type Pillar,
 } from '#/lib/board-data'
+import { isDoneColumn, isInProgressColumn } from '#/lib/home'
 import type { BoardMeta } from '#/routes/board.$boardId'
 
 interface CardDetailProps {
@@ -12,6 +16,14 @@ interface CardDetailProps {
   boardId: string
   meta: BoardMeta
   isOwner: boolean
+  /** Uppercase eyebrow above the title — the project (and workspace) this card lives in. */
+  projectName: string
+  /** Every lane on the board, in order; drives the status segmented control. */
+  columns: Array<{ id: string; title: string }>
+  /** The lane the card currently sits in. */
+  columnId?: string
+  /** Move the card to another lane. Omitted for read-only viewers. */
+  onMove?: (toColumnId: string) => void
   onClose: () => void
   onSaved: () => void
   onDelete: () => void
@@ -42,6 +54,8 @@ interface CardDetailProps {
 
 const fieldLabel =
   'mb-1.5 text-xs font-bold uppercase tracking-[0.04em] text-[var(--ink3)]'
+const eyebrow =
+  'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -49,11 +63,30 @@ function initials(name: string): string {
   return chars.toUpperCase() || '?'
 }
 
+/** The 3px lane bar: done reads as ink, active as the accent, review as green. */
+function barColor(title: string | undefined): string {
+  if (!title) return 'var(--ink3)'
+  if (isDoneColumn(title)) return 'var(--ink)'
+  if (isInProgressColumn(title)) return 'var(--accent)'
+  if (/review|approv/i.test(title)) return 'var(--done)'
+  return 'var(--ink3)'
+}
+
+function longDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 export default function CardDetail({
   card,
   boardId,
   meta,
   isOwner,
+  projectName,
+  columns,
+  columnId,
+  onMove,
   onClose,
   onSaved,
   onDelete,
@@ -121,39 +154,220 @@ export default function CardDetail({
           : {}),
       })
       await onSetLabels(card.id, selectedLabelIds)
+      toast('Task disimpan')
       onSaved()
     } catch {
-      setError('Failed to save. Please try again.')
+      setError('Gagal menyimpan. Coba lagi.')
     } finally {
       setSaving(false)
     }
   }
 
-  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) onClose()
+  const currentColumn = columns.find((c) => c.id === columnId)
+  const done = currentColumn ? isDoneColumn(currentColumn.title) : false
+  const doneColumn = columns.find((c) => isDoneColumn(c.title))
+  const reopenColumn =
+    columns.find((c) => isInProgressColumn(c.title)) ?? columns.find((c) => !isDoneColumn(c.title))
+  const primaryTarget = done ? reopenColumn : doneColumn
+
+  function move(toColumnId: string, label: string) {
+    if (!onMove || toColumnId === columnId) return
+    onMove(toColumnId)
+    toast(`Dipindah ke ${label}`)
   }
 
   const assignee = meta.members.find((m) => m.id === (card.assignee_id ?? ''))
+  const labels = card.card_labels
+    .map((cl) => meta.labels.find((l) => l.id === cl.label_id))
+    .filter((l): l is NonNullable<typeof l> => Boolean(l))
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(28,26,23,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
-      onClick={handleBackdropClick}
-    >
-      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
-        {/* Header */}
-        <div className="relative px-6 pt-6">
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-[18px] top-[18px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--ink)]"
+    <Sheet onClose={onClose} label={card.title} className="max-h-[86%]">
+      {/* Header: lane bar, project eyebrow, title, close */}
+      <div className="flex items-start gap-3">
+        <span
+          className="w-[3px] shrink-0 self-stretch rounded-full"
+          style={{ background: barColor(currentColumn?.title) }}
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <p className={`truncate ${eyebrow}`}>{projectName}</p>
+          <h2
+            className={`mt-1 text-[21px] font-extrabold leading-[1.2] tracking-[-0.03em] text-[var(--ink)] ${
+              done ? 'line-through opacity-50' : ''
+            }`}
           >
-            <X size={16} aria-hidden="true" />
-          </button>
+            {card.title}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Tutup"
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--ink)] active:scale-[.92]"
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
+      </div>
 
-          {isOwner ? (
-            meta.labels.length > 0 && (
-              <div className="mb-3.5 flex flex-wrap gap-2 pr-10">
+      {labels.length > 0 && (
+        <div className="mt-3.5 flex flex-wrap gap-2">
+          {labels.map((l) => (
+            <span
+              key={l.id}
+              className="rounded-full px-3 py-1 text-xs font-bold text-white"
+              style={{ backgroundColor: l.color }}
+            >
+              {l.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {card.description && (
+        <p className="mt-3.5 whitespace-pre-wrap rounded-[16px] bg-[var(--col)] px-4 py-3.5 text-[13.5px] leading-[1.55] text-[var(--ink2)]">
+          {card.description}
+        </p>
+      )}
+
+      <div className="mt-[18px] flex items-center justify-between gap-3">
+        <div>
+          <p className={eyebrow}>Deadline</p>
+          <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
+            {card.due_date ? longDate(card.due_date) : (
+              <span className="text-[var(--ink3)]">Belum diatur</span>
+            )}
+          </p>
+        </div>
+        {assignee && (
+          <span
+            title={assignee.name}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+            style={{ background: accentFor(assignee.id) }}
+          >
+            {assignee.avatar_url ? (
+              <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              initials(assignee.name)
+            )}
+          </span>
+        )}
+      </div>
+
+      {onMove && columns.length > 0 && (
+        <>
+          <p className={`mb-[9px] mt-5 ${eyebrow}`}>Status</p>
+          {/* Boards can have more than the comp's four lanes, so the track scrolls
+              rather than squeezing segments below the 44px tap target. */}
+          <div className="gt-scroll flex gap-1.5 overflow-x-auto rounded-full bg-[var(--col)] p-1">
+            {columns.map((c) => {
+              const active = c.id === columnId
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => move(c.id, c.title)}
+                  aria-pressed={active}
+                  className={`min-w-[86px] flex-1 whitespace-nowrap rounded-full py-[9px] text-[12.5px] font-bold transition ${
+                    active
+                      ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
+                      : 'text-[var(--ink3)] hover:text-[var(--ink2)]'
+                  }`}
+                >
+                  {c.title}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {isOwner && (
+        <div className="mt-5 flex gap-2.5">
+          {primaryTarget && onMove && (
+            <button
+              type="button"
+              onClick={() => move(primaryTarget.id, primaryTarget.title)}
+              className={`h-[52px] flex-1 rounded-full text-[15px] font-bold transition active:scale-[.99] ${
+                done
+                  ? 'bg-[var(--col)] text-[var(--ink)]'
+                  : 'bg-[var(--btn)] text-[var(--btn-ink)] shadow-[0_8px_22px_rgba(28,26,23,.2)]'
+              }`}
+            >
+              {done ? 'Buka lagi' : 'Tandai selesai'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label="Hapus task"
+            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--danger-ink)] active:scale-[.95]"
+          >
+            <Trash2 size={19} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {isOwner && (
+        <details className="mt-5 rounded-[18px] bg-[var(--col)] px-4 py-3.5">
+          <summary className="cursor-pointer list-none text-[13.5px] font-bold text-[var(--ink2)] [&::-webkit-details-marker]:hidden">
+            Edit detail
+          </summary>
+
+          <div className="mt-4">
+            <label className={fieldLabel} htmlFor="cd-title">Judul</label>
+            <input
+              id="cd-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="field"
+            />
+          </div>
+
+          <div className="mt-3">
+            <label className={fieldLabel} htmlFor="cd-desc">Catatan</label>
+            <textarea
+              id="cd-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Tambah catatan…"
+              className="field min-h-[88px] resize-y leading-relaxed"
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className={fieldLabel} htmlFor="cd-due">Deadline</label>
+              <input
+                id="cd-due"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="field"
+              />
+            </div>
+            <div>
+              <label className={fieldLabel} htmlFor="cd-assignee">Assignee</label>
+              <select
+                id="cd-assignee"
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="field cursor-pointer"
+              >
+                <option value="">Belum ditugaskan</option>
+                {meta.members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {meta.labels.length > 0 && (
+            <div className="mt-3">
+              <div className={fieldLabel}>Label</div>
+              <div className="flex flex-wrap gap-2">
                 {meta.labels.map((label) => {
                   const active = selectedLabelIds.includes(label.id)
                   return (
@@ -161,11 +375,12 @@ export default function CardDetail({
                       key={label.id}
                       type="button"
                       onClick={() => toggleLabel(label.id)}
-                      className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-[var(--card)] transition"
+                      aria-pressed={active}
+                      className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition"
                       style={
                         active
-                          ? { backgroundColor: label.color }
-                          : { backgroundColor: 'var(--col)', color: 'var(--ink2)' }
+                          ? { backgroundColor: label.color, color: '#fff' }
+                          : { backgroundColor: 'var(--card)', color: 'var(--ink2)' }
                       }
                     >
                       {label.name}
@@ -173,128 +388,27 @@ export default function CardDetail({
                   )
                 })}
               </div>
-            )
-          ) : (
-            card.card_labels.length > 0 && (
-              <div className="mb-3.5 flex flex-wrap gap-2 pr-10">
-                {card.card_labels.map((cl) => {
-                  const label = meta.labels.find((l) => l.id === cl.label_id)
-                  if (!label) return null
-                  return (
-                    <span
-                      key={cl.label_id}
-                      className="rounded-full px-3 py-1 text-xs font-bold text-[var(--card)]"
-                      style={{ backgroundColor: label.color }}
-                    >
-                      {label.name}
-                    </span>
-                  )
-                })}
-              </div>
-            )
+            </div>
           )}
 
-          {isOwner ? (
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              aria-label="Card title"
-              className="display-title w-full bg-transparent pr-10 text-[25px] font-extrabold text-[var(--ink)] outline-none"
-            />
-          ) : (
-            <h2 className="display-title pr-10 text-[25px] font-extrabold text-[var(--ink)]">
-              {card.title}
-            </h2>
-          )}
-        </div>
-
-        {/* Body */}
-        <div className="px-6 pb-6 pt-4">
-          <div className="mb-5 mt-4 grid grid-cols-2 gap-3.5">
-            <div>
-              <div className={fieldLabel}>Due date</div>
-              {isOwner ? (
+          {isLeads && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label className={fieldLabel} htmlFor="cd-contact">Kontak</label>
+                <input id="cd-contact" value={contact} onChange={(e) => setContact(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor="cd-phone">Telepon</label>
+                <input id="cd-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor="cd-source">Sumber</label>
+                <input id="cd-source" value={source} onChange={(e) => setSource(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor="cd-deal">Nilai deal (Rp)</label>
                 <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="field"
-                />
-              ) : (
-                <div className="pt-0.5 text-sm font-semibold text-[var(--ink)]">
-                  {card.due_date ?? (
-                    <span className="italic text-[var(--ink3)]">None</span>
-                  )}
-                </div>
-              )}
-            </div>
-            <div>
-              <div className={fieldLabel}>Assignee</div>
-              {isOwner ? (
-                <select
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  className="field cursor-pointer"
-                >
-                  <option value="">Unassigned</option>
-                  {meta.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex items-center gap-2 pt-0.5">
-                  {assignee && (
-                    <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-[var(--card)]">
-                      {initials(assignee.name)}
-                    </span>
-                  )}
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {assignee?.name ?? (
-                      <span className="italic text-[var(--ink3)]">Unassigned</span>
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <div className={fieldLabel}>Description</div>
-            {isOwner ? (
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description…"
-                className="field min-h-[88px] resize-y leading-relaxed"
-              />
-            ) : (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--ink2)]">
-                {card.description || (
-                  <span className="italic text-[var(--ink3)]">No description.</span>
-                )}
-              </p>
-            )}
-          </div>
-
-          {isOwner && isLeads && (
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <div>
-                <label className={fieldLabel}>Contact</label>
-                <input value={contact} onChange={(e) => setContact(e.target.value)} className="field" />
-              </div>
-              <div>
-                <label className={fieldLabel}>Phone</label>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" />
-              </div>
-              <div>
-                <label className={fieldLabel}>Source</label>
-                <input value={source} onChange={(e) => setSource(e.target.value)} className="field" />
-              </div>
-              <div>
-                <label className={fieldLabel}>Deal value (Rp)</label>
-                <input
+                  id="cd-deal"
                   type="number"
                   min="0"
                   value={dealValue}
@@ -305,11 +419,11 @@ export default function CardDetail({
             </div>
           )}
 
-          {isOwner && isContent && (
-            <div className="mb-4 grid grid-cols-2 gap-3">
+          {isContent && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <label className={fieldLabel}>Pillar</label>
-                <select value={pillarId} onChange={(e) => setPillarId(e.target.value)} className="field">
+                <label className={fieldLabel} htmlFor="cd-pillar">Pillar</label>
+                <select id="cd-pillar" value={pillarId} onChange={(e) => setPillarId(e.target.value)} className="field">
                   <option value="">None</option>
                   {pillars.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -317,16 +431,16 @@ export default function CardDetail({
                 </select>
               </div>
               <div>
-                <label className={fieldLabel}>Status</label>
-                <select value={contentStatus} onChange={(e) => setContentStatus(e.target.value)} className="field capitalize">
+                <label className={fieldLabel} htmlFor="cd-cstatus">Status konten</label>
+                <select id="cd-cstatus" value={contentStatus} onChange={(e) => setContentStatus(e.target.value)} className="field capitalize">
                   {CONTENT_STATUSES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={fieldLabel}>Format</label>
-                <select value={format} onChange={(e) => setFormat(e.target.value)} className="field">
+                <label className={fieldLabel} htmlFor="cd-format">Format</label>
+                <select id="cd-format" value={format} onChange={(e) => setFormat(e.target.value)} className="field">
                   <option value="">None</option>
                   {CONTENT_FORMATS.map((f) => (
                     <option key={f} value={f}>{f}</option>
@@ -334,14 +448,14 @@ export default function CardDetail({
                 </select>
               </div>
               <div>
-                <label className={fieldLabel}>Channels</label>
+                <div className={fieldLabel}>Channel</div>
                 <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {CONTENT_CHANNELS.map((c) => {
                     const on = channels.includes(c)
                     return (
-                      <button key={c} type="button" onClick={() => toggleChannel(c)}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
-                          on ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--line)] text-[var(--ink2)]'
+                      <button key={c} type="button" onClick={() => toggleChannel(c)} aria-pressed={on}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                          on ? 'bg-[var(--accent)] text-white' : 'bg-[var(--card)] text-[var(--ink2)]'
                         }`}>
                         {c}
                       </button>
@@ -352,10 +466,11 @@ export default function CardDetail({
             </div>
           )}
 
-          {isOwner && !isContent && (
-            <div className="mb-4">
-              <label className={fieldLabel}>Category</label>
+          {!isContent && (
+            <div className="mt-3">
+              <label className={fieldLabel} htmlFor="cd-category">Kategori</label>
               <input
+                id="cd-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 list="card-categories"
@@ -370,33 +485,23 @@ export default function CardDetail({
             </div>
           )}
 
-          {isOwner && (
-            <div className="mb-5 flex gap-2.5">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn btn-primary btn-square"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button onClick={onClose} className="btn btn-ghost btn-square">
-                Cancel
-              </button>
-              <button onClick={onDelete} className="btn btn-danger btn-square ml-auto">
-                Delete
-              </button>
-            </div>
-          )}
-          {error && <p className="mb-4 text-[13px] text-[var(--danger)]">{error}</p>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary mt-4 w-full rounded-full"
+          >
+            {saving ? 'Menyimpan…' : 'Simpan'}
+          </button>
+          {error && <p className="mt-2 text-[13px] text-[var(--danger)]">{error}</p>}
+        </details>
+      )}
 
-          <div className="my-5 h-px bg-[var(--line)]" />
+      <div className="mt-6 mb-5 h-px bg-[var(--line)]" />
 
-          <div className="mb-6">
-            <Comments cardId={card.id} members={meta.members} />
-          </div>
-          <Attachments cardId={card.id} boardId={boardId} />
-        </div>
+      <div className="mb-6">
+        <Comments cardId={card.id} members={meta.members} />
       </div>
-    </div>
+      <Attachments cardId={card.id} boardId={boardId} />
+    </Sheet>
   )
 }
