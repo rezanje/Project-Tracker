@@ -8,7 +8,6 @@ import { isDoneColumn, localDateStr } from '#/lib/home'
 import { completeStandaloneTaskFn } from '#/lib/actions'
 import { bucketize, type Task } from '#/lib/my-tasks'
 import { inScope, useScope } from '#/lib/workspace-scope'
-import { WorkspacePill, WorkspaceSwitcherSheet } from '#/components/WorkspaceSwitcher'
 import { toast } from '#/components/Toast'
 
 const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise<Task[]> => {
@@ -172,7 +171,6 @@ function TaskRow({
 function MyTasks() {
   const initialTasks = Route.useLoaderData() as Task[]
   const [tasks, setTasks] = useState(initialTasks)
-  const [wsOpen, setWsOpen] = useState(false)
   // Ids of standalone tasks whose completion is in flight (optimistically
   // removed below, server write not yet confirmed). If an unrelated action
   // (e.g. QuickTaskForm's router.invalidate() on standalone-task create)
@@ -237,9 +235,6 @@ function MyTasks() {
       <div className="mx-auto flex max-w-[900px] flex-col gap-4">
         <div className="flex items-end gap-3">
           <div className="min-w-0 flex-1">
-            <div className="mb-2">
-              <WorkspacePill onOpen={() => setWsOpen(true)} />
-            </div>
             <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">My tasks</h1>
             <p className="mt-0.5 text-[13.5px] text-[var(--ink2)]">
               {doneTasks.length} selesai · {openTasks.length} tersisa
@@ -303,7 +298,6 @@ function MyTasks() {
         ))}
       </div>
 
-      <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
     </main>
   )
 }

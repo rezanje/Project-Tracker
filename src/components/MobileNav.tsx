@@ -6,16 +6,20 @@ import QuickProjectForm from './QuickProjectForm'
 import QuickTaskForm from './QuickTaskForm'
 import { Sheet } from './WorkspaceSwitcher'
 
-// The redesign's four destinations. Reports, Inbox, Approvals and Projects
-// each keep a doorway elsewhere (the KPI card, the header bell, the Command
-// Center's Approval tile, Home's "See all") rather than a nav entry here.
+// The redesign's four destinations. Slot two is the comp's board tab — it lands
+// on the projects of whichever workspace the pill is currently set to. Reports,
+// Inbox, Approvals and the Command Center each keep a doorway elsewhere (the KPI
+// card, the header bell, the Approval tile, the "Semua workspace" row in the
+// switcher) rather than a nav entry here.
 const BAR_NAV: Array<{
   label: string
   icon: ComponentType<LucideProps>
-  to: '/home' | '/' | '/my-tasks' | '/calendar'
+  to: '/home' | '/projects' | '/my-tasks' | '/calendar'
+  /** Extra paths that should light this tab's dot. */
+  also?: string
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Command center', icon: PieChart, to: '/' },
+  { label: 'Projects', icon: PieChart, to: '/projects', also: '/board/' },
   { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
@@ -43,8 +47,8 @@ export default function MobileNav() {
         aria-label="Primary"
       >
         <div className="flex flex-1 items-center justify-around rounded-full bg-[var(--card)] px-2 py-[11px] shadow-[var(--shadow-float)] dark:bg-[var(--sunk)]">
-          {BAR_NAV.map(({ label, icon: Icon, to }) => {
-            const active = pathname === to
+          {BAR_NAV.map(({ label, icon: Icon, to, also }) => {
+            const active = pathname === to || (also ? pathname.startsWith(also) : false)
             return (
               <Link
                 key={label}

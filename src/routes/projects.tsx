@@ -5,6 +5,7 @@ import {
   FolderKanban,
 } from 'lucide-react'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import { inScope, useScope } from '#/lib/workspace-scope'
 
 export const Route = createFileRoute('/projects')({
   loader: async () => await fetchDashboard(),
@@ -27,22 +28,26 @@ function Bar({ pct, color }: { pct: number; color: string }) {
 function Projects() {
   const d = Route.useLoaderData() as DashboardData
   const [picOnly, setPicOnly] = useState(false)
+  const scope = useScope()
 
-  const picCount = d.projects.filter((p) => p.isMyPic).length
-  const shown = picOnly ? d.projects.filter((p) => p.isMyPic) : d.projects
+  // This is the comp's board tab: it shows the projects of whichever workspace
+  // the pill is set to, and every project only under "Semua workspace".
+  const projects = d.projects.filter((p) => inScope(scope, p.wsId))
+  const picCount = projects.filter((p) => p.isMyPic).length
+  const shown = picOnly ? projects.filter((p) => p.isMyPic) : projects
 
   return (
     <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
       <div className="mx-auto flex max-w-[900px] flex-col gap-5">
         <div className="flex items-center gap-2.5">
           <FolderKanban size={22} className="text-[var(--ink3)]" aria-hidden="true" />
-          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">All projects</h1>
+          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Projects</h1>
           <span className="chip ml-1">{shown.length}</span>
         </div>
 
         <div className="flex gap-2">
           {([
-            { key: false, label: 'All', n: d.projects.length },
+            { key: false, label: 'All', n: projects.length },
             { key: true, label: "I'm PIC", n: picCount },
           ] as const).map((t) => (
             <button
@@ -74,6 +79,7 @@ function Projects() {
           </div>
         )}
 
+
         {shown.length > 0 && (
           <section className="panel p-6">
             <div className="flex flex-col">
@@ -92,7 +98,8 @@ function Projects() {
                         {p.isMyPic && <span className="chip chip-accent shrink-0 text-[10px]">PIC</span>}
                       </p>
                       <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
-                        {p.wsName} · {p.done}/{p.total} tasks
+                        {scope === 'all' ? `${p.wsName} · ` : ''}
+                        {p.done}/{p.total} tasks
                       </p>
                       <div className="mt-2.5 max-w-[260px]">
                         <Bar pct={p.progress} color={tint} />
