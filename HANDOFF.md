@@ -7,11 +7,12 @@ Paste this file's path into a fresh Claude Code session and say:
 
 ## Where the work lives
 
-- **Branch:** `feat/soft-ui-redesign` (12 commits ahead of `main`, nothing pushed, nothing deployed).
+- **Branch:** `feat/soft-ui-redesign` (14 commits ahead of `main`, nothing pushed, nothing deployed).
   `main` still has the old pixel/8-bit UI. Production is untouched.
 - Typecheck, build and the 110 vitest tests all pass on this branch.
 
 ```
+ff1d752 Fix the sheets found broken once the app could be walked
 117dda1 Reshape quick-add into the comp's sheet
 b3c3fed Fold the board toolbar into sliders and more sheets
 74be570 Move notifications from a popover into the bell's sheet
@@ -131,12 +132,21 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 | Notification rows scoped to the current workspace, with the sender's face | `notifications` carries neither a workspace id nor an actor id. The sheet shows every notification and puts the kind's icon in the 34px slot. |
 | "Workspace · Project" eyebrow in the task detail sheet | Board data carries `workspaceId` but not the workspace name, so the eyebrow is the project alone. |
 
-## Verification limits
+## Verification
 
-The signed-in screens have **never been checked in a browser** — the assistant has no credentials.
-Only `/login`, `/signup`, `/forgot`, `/reset` were confirmed visually. Everything else rests on
-typecheck + build + tests. **Ask Reza to walk the app and report what looks wrong** before
-assuming a screen is right.
+Reza signed the in-app browser in on 2026-07-31, so the signed-in screens **can** now be walked.
+Confirmed by hand at 375px, light and dark: notification sheet (both segments, `?t=` deep link),
+workspace switcher, board filter and more sheets, task detail (status move + toast, delete),
+quick add (created a task into a chosen lane with today's due date, then deleted it). Desktop at
+1280px renders, but has not been worked through against section 05 of the spec sheet.
+
+That pass caught four bugs typecheck and tests could not — see `ff1d752`. The lesson: **walk any
+new sheet in the browser.** In particular, `position: fixed` inside the header is a trap (the
+header's `backdrop-filter` makes it a containing block), which is why `Sheet` portals to
+`document.body`.
+
+Note when driving the in-app browser: if the pane is hidden, CSS animations freeze mid-flight, so
+a sheet measured via `getBoundingClientRect` looks mispositioned. Screenshot instead of measuring.
 
 Two harmless things you will see and should not chase:
 - A `_nonReactive` TypeError from TanStack Router's `preloadRoute` in the dev console. It predates
