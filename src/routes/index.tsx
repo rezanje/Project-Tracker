@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { Bell, ChevronRight, Check } from 'lucide-react'
+import { ChevronRight, Check } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
 import { setScope } from '#/lib/workspace-scope'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
+import { NotificationsBell } from '#/components/Header'
 import ThemeToggle from '#/components/ThemeToggle'
 import { WorkspacePill, WorkspaceSwitcherSheet } from '#/components/WorkspaceSwitcher'
 
@@ -102,16 +103,7 @@ function CommandCenter() {
               {d.stats.workspaces} perusahaan · {d.stats.projects} project aktif
             </p>
           </div>
-          <Link
-            to="/inbox"
-            aria-label="Notifikasi"
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] no-underline shadow-[var(--shadow-sm)] transition active:scale-[.94]"
-          >
-            <Bell size={19} strokeWidth={1.7} aria-hidden="true" />
-            {d.approvals > 0 && (
-              <span className="absolute right-[9px] top-[8px] h-[7px] w-[7px] rounded-full bg-[var(--accent)] shadow-[0_0_0_1.5px_var(--card)]" />
-            )}
-          </Link>
+          <NotificationsBell compact />
           <ThemeToggle />
         </div>
 

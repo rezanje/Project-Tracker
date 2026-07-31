@@ -26,10 +26,11 @@ function timeAgo(iso: string): string {
 }
 
 function InboxPage() {
+  const { t: initialThreadId } = Route.useSearch()
   const [tab, setTab] = useState<'messages' | 'mentions'>('messages')
   const [mentions, setMentions] = useState<Notification[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(initialThreadId ?? null)
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [meId, setMeId] = useState('')
@@ -306,5 +307,8 @@ function InboxPage() {
 }
 
 export const Route = createFileRoute('/inbox')({
+  // `?t=` lets the notification sheet's message rows land on the right thread.
+  validateSearch: (s: Record<string, unknown>): { t?: string } =>
+    typeof s.t === 'string' ? { t: s.t } : {},
   component: InboxPage,
 })

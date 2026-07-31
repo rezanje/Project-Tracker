@@ -6,7 +6,6 @@ import {
   ChevronDown,
   FolderKanban,
   LogOut,
-  MessageSquare,
   Plus,
   Search,
   Settings,
@@ -14,12 +13,8 @@ import {
 import { accentFor } from '#/lib/accent'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { searchFn, type SearchResults } from '#/lib/search'
-import {
-  fetchNotificationsFn,
-  markAllNotificationsReadFn,
-  markNotificationReadFn,
-  type Notification,
-} from '#/lib/notifications'
+import { fetchNotificationsFn } from '#/lib/notifications'
+import NotificationSheet from './NotificationSheet'
 import Popover from './Popover'
 import QuickProjectForm from './QuickProjectForm'
 import QuickTaskForm from './QuickTaskForm'
@@ -45,14 +40,6 @@ function initials(name: string | null, email: string | null): string {
   const parts = base.split(/[.\-_\s]+/).filter(Boolean)
   const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : base.slice(0, 2)
   return chars.toUpperCase() || '?'
-}
-
-function timeAgo(iso: string): string {
-  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
-  if (secs < 60) return 'just now'
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-  return `${Math.floor(secs / 86400)}d ago`
 }
 
 function ProfileMenu({ email, name }: { email: string | null; name: string | null }) {
@@ -275,93 +262,35 @@ function SearchBox() {
   )
 }
 
-function NotificationsBell() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<Notification[]>([])
-  const unread = items.filter((n) => !n.read).length
+/** The bell. Notifications and messages both live behind it now that the nav is
+ *  four tabs — it opens the sheet rather than a popover. */
+export function NotificationsBell({ compact = false }: { compact?: boolean } = {}) {
+  const [open, setOpen] = useState(false)
+  const [unread, setUnread] = useState(0)
 
   useEffect(() => {
-    fetchNotificationsFn().then(setItems).catch(() => {})
-  }, [])
-
-  async function onItemClick(n: Notification, close: () => void) {
-    close()
-    if (n.kind === 'approval') {
-      navigate({ to: '/admin/approvals' })
-      return
-    }
-    if (!n.read) {
-      await markNotificationReadFn({ data: { id: n.id, kind: n.kind } }).catch(() => {})
-      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, read: true } : i)))
-    }
-    if (n.boardId) navigate({ to: '/board/$boardId', params: { boardId: n.boardId } })
-  }
-
-  async function markAll() {
-    await markAllNotificationsReadFn().catch(() => {})
-    setItems((prev) => prev.map((i) => ({ ...i, read: true })))
-  }
+    fetchNotificationsFn()
+      .then((items) => setUnread(items.filter((n) => !n.read).length))
+      .catch(() => {})
+  }, [open])
 
   return (
-    <Popover
-      panelClassName="w-80 max-h-[70vh] overflow-y-auto p-1.5"
-      renderTrigger={(_open, toggle) => (
-        <button
-          type="button"
-          aria-label="Notifications"
-          onClick={() => {
-            toggle()
-            fetchNotificationsFn().then(setItems).catch(() => {})
-          }}
-          className="relative flex h-11 w-11 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
-        >
-          <Bell size={19} strokeWidth={1.7} aria-hidden="true" />
-          {unread > 0 && (
-            <span className="absolute right-[9px] top-[9px] flex h-[9px] min-w-[9px] items-center justify-center rounded-full border-[1.5px] border-[var(--card)] bg-[var(--accent)]" />
-          )}
-        </button>
-      )}
-      renderPanel={(close) => (
-        <>
-          <div className="flex items-center justify-between px-2 py-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Notifications</p>
-            {unread > 0 && (
-              <button type="button" onClick={markAll} className="text-[11px] font-bold text-[var(--accent-ink)]">
-                Mark all read
-              </button>
-            )}
-          </div>
-          {items.length === 0 && (
-            <p className="px-2.5 py-4 text-center text-[12px] text-[var(--ink3)]">Nothing yet — you're all caught up.</p>
-          )}
-          {/* The bell is where messages live now that the nav is four tabs. */}
-          <button
-            type="button"
-            onClick={() => {
-              close()
-              navigate({ to: '/inbox' })
-            }}
-            className="mb-1 flex w-full items-center gap-2.5 rounded-[12px] bg-[var(--col)] px-3 py-2.5 text-left text-[13px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
-          >
-            <MessageSquare size={15} aria-hidden="true" />
-            Pesan
-          </button>
-          {items.map((n) => (
-            <button
-              key={`${n.kind}:${n.id}`}
-              type="button"
-              onClick={() => onItemClick(n, close)}
-              className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--col)] ${
-                n.read ? '' : 'bg-[var(--accent-soft)]'
-              }`}
-            >
-              <span className="text-[13px] font-semibold text-[var(--ink)]">{n.message}</span>
-              <span className="text-[11px] text-[var(--ink3)]">{timeAgo(n.createdAt)}</span>
-            </button>
-          ))}
-        </>
-      )}
-    />
+    <>
+      <button
+        type="button"
+        aria-label="Notifikasi"
+        onClick={() => setOpen(true)}
+        className={`relative flex shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)] transition active:scale-[.94] ${
+          compact ? 'h-10 w-10' : 'h-11 w-11'
+        }`}
+      >
+        <Bell size={19} strokeWidth={1.7} aria-hidden="true" />
+        {unread > 0 && (
+          <span className="absolute right-[9px] top-[9px] h-[7px] w-[7px] rounded-full bg-[var(--accent)] shadow-[0_0_0_1.5px_var(--card)]" />
+        )}
+      </button>
+      {open && <NotificationSheet onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
