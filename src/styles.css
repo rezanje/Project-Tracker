@@ -338,9 +338,22 @@ a {
 /* backwards (not both): forwards-fill would hold `to{transform:none}` as an
    identity matrix, which still establishes a containing block and traps any
    position:fixed descendant (e.g. the card-detail modal) inside <main>. */
+@keyframes gtup { from { transform: translateY(102%); } to { transform: none; } }
+.gt-up { animation: gtup 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
 .gt-fade { animation: gtfade 0.4s ease backwards; }
 .gt-pop { animation: gtpop 0.24s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 .gt-back { animation: gtback 0.2s ease both; }
+
+/* The redesign leans on motion; honour the OS setting rather than ignoring it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 @theme inline {
   --font-heading: var(--font-sans);

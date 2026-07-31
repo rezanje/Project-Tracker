@@ -6,7 +6,7 @@ import {
   CheckSquare,
   Home,
   Inbox,
-  LayoutDashboard,
+  PieChart,
   LayoutGrid,
   LogOut,
   Plus,
@@ -25,15 +25,18 @@ import QuickProjectForm from './QuickProjectForm'
 import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
 
+// The redesign's four destinations. Everything the old nav sheet reached
+// (Reports, Inbox, Approvals, Settings) is intentionally not here — see the
+// handoff notes; it stays routable, just not advertised.
 const BAR_NAV: Array<{
   label: string
   icon: ComponentType<LucideProps>
   to: '/home' | '/' | '/my-tasks' | '/calendar'
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Center', icon: LayoutDashboard, to: '/' },
-  { label: 'Tasks', icon: CheckSquare, to: '/my-tasks' },
-  { label: 'Calendar', icon: Calendar, to: '/calendar' },
+  { label: 'Command center', icon: PieChart, to: '/' },
+  { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
+  { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
 
 export default function MobileNav() {
@@ -101,8 +104,6 @@ export default function MobileNav() {
     boards.find((b) => b.id === pathname.match(/^\/board\/([^/]+)/)?.[1])?.workspaceId ??
     null
   const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1] ?? null
-  const morePages = ['/reports', '/inbox', '/admin/approvals']
-  const moreActive = morePages.includes(pathname) || pathname.startsWith('/workspace/') || pathname.startsWith('/board/')
 
   return (
     <>
@@ -116,7 +117,7 @@ export default function MobileNav() {
         className="fixed inset-x-5 bottom-[calc(env(safe-area-inset-bottom)+22px)] z-30 flex items-center gap-3 md:hidden"
         aria-label="Primary"
       >
-        <div className="flex flex-1 items-center justify-around rounded-full bg-[var(--card)] px-2.5 py-3.5 shadow-[var(--shadow-float)]">
+        <div className="flex flex-1 items-center justify-around rounded-full bg-[var(--card)] px-2 py-[11px] shadow-[var(--shadow-float)] dark:bg-[var(--sunk)]">
           {BAR_NAV.map(({ label, icon: Icon, to }) => {
             const active = pathname === to
             return (
@@ -125,14 +126,16 @@ export default function MobileNav() {
                 to={to}
                 aria-label={label}
                 title={label}
-                className={`flex items-center justify-center px-3 no-underline ${
-                  active ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
-                }`}
+                className="flex flex-col items-center gap-[5px] px-3 py-0.5 no-underline transition active:scale-90"
               >
                 <Icon
                   size={21}
-                  strokeWidth={1.8}
-                  fill={active ? 'currentColor' : 'none'}
+                  strokeWidth={1.9}
+                  className={active ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'}
+                  aria-hidden="true"
+                />
+                <span
+                  className={`h-[5px] w-[5px] rounded-full ${active ? 'bg-[var(--accent)]' : 'bg-transparent'}`}
                   aria-hidden="true"
                 />
               </Link>
@@ -142,12 +145,10 @@ export default function MobileNav() {
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          aria-label="New and more"
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--btn)] text-[var(--btn-ink)] shadow-[0_8px_24px_rgba(28,26,23,.28)] ${
-            moreActive ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]' : ''
-          }`}
+          aria-label="Task baru"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgba(232,98,44,.42)] transition hover:-translate-y-0.5 active:scale-[.94]"
         >
-          <Plus size={24} strokeWidth={2} aria-hidden="true" />
+          <Plus size={24} strokeWidth={2.2} aria-hidden="true" />
         </button>
       </nav>
 

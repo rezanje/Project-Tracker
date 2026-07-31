@@ -38,6 +38,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   // Auth screens are full-bleed with their own brand mark — skip the app chrome.
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const bare = ['/login', '/signup', '/forgot', '/reset'].includes(pathname)
+  // The Command Center owns its header (workspace pill + title + controls).
+  const ownHeader = pathname === '/'
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -48,7 +50,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {!bare && <Sidebar />}
         {/* Mobile nav floats above the content, so leave room for the bar + FAB. */}
         <div className={`flex min-w-0 flex-1 flex-col ${!bare ? 'pb-28 md:pb-0' : ''}`}>
-          {!bare && <Header />}
+          {!bare && !ownHeader && <Header />}
+          {ownHeader && <div className="h-4 sm:h-6" />}
           {children}
           {!bare && <Footer />}
         </div>

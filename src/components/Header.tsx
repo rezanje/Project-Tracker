@@ -23,6 +23,7 @@ import Popover from './Popover'
 import QuickProjectForm from './QuickProjectForm'
 import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
+import { WorkspacePill, WorkspaceSwitcherSheet } from './WorkspaceSwitcher'
 
 function greeting(h: number): string {
   if (h < 12) return 'Good morning'
@@ -353,6 +354,7 @@ function NotificationsBell() {
 
 export default function Header() {
   const navigate = useNavigate()
+  const [wsOpen, setWsOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
   const [name, setName] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
@@ -388,6 +390,9 @@ export default function Header() {
       {/* Greeting sits beside the round controls on mobile, matching the comp. */}
       <div className="flex min-w-0 items-center gap-3 sm:flex-1">
         <div className="min-w-0 flex-1">
+          <div className="mb-2">
+            <WorkspacePill onOpen={() => setWsOpen(true)} />
+          </div>
           {dateStr && (
             <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
               {dateStr}
@@ -423,6 +428,8 @@ export default function Header() {
         </span>
         <ProfileMenu email={email} name={name} />
       </div>
+
+      <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
     </header>
   )
 }
