@@ -24,8 +24,7 @@ fa7d5e9 Lead mobile Home with the KPI teaser, not the revenue hero
 ## The design source of truth
 
 **`1_Redesign project dengan UI UX baru/design_handoff_workspace_command_center/`** — this is the
-only bundle that matters. It is **untracked**; if it is deleted the design intent is only
-recoverable from the shipped CSS.
+only bundle that matters. It is committed on this branch, so it travels with the code.
 
 - `README.md` — 200-line spec: screens, interactions, state shape, token map, build order. Read in full.
 - `project/Rakit Prototype.dc.html` — **primary reference.** Markup is layout, the `class Component`
