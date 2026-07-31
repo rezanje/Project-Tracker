@@ -8,5 +8,12 @@ import { defineConfig } from 'vitest/config'
 // then fail as confusing "violates row-level security policy" errors across
 // unrelated files. Sequential is ~2min vs ~20s, but it doesn't lie.
 export default defineConfig({
-  test: { environment: 'node', fileParallelism: false },
+  test: {
+    environment: 'node',
+    fileParallelism: false,
+    // Sweeps test users left behind by a timed-out or disconnected run — each
+    // test cleans up in a `finally`, but that doesn't run when the process is
+    // killed mid-test, and the orphans surface as pending sign-ups forever.
+    globalSetup: ['./src/test/sweep-test-users.ts'],
+  },
 })
