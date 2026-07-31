@@ -31,7 +31,7 @@ export const CONTENT_FORMATS = [
 ] as const
 export const CONTENT_STATUSES = ['draft', 'scheduled', 'posted'] as const
 export const STATUS_COLOR: Record<string, string> = {
-  draft: '#9ca3af', scheduled: '#d97706', posted: '#1f9d55',
+  draft: 'var(--ink3)', scheduled: 'var(--pop)', posted: 'var(--done)',
 }
 export type ColumnRow = {
   id: string

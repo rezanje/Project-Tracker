@@ -21,7 +21,7 @@ function StatusChip({ status }: { status: string | null }) {
   return (
     <span
       className="chip shrink-0"
-      style={{ background: `color-mix(in oklab, ${c} 16%, transparent)`, color: c, borderColor: c }}
+      style={{ background: `color-mix(in oklab, ${c} 14%, var(--col))`, color: c }}
     >
       {STATUS_LABEL[status] ?? status}
     </span>
@@ -110,14 +110,14 @@ export default function ContentViews({
     return (
       <div className="flex flex-col gap-4">
         {groups.size === 0 && undated.length === 0 && (
-          <div className="card p-6 text-center text-sm text-[var(--ink3)]">No content yet.</div>
+          <div className="panel p-8 text-center text-sm text-[var(--ink3)]">No content yet.</div>
         )}
         {[...groups.entries()].map(([date, list]) => (
           <div key={date} className="flex gap-3">
             <div className="w-24 shrink-0 pt-1 text-right text-[12px] font-extrabold text-[var(--ink2)]">
               {fmtDate(date)}
             </div>
-            <div className="flex flex-1 flex-col gap-2 border-l-2 border-[var(--line)] pl-3">
+            <div className="flex flex-1 flex-col gap-2 border-l border-[var(--line-soft)] pl-3">
               {list.map((c) => (
                 <button
                   key={c.id}
@@ -136,7 +136,7 @@ export default function ContentViews({
         {undated.length > 0 && (
           <div className="flex gap-3">
             <div className="w-24 shrink-0 pt-1 text-right text-[12px] font-extrabold text-[var(--ink3)]">Unscheduled</div>
-            <div className="flex flex-1 flex-col gap-2 border-l-2 border-[var(--line)] pl-3">
+            <div className="flex flex-1 flex-col gap-2 border-l border-[var(--line-soft)] pl-3">
               {undated.map((c) => (
                 <button
                   key={c.id}
@@ -191,7 +191,7 @@ export default function ContentViews({
   // ---- GALLERY ----
   if (view === 'gallery') {
     return cards.length === 0 ? (
-      <div className="card p-6 text-center text-sm text-[var(--ink3)]">No content yet.</div>
+      <div className="panel p-8 text-center text-sm text-[var(--ink3)]">No content yet.</div>
     ) : (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => {
@@ -223,28 +223,28 @@ export default function ContentViews({
   const byPillar = pillars.map((p) => ({ label: p.name, n: cards.filter((c) => c.pillar_id === p.id).length, color: p.color }))
   const channelCounts = new Map<string, number>()
   for (const c of cards) for (const ch of c.channels ?? []) channelCounts.set(ch, (channelCounts.get(ch) ?? 0) + 1)
-  const byChannel = [...channelCounts.entries()].map(([label, n]) => ({ label, n, color: '#2563eb' })).sort((a, b) => b.n - a.n)
+  const byChannel = [...channelCounts.entries()].map(([label, n]) => ({ label, n, color: 'var(--ink)' })).sort((a, b) => b.n - a.n)
   const maxS = Math.max(1, ...byStatus.map((x) => x.n))
   const maxP = Math.max(1, ...byPillar.map((x) => x.n))
   const maxC = Math.max(1, ...byChannel.map((x) => x.n))
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <section className="card p-4">
-        <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">By Status</h3>
+      <section className="panel p-5">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">By Status</h3>
         <div className="flex flex-col gap-3">
           {byStatus.map((x) => <Bar key={x.label} {...x} max={maxS} />)}
         </div>
       </section>
-      <section className="card p-4">
-        <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">By Pillar</h3>
+      <section className="panel p-5">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">By Pillar</h3>
         <div className="flex flex-col gap-3">
           {byPillar.length === 0 && <p className="text-sm text-[var(--ink3)]">No pillars.</p>}
           {byPillar.map((x) => <Bar key={x.label} {...x} max={maxP} />)}
         </div>
       </section>
-      <section className="card p-4">
-        <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">By Channel</h3>
+      <section className="panel p-5">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">By Channel</h3>
         <div className="flex flex-col gap-3">
           {byChannel.length === 0 && <p className="text-sm text-[var(--ink3)]">No channels tagged.</p>}
           {byChannel.map((x) => <Bar key={x.label} {...x} max={maxC} />)}

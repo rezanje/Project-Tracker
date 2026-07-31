@@ -1,51 +1,53 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ChevronRight } from 'lucide-react'
-import { FolderKanban } from '@/components/pixel-icons'
+import {
+  ChevronRight,
+  FolderKanban,
+} from 'lucide-react'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
-import { segFill } from '#/lib/progress'
+import { inScope, useScope } from '#/lib/workspace-scope'
 
 export const Route = createFileRoute('/projects')({
   loader: async () => await fetchDashboard(),
   component: Projects,
 })
 
-const PROJECT_TINTS = ['var(--accent)', '#d97706', '#2563eb', '#7c3aed', '#db2777']
+const PROJECT_TINTS = ['var(--ink)', 'var(--accent)']
 
-function SegBar({ pct, color }: { pct: number; color: string }) {
-  const on = segFill(pct, 12)
+function Bar({ pct, color }: { pct: number; color: string }) {
   return (
-    <span className="progress-seg w-full">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <span
-          key={i}
-          className="progress-seg-block flex-1"
-          style={i < on ? { background: color, borderColor: color } : undefined}
-        />
-      ))}
-    </span>
+    <div className="progress-track w-full">
+      <div
+        className="progress-fill"
+        style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }}
+      />
+    </div>
   )
 }
 
 function Projects() {
   const d = Route.useLoaderData() as DashboardData
   const [picOnly, setPicOnly] = useState(false)
+  const scope = useScope()
 
-  const picCount = d.projects.filter((p) => p.isMyPic).length
-  const shown = picOnly ? d.projects.filter((p) => p.isMyPic) : d.projects
+  // This is the comp's board tab: it shows the projects of whichever workspace
+  // the pill is set to, and every project only under "Semua workspace".
+  const projects = d.projects.filter((p) => inScope(scope, p.wsId))
+  const picCount = projects.filter((p) => p.isMyPic).length
+  const shown = picOnly ? projects.filter((p) => p.isMyPic) : projects
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[900px] flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <FolderKanban size={22} className="text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="display-title text-2xl font-extrabold text-[var(--ink)]">All Projects</h1>
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="mx-auto flex max-w-[900px] flex-col gap-5">
+        <div className="flex items-center gap-2.5">
+          <FolderKanban size={22} className="text-[var(--ink3)]" aria-hidden="true" />
+          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Projects</h1>
           <span className="chip ml-1">{shown.length}</span>
         </div>
 
         <div className="flex gap-2">
           {([
-            { key: false, label: 'All', n: d.projects.length },
+            { key: false, label: 'All', n: projects.length },
             { key: true, label: "I'm PIC", n: picCount },
           ] as const).map((t) => (
             <button
@@ -53,23 +55,23 @@ function Projects() {
               type="button"
               onClick={() => setPicOnly(t.key)}
               aria-pressed={picOnly === t.key}
-              className={`rounded-full border-2 px-3 py-1 text-[12px] font-bold transition ${
+              className={`rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
                 picOnly === t.key
-                  ? 'border-[var(--ink)] bg-[var(--accent-soft)] text-[var(--accent-ink)]'
-                  : 'border-[var(--line)] text-[var(--ink2)] hover:border-[var(--ink)]'
+                  ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                  : 'bg-[var(--col)] text-[var(--ink2)] hover:bg-[var(--sunk)]'
               }`}
             >
-              {t.label} ({t.n})
+              {t.label} <span className="opacity-60">{t.n}</span>
             </button>
           ))}
         </div>
 
         {shown.length === 0 && (
-          <div className="card p-10 text-center text-[var(--ink2)]">
-            <p className="display-title text-lg font-bold">
+          <div className="panel p-12 text-center">
+            <p className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
               {picOnly ? "You're not PIC of any project" : 'No projects yet'}
             </p>
-            <p className="mt-1 text-sm text-[var(--ink3)]">
+            <p className="mt-2 text-[14px] text-[var(--ink3)]">
               {picOnly
                 ? 'A project owner can make you PIC from Edit project.'
                 : 'Create a board from a workspace to see it here.'}
@@ -77,8 +79,9 @@ function Projects() {
           </div>
         )}
 
+
         {shown.length > 0 && (
-          <section className="card p-4">
+          <section className="panel p-6">
             <div className="flex flex-col">
               {shown.map((p, i) => {
                 const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
@@ -87,29 +90,25 @@ function Projects() {
                     key={p.id}
                     to="/board/$boardId"
                     params={{ boardId: p.id }}
-                    className="flex items-center gap-3 border-b border-[var(--line)] py-3 no-underline last:border-0 hover:bg-[var(--col)]"
+                    className="flex items-center gap-3.5 border-b border-[var(--line-soft)] py-3.5 no-underline last:border-0"
                   >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: tint }} />
                     <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 truncate text-[14px] font-bold text-[var(--ink)]">
+                      <p className="flex items-center gap-2 truncate text-[14.5px] font-semibold text-[var(--ink)]">
                         <span className="truncate">{p.title}</span>
-                        {p.isMyPic && (
-                          <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-[var(--accent-ink)]">
-                            PIC
-                          </span>
-                        )}
+                        {p.isMyPic && <span className="chip chip-accent shrink-0 text-[10px]">PIC</span>}
                       </p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">
-                        {p.wsName} · {p.done}/{p.total} tasks
+                      <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
+                        {scope === 'all' ? `${p.wsName} · ` : ''}
+                        {p.done}/{p.total} tasks
                       </p>
-                      <div className="mt-1.5 max-w-[220px]">
-                        <SegBar pct={p.progress} color={tint} />
+                      <div className="mt-2.5 max-w-[260px]">
+                        <Bar pct={p.progress} color={tint} />
                       </div>
                     </div>
-                    <span className="shrink-0 text-[12px] font-extrabold" style={{ color: tint }}>
+                    <span className="shrink-0 text-[13px] font-bold tabular-nums text-[var(--ink)]">
                       {p.progress}%
                     </span>
-                    <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                    <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
                   </Link>
                 )
               })}

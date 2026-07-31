@@ -17,13 +17,6 @@ interface ColumnProps {
   prevColumnTitle?: string
 }
 
-const DOTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function dotFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return DOTS[h % DOTS.length]
-}
-
 export default function Column({
   column,
   isOwner,
@@ -61,27 +54,18 @@ export default function Column({
   const inner = (
     <section
       ref={setNodeRef}
-      className="col-surface flex min-h-[60vh] w-[300px] shrink-0 flex-col gap-[var(--gap)] p-[var(--pad)]"
+      className="col-surface flex min-h-[60vh] w-full shrink-0 flex-col gap-3 p-[18px] md:w-[300px]"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="display-title text-[15px] font-bold text-[var(--ink)]">
-            {column.title}
-          </h3>
-          <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] px-1.5 text-xs font-bold text-[var(--ink2)]">
-            {column.cards.length}
-          </span>
-        </div>
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ background: dotFor(column.id) }}
-          aria-hidden="true"
-        />
+      <div className="flex items-center gap-2.5 px-1 pb-1">
+        <h3 className="text-[15px] font-bold tracking-[-0.015em] text-[var(--ink)]">{column.title}</h3>
+        <span className="inline-flex items-center justify-center rounded-full bg-[var(--sunk)] px-2.5 py-0.5 text-[12px] font-semibold text-[var(--ink2)]">
+          {column.cards.length}
+        </span>
       </div>
 
-      <div className="flex min-h-1.5 flex-1 flex-col gap-[var(--gap)]">
+      <div className="flex min-h-1.5 flex-1 flex-col gap-3">
         {column.cards.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center rounded-xl border-[1.5px] border-dashed border-[var(--line)] p-4 text-center text-xs font-semibold text-[var(--ink3)]">
+          <div className="flex flex-1 items-center justify-center rounded-[var(--r-md)] border-[1.5px] border-dashed border-[var(--line)] p-4 text-center text-[13px] font-medium text-[var(--ink3)]">
             {isOwner ? 'Drop cards here' : 'No cards'}
           </div>
         ) : (
@@ -103,24 +87,24 @@ export default function Column({
 
       {isOwner && onAddCard && (
         <>
-          <form onSubmit={handleAdd} className="flex gap-1.5">
+          <form onSubmit={handleAdd} className="mt-auto flex gap-2">
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Add a card…"
-              className="field min-w-0 flex-1 rounded-[10px] px-3 py-2.5 text-[13px]"
+              placeholder="+ Add a card"
+              className="field min-w-0 flex-1 rounded-[16px] bg-[var(--card)] px-4 py-3 text-[13.5px]"
             />
             <button
               type="submit"
               disabled={busy}
               aria-label="Add card"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--btn)] text-[19px] leading-none text-white transition hover:opacity-90 disabled:opacity-55"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--btn)] text-[20px] leading-none text-[var(--btn-ink)] transition hover:opacity-90 disabled:opacity-50"
             >
               +
             </button>
           </form>
           {addError && (
-            <p className="text-xs text-[var(--danger)]">Failed to add card.</p>
+            <p className="text-[12.5px] text-[var(--danger)]">Failed to add card.</p>
           )}
         </>
       )}

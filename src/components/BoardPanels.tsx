@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import {
   Activity,
   CheckCircle2,
-  Flag,
+  Clock,
   FileText,
+  Flag,
+  Flame,
+  ListChecks,
   Sparkles,
   Users,
   Wallet,
 } from 'lucide-react'
-import { Clock, Flame, ListChecks } from '@/components/pixel-icons'
 import { localDateStr } from '#/lib/home'
 import type { ActivityItem, FileItem } from '#/lib/board-data'
 
@@ -29,7 +31,7 @@ function timeAgo(iso: string): string {
 
 type Member = { id?: string | null; name?: string | null; email?: string | null; role?: string | null }
 
-const AVATAR_TINTS = ['#7c3aed', '#2563eb', '#db2777', '#0891b2', '#d97706', '#1f9d55']
+const AVATAR_TINTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function initials(m: Member): string {
   const base = (m.name ?? m.email ?? '?').trim()
   const parts = base.split(/[.\-_\s@]+/).filter(Boolean)
@@ -53,42 +55,37 @@ export function BoardStats({
   budgetIdr: number | null
 }) {
   const cells = [
-    { icon: Flame, n: dueToday, label: 'Due today', tint: '#d97706' },
+    { icon: Flame, n: dueToday, label: 'Due today', tint: 'var(--pop)' },
     { icon: Clock, n: overdue, label: 'Overdue', tint: 'var(--danger)' },
     { icon: CheckCircle2, n: completed, label: 'Completed', tint: 'var(--accent)' },
-    { icon: ListChecks, n: total, label: 'Total tasks', tint: '#2563eb' },
-    { icon: Users, n: members, label: 'Members', tint: '#7c3aed' },
+    { icon: ListChecks, n: total, label: 'Total tasks', tint: 'var(--ink)' },
+    { icon: Users, n: members, label: 'Members', tint: 'var(--ink2)' },
   ]
   return (
-    <div className="card mx-auto mb-5 flex max-w-[1400px] flex-wrap items-stretch p-0">
-      {cells.map(({ icon: Icon, n, label, tint }, i) => (
-        <div
-          key={label}
-          className={`flex min-w-[120px] flex-1 items-center gap-2.5 px-4 py-3 ${
-            i > 0 ? 'border-l-2 border-[var(--line)]' : ''
-          }`}
-        >
+    <div className="mx-auto mb-5 grid max-w-[1400px] grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      {cells.map(({ icon: Icon, n, label, tint }) => (
+        <div key={label} className="panel flex items-center gap-3 p-4">
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
-            style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--col)]"
+            style={{ color: tint }}
           >
-            <Icon size={16} />
+            <Icon size={18} strokeWidth={1.7} />
           </span>
           <div className="min-w-0">
-            <p className="display-title text-lg font-extrabold leading-none text-[var(--ink)]">{n}</p>
-            <p className="truncate text-[11px] font-semibold text-[var(--ink2)]">{label}</p>
+            <p className="text-[22px] font-bold leading-none tracking-[-0.02em] text-[var(--ink)]">{n}</p>
+            <p className="mt-1.5 truncate text-[12px] text-[var(--ink3)]">{label}</p>
           </div>
         </div>
       ))}
       {budgetIdr != null && (
-        <div className="flex min-w-[180px] flex-[1.4] flex-col justify-center gap-1 border-l-2 border-[var(--line)] px-4 py-3">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--ink2)]">
-            <Wallet size={14} className="text-[var(--accent)]" /> Budget
+        <div className="panel flex flex-col justify-center gap-1 p-4">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+            <Wallet size={13} /> Budget
           </span>
-          <p className="display-title text-sm font-extrabold leading-none text-[var(--ink)]">
+          <p className="text-[16px] font-bold leading-tight tracking-[-0.02em] tabular-nums text-[var(--ink)]">
             Rp {budgetIdr.toLocaleString('id-ID')}
           </p>
-          <p className="text-[10px] text-[var(--ink3)]">Spend tracking coming soon</p>
+          <p className="text-[11px] text-[var(--ink3)]">Spend tracking coming soon</p>
         </div>
       )}
     </div>
@@ -107,9 +104,9 @@ function RailCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="card p-3.5">
+    <section className="panel p-5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
           <Icon size={13} /> {title}
         </h3>
         {action}
@@ -136,7 +133,7 @@ function ActivityList({
           className="flex gap-2 rounded-lg p-1 -m-1 text-left hover:bg-[var(--col)]"
         >
           <span
-            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-[var(--card)]"
             style={{ background: AVATAR_TINTS[a.authorName.length % AVATAR_TINTS.length] }}
           >
             {a.authorName.split(' ').map((s) => s[0]).join('').slice(0, 2)}
@@ -183,7 +180,7 @@ function LogModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2.5 flex items-center justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
             <Icon size={13} /> {title}
           </h3>
           <button
@@ -251,8 +248,8 @@ export function BoardRail({
   return (
     <aside className="hidden w-72 shrink-0 flex-col gap-4 xl:flex">
       {/* AI assistant — Coming Soon */}
-      <section className="card relative overflow-hidden p-3.5">
-        <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+      <section className="panel relative overflow-hidden p-5">
+        <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
           <Sparkles size={13} className="text-[var(--accent)]" /> AI Project Assistant
         </h3>
         <div className="pointer-events-none space-y-1.5 opacity-40 blur-[1.5px]">
@@ -261,12 +258,7 @@ export function BoardRail({
           <p className="text-[12px] text-[var(--ink3)]">Estimated completion: 23 July</p>
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span
-            className="chip bg-[var(--pop-soft)] text-[var(--pop-ink)]"
-            style={{ borderColor: 'var(--pop-ink)' }}
-          >
-            🤖 Coming Soon
-          </span>
+          <span className="chip chip-warn">🤖 Coming Soon</span>
         </div>
       </section>
 
@@ -278,7 +270,7 @@ export function BoardRail({
             <button
               type="button"
               onClick={() => setLogOpen(true)}
-              className="shrink-0 text-[10px] font-bold text-[var(--accent-ink)] hover:underline"
+              className="shrink-0 text-[10px] font-bold text-[var(--ink2)] hover:text-[var(--ink)]"
             >
               View all
             </button>
@@ -312,7 +304,7 @@ export function BoardRail({
             <button
               type="button"
               onClick={() => setFilesOpen(true)}
-              className="shrink-0 text-[10px] font-bold text-[var(--accent-ink)] hover:underline"
+              className="shrink-0 text-[10px] font-bold text-[var(--ink2)] hover:text-[var(--ink)]"
             >
               View all
             </button>
@@ -353,7 +345,7 @@ export function BoardRail({
           {members.slice(0, 6).map((m, i) => (
             <div key={m.id ?? i} className="flex items-center gap-2">
               <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-[var(--card)]"
                 style={{ background: AVATAR_TINTS[i % AVATAR_TINTS.length] }}
               >
                 {initials(m)}
@@ -411,16 +403,16 @@ export function BoardRoadmap({
   }
 
   return (
-    <div className="card mx-auto mt-5 max-w-[1400px] p-4">
+    <div className="panel mx-auto mt-5 max-w-[1400px] p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
           <Flag size={13} /> Roadmap / Milestone
         </h3>
         {isOwner && (
           <button
             type="button"
             onClick={() => setAdding((a) => !a)}
-            className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
+            className="text-[11px] font-bold text-[var(--ink2)] hover:text-[var(--ink)]"
           >
             {adding ? 'Cancel' : '+ Add milestone'}
           </button>
@@ -453,7 +445,7 @@ export function BoardRoadmap({
               <div key={m.id} className="group flex flex-1 items-start gap-2">
                 <div className="flex min-w-[120px] flex-col items-center gap-1.5 text-center">
                   <span
-                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--ink)] text-[12px] font-bold"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] text-[12px] font-bold"
                     style={
                       done
                         ? { background: 'var(--accent)', color: '#fff' }

@@ -3,8 +3,8 @@ import { Moon, Sun, SunMoon } from 'lucide-react'
 
 type ThemeMode = 'light' | 'dark' | 'auto'
 
-// Default to light: the meadow design is a light palette, so a fresh visitor
-// should see it even on a dark-mode OS. Dark stays reachable via the toggle.
+// Default to light: the design leads with the warm light palette, so a fresh
+// visitor should see it even on a dark-mode OS. Dark stays reachable here.
 function getInitialMode(): ThemeMode {
   if (typeof window === 'undefined') {
     return 'light'
@@ -79,8 +79,8 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
       onClick={toggleMode}
       aria-label={label}
       title={label}
-      className={`flex items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink2)] transition hover:border-[var(--accent)] hover:text-[var(--ink)] ${
-        compact ? 'h-8 w-8' : 'h-9 w-9'
+      className={`flex items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:bg-[var(--sunk)] hover:text-[var(--ink)] ${
+        compact ? 'h-9 w-9' : 'h-10 w-10'
       }`}
     >
       <Icon size={size} aria-hidden="true" />

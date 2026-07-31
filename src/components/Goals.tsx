@@ -1,6 +1,12 @@
 import { useState } from 'react'
-import { X, Check } from 'lucide-react'
-import { Clock } from '@/components/pixel-icons'
+import { useRouter } from '@tanstack/react-router'
+import {
+  Check,
+  Clock,
+  Target,
+  X,
+} from 'lucide-react'
+import { selfAssignKpiFn, selfAssignObjectiveFn } from '#/lib/goals'
 import type { Kpi, Kr, Objective, AssignedKpi, AssignedObjective } from '#/lib/goals'
 
 const pct = (c: number, t: number) => (t ? Math.min(100, Math.round((c / t) * 100)) : 0)
@@ -61,7 +67,7 @@ function CheckinForm({ onSubmit }: { onSubmit: (value: number, note: string) => 
 export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: AssigneeProps) {
   return (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My KPIs</h3>
         {kpis.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">No KPIs assigned yet.</p>}
         <ul className="flex flex-col gap-3">
@@ -71,14 +77,13 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                 <span className="font-bold text-[var(--ink)]">{k.name}</span>
                 <span className="text-[var(--ink3)]">{k.current} / {k.target} {k.unit ?? ''}</span>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
+              <div className="mt-1.5 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
               </div>
               {k.pending ? (
                 <div className="mt-1.5">
                   <span
-                    className="chip gap-1 text-[11px]"
-                    style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}
+                    className="chip chip-warn gap-1 text-[11px]"
                   >
                     <Clock size={11} />
                     Pending review: {k.pending.proposedValue}
@@ -94,7 +99,7 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
         </ul>
       </div>
 
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">My Objectives</h3>
         {objectives.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">No objectives assigned yet.</p>}
         <ul className="flex flex-col gap-4">
@@ -104,8 +109,8 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                 <span className="text-sm font-bold text-[var(--ink)]">{o.title}</span>
                 <span className="text-[12px] font-semibold text-[var(--ink3)]">{o.progress}%</span>
               </div>
-              <div className="mb-2 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
+              <div className="mb-2 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
               </div>
               <ul className="flex flex-col gap-2 pl-3">
                 {o.krs.map((k) => (
@@ -117,8 +122,7 @@ export function MyGoalsCard({ kpis, objectives, onCheckinKpi, onCheckinKr }: Ass
                     {k.pending ? (
                       <div className="mt-1">
                         <span
-                          className="chip gap-1 text-[11px]"
-                          style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}
+                          className="chip chip-warn gap-1 text-[11px]"
                         >
                           <Clock size={11} />
                           Pending review: {k.pending.proposedValue}
@@ -153,7 +157,7 @@ interface OwnerProps {
 function ReviewRow({ pending, onReview }: { pending: Kr['pending']; onReview: (checkinId: string, approve: boolean) => void }) {
   if (!pending) return null
   return (
-    <div className="mt-1.5 flex items-center gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--col)] p-2 text-[11px] gt-fade">
+    <div className="mt-1.5 flex items-center gap-1 rounded-[14px] bg-[var(--col)] p-3 text-[11px] gt-fade">
       <span className="flex-1">Proposed: <b>{pending.proposedValue}</b>{pending.note ? ` — ${pending.note}` : ''}</span>
       <button
         type="button"
@@ -222,7 +226,7 @@ function AddKrForm({ onAdd }: { onAdd: (title: string, target: number) => void }
 export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, onDeleteKpi, onDeleteObjective, onAddKeyResult }: OwnerProps) {
   return (
     <div className="mb-8 grid gap-4 lg:grid-cols-2">
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">Assigned KPIs</h3>
         {kpis.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">Nothing assigned yet.</p>}
         <ul className="flex flex-col gap-3">
@@ -237,8 +241,8 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
                   </button>
                 </span>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
+              <div className="mt-1.5 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${pct(k.current, k.target)}%` }} />
               </div>
               <ReviewRow pending={k.pending} onReview={onReviewKpi} />
             </li>
@@ -246,7 +250,7 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
         </ul>
       </div>
 
-      <div className="card p-5">
+      <div className="panel p-6">
         <h3 className="display-title mb-3 text-[17px] font-bold text-[var(--ink)]">Assigned Objectives</h3>
         {objectives.length === 0 && <p className="mb-3 py-1 text-sm text-[var(--ink3)]">Nothing assigned yet.</p>}
         <ul className="flex flex-col gap-4">
@@ -261,8 +265,8 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
                   </button>
                 </span>
               </div>
-              <div className="mb-2 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
+              <div className="mb-2 progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${o.progress}%` }} />
               </div>
               <ul className="flex flex-col gap-2 pl-3">
                 {o.krs.map((k) => (
@@ -283,5 +287,109 @@ export function AssignedGoalsCard({ kpis, objectives, onReviewKpi, onReviewKr, o
         </ul>
       </div>
     </div>
+  )
+}
+
+// ---- Self-service goal creation ----
+// Lived on Home until Home was cut back to the comp's three sections; Reports
+// is where goals are read, so it is where they are added now.
+
+export function SelfGoalForm({ onDone }: { onDone: () => void }) {
+  const [kind, setKind] = useState<'kpi' | 'objective'>('kpi')
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [unit, setUnit] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      if (kind === 'kpi') {
+        await selfAssignKpiFn({
+          data: { name: name.trim(), target: Number(target) || 0, unit, startDate, endDate },
+        })
+      } else {
+        await selfAssignObjectiveFn({ data: { title: name.trim(), startDate, endDate } })
+      }
+      router.invalidate()
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save goal')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2">
+      <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+        <Target size={14} aria-hidden="true" /> New goal
+      </p>
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={() => setKind('kpi')}
+          className={`btn btn-square flex-1 text-xs ${kind === 'kpi' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          KPI
+        </button>
+        <button
+          type="button"
+          onClick={() => setKind('objective')}
+          className={`btn btn-square flex-1 text-xs ${kind === 'objective' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          Objective
+        </button>
+      </div>
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={kind === 'kpi' ? 'KPI name' : 'Objective title'}
+        className="field text-[13px]"
+      />
+      {kind === 'kpi' && (
+        <div className="flex gap-2">
+          <input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            type="number"
+            placeholder="Target"
+            className="field w-24 text-[13px]"
+          />
+          <input
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            placeholder="Unit"
+            className="field flex-1 text-[13px]"
+          />
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          type="date"
+          className="field flex-1 text-[13px]"
+        />
+        <input
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          type="date"
+          className="field flex-1 text-[13px]"
+        />
+      </div>
+      {error && <p className="text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
+      <button type="submit" disabled={saving || !name.trim()} className="btn btn-primary btn-square w-full">
+        {saving ? 'Saving…' : 'Add goal'}
+      </button>
+    </form>
   )
 }

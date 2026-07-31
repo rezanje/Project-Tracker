@@ -4,7 +4,7 @@ import { requireUser } from './auth'
 import { myPicBoardIds, type PicMemberRow } from './board-pics'
 import { isDoneColumn, localDateStr, weekdayIndex, weekRange } from './home'
 
-// One aggregation feeding both dashboards (Command Center + Pixel Home). Panels
+// One aggregation feeding both dashboards (Command Center + Home). Panels
 // that need history or event data we don't store (timeline times, sparkline
 // trends, weekly bars, heatmaps) stay static in the UI — this returns only what
 // the schema can back.
@@ -22,6 +22,7 @@ export type DashProject = {
   id: string
   title: string
   wsName: string
+  wsId: string | null
   progress: number
   done: number
   total: number
@@ -34,9 +35,22 @@ export type DashPriority = {
   title: string
   boardTitle: string
   wsName: string
+  /** Null for boards with no workspace — they only show in 'all' scope. */
+  wsId: string | null
   bucket: 'Overdue' | 'Due today' | 'Due tomorrow' | 'Due soon'
 }
-export type DashTask = { id: string; title: string; boardTitle: string }
+export type DashTask = {
+  id: string
+  title: string
+  boardTitle: string
+  boardId: string
+  /** The lane the card sits in — the comp's status line under the title. */
+  status: string
+  /** Resolved from the board's member list. Null when unassigned, or when the
+   *  assignee has no board_members row (workspace-level access). */
+  assignee: DashProjectMember | null
+  wsId: string | null
+}
 
 export type DashboardData = {
   name: string | null
@@ -239,25 +253,37 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
             if (d < 0) {
               overdue++
               if (mine) myOverdue++
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Overdue' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Overdue' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d === 0) {
               dueToday++
-              today_.push({ id: c.id, title: c.title, boardTitle: b.title })
+              const task: DashTask = {
+                id: c.id,
+                title: c.title,
+                boardTitle: b.title,
+                boardId: b.id,
+                status: col.title,
+                assignee:
+                  (c.assignee_id &&
+                    (membersByBoard.get(b.id) ?? []).find((m) => m.id === c.assignee_id)) ||
+                  null,
+                wsId: ws,
+              }
+              today_.push(task)
               if (mine) {
                 myDueToday++
-                myToday_.push({ id: c.id, title: c.title, boardTitle: b.title })
+                myToday_.push(task)
               }
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due today' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due today' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d === 1) {
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due tomorrow' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due tomorrow' }
               priority.push(p)
               if (mine) myPriority.push(p)
             } else if (d <= 5) {
-              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', bucket: 'Due soon' }
+              const p: DashPriority = { id: c.id, title: c.title, boardTitle: b.title, wsName: (ws && wsName.get(ws)) || '', wsId: ws, bucket: 'Due soon' }
               priority.push(p)
               if (mine) myPriority.push(p)
             }
@@ -270,6 +296,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         id: b.id,
         title: b.title,
         wsName: (ws && wsName.get(ws)) || '',
+        wsId: ws,
         progress: bProgress,
         done: bDone,
         total: bTotal,

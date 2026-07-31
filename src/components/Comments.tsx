@@ -202,7 +202,7 @@ export default function Comments({ cardId, members }: CommentsProps) {
         ) : (
           comments.map((c) => (
             <div key={c.id} className="flex gap-2.5">
-              <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
+              <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-[var(--card)]">
                 {initials(c.authorName)}
               </span>
               <div className="min-w-0 flex-1">

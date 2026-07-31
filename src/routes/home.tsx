@@ -1,141 +1,59 @@
-import { useMemo, useState, type ComponentType } from 'react'
+import { useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { CheckSquare, Megaphone, MoreVertical, Plus, Target } from 'lucide-react'
-import { AlarmClock, Flame, FolderPlus, StickyNote } from '@/components/pixel-icons'
-import { segFill } from '#/lib/progress'
-import { fetchDashboard, type DashboardData, type DashProjectMember } from '#/lib/dashboard'
-import { deleteNoteFn } from '#/lib/actions'
-import {
-  fetchMyGoalsFn,
-  submitKpiCheckinFn,
-  submitKrCheckinFn,
-  selfAssignKpiFn,
-  selfAssignObjectiveFn,
-  type MyGoals,
-} from '#/lib/goals'
-import { MyGoalsCard } from '#/components/Goals'
-import Popover from '#/components/Popover'
-import QuickTaskForm from '#/components/QuickTaskForm'
-import QuickProjectForm from '#/components/QuickProjectForm'
-import QuickNoteForm from '#/components/QuickNoteForm'
-import QuickReminderForm from '#/components/QuickReminderForm'
-import NoteDetail from '#/components/NoteDetail'
+import { Check } from 'lucide-react'
+import { accentFor } from '#/lib/accent'
+import { completeCardFn } from '#/lib/actions'
+import { isDoneColumn, isInProgressColumn } from '#/lib/home'
+import { inScope, useScope } from '#/lib/workspace-scope'
+import { fetchDashboard, type DashboardData, type DashProjectMember, type DashTask } from '#/lib/dashboard'
+import { toast } from '#/components/Toast'
 
-// ponytail: Pixel Home wires the schema-backed data (today tasks, active
-// projects, KPI headline numbers, project progress, announcements, notes).
-// Pomodoro is functional; Music and the KPI mini-bar shapes stay static (no
-// source / a later slice).
+/** The 3px lane bar, same reading as the task-detail sheet's. */
+function barColor(title: string): string {
+  if (isDoneColumn(title)) return 'var(--ink)'
+  if (isInProgressColumn(title)) return 'var(--accent)'
+  if (/review|approv/i.test(title)) return 'var(--done)'
+  return 'var(--ink3)'
+}
+
+// The comp's Home is three things and nothing else: the KPI teaser, the
+// projects of the current workspace, and what's due today. Goals moved to
+// Reports; notes and announcements to the Command Center; note, reminder,
+// task and project creation to the "+ New" menu and the FAB.
 
 export const Route = createFileRoute('/home')({
-  loader: async () => {
-    const [dashboard, goals] = await Promise.all([fetchDashboard(), fetchMyGoalsFn()])
-    return { dashboard, goals }
-  },
-  component: PixelHome,
+  loader: async () => await fetchDashboard(),
+  component: Home,
 })
 
-function QuickTile({
-  label,
-  icon: Icon,
-  tint,
-  panel,
-}: {
-  label: string
-  icon: ComponentType<{ size?: number; className?: string }>
-  tint: string
-  panel: (close: () => void) => React.ReactNode
-}) {
-  return (
-    <Popover
-      panelClassName="w-64"
-      renderTrigger={(_open, toggle) => (
-        <button
-          type="button"
-          onClick={toggle}
-          className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center hover:border-[var(--ink)]"
-        >
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
-            style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
-          >
-            <Icon size={16} />
-          </span>
-          <span className="text-[10px] font-bold text-[var(--ink2)]">{label}</span>
-        </button>
-      )}
-      renderPanel={panel}
-    />
-  )
-}
-
 const KPI_BARS = [4, 6, 5, 7, 6, 8, 9]
-const PROJECT_TINTS = ['var(--accent)', '#d97706', '#2563eb', '#7c3aed', '#db2777']
 
-function fmtRupiah(n: number): string {
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`
-  return `Rp ${n.toLocaleString('id-ID')}`
-}
-
-function SegBar({ pct, color }: { pct: number; color: string }) {
-  const on = segFill(pct, 12)
+/** Continuous progress track. */
+function Bar({ pct, color = 'var(--ink)' }: { pct: number; color?: string }) {
   return (
-    <span className="progress-seg w-full">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <span
-          key={i}
-          className="progress-seg-block flex-1"
-          style={i < on ? { background: color, borderColor: color } : undefined}
-        />
-      ))}
-    </span>
-  )
-}
-
-function MiniBars({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data)
-  return (
-    <div className="flex h-8 items-end gap-0.5">
-      {data.map((v, i) => (
-        <span
-          key={i}
-          className="w-1.5 rounded-sm"
-          style={{ height: `${(v / max) * 100}%`, background: color, opacity: 0.5 + (i / data.length) * 0.5 }}
-        />
-      ))}
+    <div className="progress-track w-full">
+      <div className="progress-fill" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
     </div>
   )
 }
 
-function Donut({ pct }: { pct: number }) {
-  const r = 34
-  const c = 2 * Math.PI * r
+/** Bar sparkline. The tallest column carries the one accent; the rest are tone. */
+function MiniBars({ data, className = 'h-8' }: { data: number[]; className?: string }) {
+  const max = Math.max(...data)
   return (
-    <svg width="96" height="96" viewBox="0 0 96 96" className="shrink-0">
-      <circle cx="48" cy="48" r={r} fill="none" stroke="var(--col)" strokeWidth="12" />
-      <circle
-        cx="48"
-        cy="48"
-        r={r}
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="12"
-        strokeLinecap="round"
-        strokeDasharray={`${(pct / 100) * c} ${c}`}
-        transform="rotate(-90 48 48)"
-      />
-      <text x="48" y="53" textAnchor="middle" className="display-title fill-[var(--ink)] text-lg font-extrabold">
-        {pct}%
-      </text>
-    </svg>
+    <div className={`flex items-end gap-1.5 ${className}`}>
+      {data.map((v, i) => (
+        <span
+          key={i}
+          className="flex-1 rounded-[3px]"
+          style={{
+            height: `${(v / max) * 100}%`,
+            background: v === max ? 'var(--accent)' : 'var(--sunk)',
+          }}
+        />
+      ))}
+    </div>
   )
-}
-
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function accentFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
 }
 
 function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
@@ -147,7 +65,7 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
         <span
           key={m.id}
           title={m.name}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-[var(--card)]"
           style={{ background: accentFor(m.id) }}
         >
           {m.avatar_url ? (
@@ -158,7 +76,7 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
         </span>
       ))}
       {members.length > 3 && (
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--col)] text-[9px] font-bold text-[var(--ink2)]">
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[var(--sunk)] text-[9px] font-bold text-[var(--ink2)]">
           +{members.length - 3}
         </span>
       )}
@@ -166,492 +84,196 @@ function ProjectAvatars({ members }: { members: DashProjectMember[] }) {
   )
 }
 
-function SelfGoalForm({ onDone }: { onDone: () => void }) {
-  const [kind, setKind] = useState<'kpi' | 'objective'>('kpi')
-  const [name, setName] = useState('')
-  const [target, setTarget] = useState('')
-  const [unit, setUnit] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+/** A "due today" card: lane bar, title, round checkbox, lane name, assignee. */
+function TodayCard({
+  task,
+  onComplete,
+  busy,
+}: {
+  task: DashTask
+  onComplete: (id: string) => void
+  busy: boolean
+}) {
+  return (
+    <div className="flex gap-3 rounded-[20px] bg-[var(--card)] px-4 py-[15px] shadow-[var(--shadow-sm)] transition hover:-translate-y-px">
+      <span
+        className="w-[3px] shrink-0 self-stretch rounded-full"
+        style={{ background: barColor(task.status) }}
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-2">
+          <Link
+            to="/board/$boardId"
+            params={{ boardId: task.boardId }}
+            className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)] no-underline"
+          >
+            {task.title}
+          </Link>
+          <button
+            type="button"
+            onClick={() => onComplete(task.id)}
+            disabled={busy}
+            aria-label={`Tandai "${task.title}" selesai`}
+            className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
+          >
+            <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="mt-[3px] text-[13px] text-[var(--ink3)]">{task.status}</p>
+        <div className="mt-2.5 flex items-center justify-between gap-2.5">
+          {task.assignee ? (
+            <span
+              title={task.assignee.name}
+              className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-white"
+              style={{ background: accentFor(task.assignee.id) }}
+            >
+              {task.assignee.avatar_url ? (
+                <img src={task.assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+              ) : (
+                (task.assignee.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()
+              )}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[12.5px] font-medium text-[var(--ink2)]">{task.boardTitle}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) return
-    setSaving(true)
-    setError(null)
+function Home() {
+  const d = Route.useLoaderData() as DashboardData
+  const router = useRouter()
+  const scope = useScope()
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function complete(id: string) {
+    setBusyId(id)
     try {
-      if (kind === 'kpi') {
-        await selfAssignKpiFn({
-          data: { name: name.trim(), target: Number(target) || 0, unit, startDate, endDate },
-        })
-      } else {
-        await selfAssignObjectiveFn({ data: { title: name.trim(), startDate, endDate } })
-      }
+      await completeCardFn({ data: { cardId: id } })
+      toast('Task selesai ✓')
       router.invalidate()
-      onDone()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save goal')
+    } catch {
+      toast('Gagal menandai selesai')
     } finally {
-      setSaving(false)
+      setBusyId(null)
     }
   }
 
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
-      <p className="mb-1 flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-        <Target size={14} aria-hidden="true" /> New goal
-      </p>
-      <div className="flex gap-1">
-        <button
-          type="button"
-          onClick={() => setKind('kpi')}
-          className={`btn btn-square flex-1 text-xs ${kind === 'kpi' ? 'btn-primary' : 'btn-ghost'}`}
-        >
-          KPI
-        </button>
-        <button
-          type="button"
-          onClick={() => setKind('objective')}
-          className={`btn btn-square flex-1 text-xs ${kind === 'objective' ? 'btn-primary' : 'btn-ghost'}`}
-        >
-          Objective
-        </button>
-      </div>
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={kind === 'kpi' ? 'KPI name' : 'Objective title'}
-        className="field text-[13px]"
-      />
-      {kind === 'kpi' && (
-        <div className="flex gap-2">
-          <input
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            type="number"
-            placeholder="Target"
-            className="field w-24 text-[13px]"
-          />
-          <input
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            placeholder="Unit"
-            className="field flex-1 text-[13px]"
-          />
-        </div>
-      )}
-      <div className="flex gap-2">
-        <input
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          type="date"
-          className="field flex-1 text-[13px]"
-        />
-        <input
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          type="date"
-          className="field flex-1 text-[13px]"
-        />
-      </div>
-      {error && <p className="text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
-      <button type="submit" disabled={saving || !name.trim()} className="btn btn-primary btn-square w-full">
-        {saving ? 'Saving…' : 'Add goal'}
-      </button>
-    </form>
-  )
-}
-
-function PixelHome() {
-  const { dashboard: d, goals } = Route.useLoaderData() as { dashboard: DashboardData; goals: MyGoals }
-  const router = useRouter()
-
-  async function removeNote(id: string) {
-    if (!window.confirm('Delete this note?')) return
-    await deleteNoteFn({ data: { id } })
-    router.invalidate()
-  }
-
-  const [noteSort, setNoteSort] = useState<'newest' | 'oldest' | 'category'>('newest')
-  const [selectedNote, setSelectedNote] = useState<DashboardData['notes'][number] | null>(null)
-
-  const noteCategories = useMemo(
-    () => Array.from(new Set(d.notes.map((n) => n.category).filter((c): c is string => !!c))).sort(),
-    [d.notes],
-  )
-
-  const sortedNotes = useMemo(() => {
-    const arr = [...d.notes]
-    if (noteSort === 'oldest') arr.sort((a, b) => a.created_at.localeCompare(b.created_at))
-    else if (noteSort === 'category')
-      arr.sort(
-        (a, b) => (a.category ?? '').localeCompare(b.category ?? '') || b.created_at.localeCompare(a.created_at),
-      )
-    else arr.sort((a, b) => b.created_at.localeCompare(a.created_at))
-    return arr
-  }, [d.notes, noteSort])
-
-  async function onCheckinKpi(kpiId: string, proposedValue: number, note: string) {
-    await submitKpiCheckinFn({ data: { kpiId, proposedValue, note } })
-    router.invalidate()
-  }
-  async function onCheckinKr(krId: string, proposedValue: number, note: string) {
-    await submitKrCheckinFn({ data: { krId, proposedValue, note } })
-    router.invalidate()
-  }
+  const myToday = d.myToday.filter((t) => inScope(scope, t.wsId))
+  const projects = d.projects.filter((p) => inScope(scope, p.wsId))
 
   const total = d.myStats.total
   const overallPct = total ? Math.round((d.myStats.completed / total) * 100) : 0
-  const pp = d.projectProgress
-  const ppPct = pp.total ? Math.round((pp.completed / pp.total) * 100) : 0
-
-  const KPIS = [
-    { label: 'Revenue', val: fmtRupiah(d.revenue), tint: 'var(--accent)' },
-    { label: 'Tasks Done', val: String(d.stats.completed), tint: '#2563eb' },
-    { label: 'On Progress', val: String(pp.inProgress), tint: '#d97706' },
-    { label: 'Overdue', val: String(d.stats.overdue), tint: 'var(--danger)' },
-  ]
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 lg:flex-row">
-        {/* left / main */}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* TODAY */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Flame size={18} className="text-[var(--danger)]" aria-hidden="true" />
-              <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">Today</h3>
-            </div>
-            <div className="mb-3 flex flex-wrap items-center gap-4 border-b-2 border-[var(--line)] pb-3">
-              <Stat n={String(total)} label="Tasks" />
-              <Stat n={String(d.myStats.overdue)} label="Overdue" tint="var(--danger)" />
-              <Stat n={String(d.myStats.dueToday)} label="Due today" tint="#d97706" />
-              <div className="ml-auto flex items-center gap-2">
-                <SegBar pct={overallPct} color="var(--accent)" />
-                <span className="whitespace-nowrap text-sm font-extrabold text-[var(--accent-ink)]">{overallPct}%</span>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              {d.myToday.length === 0 && (
-                <p className="py-3 text-sm text-[var(--ink3)]">Nothing due today 🎉</p>
-              )}
-              {d.myToday.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
-                  <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{t.title}</p>
-                    <span className="text-[11px] font-semibold text-[var(--ink3)]">{t.boardTitle}</span>
-                  </div>
-                  <span className="chip shrink-0" style={{ background: 'var(--pop-soft)', color: 'var(--pop-ink)', borderColor: 'var(--pop-ink)' }}>
-                    Due today
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link to="/my-tasks" className="mt-2 inline-block text-[12px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
-              View all tasks →
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="mx-auto flex max-w-[900px] flex-col gap-5">
+        {/* KPI TEASER — what the prototype's Home leads with. The trend badge the
+            comp shows is omitted: there is no revenue history to derive it from,
+            and a hard-coded percentage would read as real. */}
+        <section className="panel flex items-center gap-3.5 p-[18px]">
+          <div className="w-[118px] flex-none">
+            <p className="mb-3 text-[15.5px] font-bold leading-[1.25] tracking-[-0.015em] text-[var(--ink)]">
+              Lihat progres
+              <br />
+              KPI kamu
+            </p>
+            <Link
+              to="/reports"
+              className="inline-flex items-center rounded-full bg-[var(--btn)] px-4 py-[9px] text-[13px] font-bold text-[var(--btn-ink)] no-underline transition hover:opacity-90 active:scale-[.96]"
+            >
+              Check now
             </Link>
-          </section>
-
-          {/* ACTIVE PROJECTS */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">Active Projects</h3>
-              <Link to="/projects" className="text-[11px] font-bold text-[var(--accent-ink)] no-underline hover:underline">
-                View all projects →
-              </Link>
-            </div>
-            {d.projects.length === 0 ? (
-              <p className="text-sm text-[var(--ink3)]">No projects yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {d.projects.slice(0, 3).map((p, i) => {
-                  const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
-                  return (
-                    <Link
-                      key={p.id}
-                      to="/board/$boardId"
-                      params={{ boardId: p.id }}
-                      className="rounded-[10px] border-2 border-[var(--ink)] p-3 no-underline hover:bg-[var(--col)]"
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
-                        <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
-                        <span className="ml-auto text-[12px] font-extrabold" style={{ color: tint }}>
-                          {p.progress}%
-                        </span>
-                      </div>
-                      <SegBar pct={p.progress} color={tint} />
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-[var(--ink3)]">
-                          {p.done} / {p.total} tasks
-                        </span>
-                        <ProjectAvatars members={p.members} />
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* KPI + PROJECT PROGRESS */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <a href="#my-goals" className="card block p-4 no-underline hover:bg-[var(--col)]">
-              <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                📊 KPI Overview
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {KPIS.map((k) => (
-                  <div key={k.label} className="rounded-[10px] border-2 border-[var(--line)] p-3">
-                    <p className="text-[11px] font-semibold text-[var(--ink3)]">{k.label}</p>
-                    <p className="display-title text-lg font-extrabold leading-tight text-[var(--ink)]">{k.val}</p>
-                    <div className="mt-1">
-                      <MiniBars data={KPI_BARS} color={k.tint} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </a>
-
-            <section className="card p-4">
-              <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                <Target size={13} /> Project Progress
-              </h3>
-              <div className="flex items-center gap-4">
-                <Donut pct={ppPct} />
-                <div className="flex-1 space-y-2">
-                  <ProgRow label="Total Projects" n={pp.total} tint="var(--ink3)" />
-                  <ProgRow label="Completed" n={pp.completed} tint="var(--accent)" />
-                  <ProgRow label="In Progress" n={pp.inProgress} tint="#d97706" />
-                </div>
-              </div>
-            </section>
           </div>
-
-          <div id="my-goals" className="scroll-mt-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="display-title text-lg font-extrabold text-[var(--ink)]">My Goals</h3>
-              <Popover
-                align="left"
-                panelClassName="w-72"
-                renderTrigger={(_open, toggle) => (
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
-                  >
-                    <Plus size={12} /> New goal
-                  </button>
-                )}
-                renderPanel={(close) => <SelfGoalForm onDone={close} />}
-              />
-            </div>
-            <MyGoalsCard
-              kpis={goals.kpis}
-              objectives={goals.objectives}
-              onCheckinKpi={onCheckinKpi}
-              onCheckinKr={onCheckinKr}
-            />
-          </div>
-        </div>
-
-        {/* right rail */}
-        <div className="flex w-full flex-col gap-4 lg:w-80">
-          {/* QUICK ACTIONS */}
-          <section className="card p-4">
-            <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-              ⚡ Quick Actions
-            </h3>
-            <div className="grid grid-cols-4 gap-2">
-              <QuickTile
-                label="Add Task"
-                icon={CheckSquare}
-                tint="var(--accent)"
-                panel={(close) => <QuickTaskForm onDone={close} />}
-              />
-              <QuickTile
-                label="Add Project"
-                icon={FolderPlus}
-                tint="#d97706"
-                panel={(close) => <QuickProjectForm onDone={close} />}
-              />
-              <QuickTile
-                label="Add Note"
-                icon={StickyNote}
-                tint="#7c3aed"
-                panel={(close) => (
-                  <QuickNoteForm
-                    categorySuggestions={noteCategories}
-                    onDone={() => {
-                      close()
-                      router.invalidate()
-                    }}
-                  />
-                )}
-              />
-              <QuickTile
-                label="Set Reminder"
-                icon={AlarmClock}
-                tint="#2563eb"
-                panel={(close) => <QuickReminderForm onDone={close} />}
-              />
-            </div>
-          </section>
-
-          {/* ANNOUNCEMENTS */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                <Megaphone size={13} /> Announcements
-              </h3>
-              <button type="button" className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
-                View all
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {d.announcements.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No announcements.</p>}
-              {d.announcements.map((a) => (
-                <div key={a.id} className="flex gap-2 rounded-[10px] border-2 border-[var(--line)] p-2">
-                  <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                    style={{ background: accentFor(a.author ?? 'Team') }}
-                  >
-                    {(a.author ?? 'Team').trim().split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-[var(--ink)]">{a.author ?? 'Team'}</p>
-                    <p className="text-[12px] text-[var(--ink2)]">{a.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* NOTES */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                📝 Notes
-              </h3>
-              <div className="flex items-center gap-3">
-                <select
-                  value={noteSort}
-                  onChange={(e) => setNoteSort(e.target.value as typeof noteSort)}
-                  aria-label="Sort notes"
-                  className="field"
-                  style={{ width: 'auto', padding: '0.3rem 0.5rem', fontSize: '11px' }}
-                >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="category">Category (A–Z)</option>
-                </select>
-                <Popover
-                  align="left"
-                  panelClassName="w-64"
-                  renderTrigger={(_open, toggle) => (
-                    <button
-                      type="button"
-                      onClick={toggle}
-                      className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent-ink)] hover:underline"
-                    >
-                      <Plus size={12} /> New Note
-                    </button>
-                  )}
-                  renderPanel={(close) => (
-                    <QuickNoteForm
-                      categorySuggestions={noteCategories}
-                      onDone={() => {
-                        close()
-                        router.invalidate()
-                      }}
-                    />
-                  )}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              {sortedNotes.length === 0 && <p className="text-[12px] text-[var(--ink3)]">No notes.</p>}
-              {sortedNotes.map((n) => (
-                <div
-                  key={n.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedNote(n)}
-                  onKeyDown={(e) => {
-                    // Only react when the card itself is focused — otherwise Enter on
-                    // the nested delete button bubbles here too, opening a note that
-                    // may have just been deleted (stopPropagation on click doesn't
-                    // stop the keydown that already ran this handler).
-                    if (e.target === e.currentTarget && e.key === 'Enter') setSelectedNote(n)
+          <div className="min-w-0 flex-1">
+            <div className="mt-4 flex h-[66px] items-end gap-[5px]">
+              {KPI_BARS.map((v, i) => (
+                <span
+                  key={i}
+                  className="flex-1 rounded-[5px]"
+                  style={{
+                    height: `${(v / Math.max(...KPI_BARS)) * 100}%`,
+                    background: i === KPI_BARS.length - 1 ? 'var(--accent)' : 'var(--sunk)',
                   }}
-                  className="flex cursor-pointer items-start gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--pop-soft)] p-2.5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-[var(--pop-ink)]">{n.body}</p>
-                    {n.category && <span className="chip mt-1">{n.category}</span>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeNote(n.id)
-                    }}
-                    aria-label="Delete note"
-                    className="shrink-0 text-[var(--pop-ink)] hover:text-[var(--danger)]"
-                  >
-                    <MoreVertical size={14} />
-                  </button>
-                </div>
+                />
               ))}
             </div>
-          </section>
+          </div>
+        </section>
 
-          {selectedNote && (
-            <NoteDetail
-              note={selectedNote}
-              categorySuggestions={noteCategories}
-              onClose={() => setSelectedNote(null)}
-              onSaved={() => {
-                setSelectedNote(null)
-                router.invalidate()
-              }}
-              onDelete={async () => {
-                await removeNote(selectedNote.id)
-                setSelectedNote(null)
-              }}
-            />
+        {/* PROJECTS */}
+        <section>
+          <div className="mb-3.5 flex items-baseline justify-between">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Projects</h2>
+            <Link
+              to="/projects"
+              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--accent)]"
+            >
+              See all
+            </Link>
+          </div>
+          {projects.length === 0 ? (
+            <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>
+          ) : (
+            <div className="gt-scroll -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0">
+              {projects.slice(0, 3).map((p) => (
+                <Link
+                  key={p.id}
+                  to="/board/$boardId"
+                  params={{ boardId: p.id }}
+                  className="panel card-hover w-[200px] shrink-0 p-5 no-underline md:w-auto"
+                >
+                  <MiniBars data={KPI_BARS} className="mb-4 h-[52px]" />
+                  <p className="truncate text-[16px] font-bold tracking-[-0.015em] text-[var(--ink)]">{p.title}</p>
+                  <p className="mt-1 text-[13px] text-[var(--ink3)]">
+                    {p.done} / {p.total} tasks
+                  </p>
+                  <div className="mt-4 flex items-center gap-3">
+                    <Bar pct={p.progress} />
+                    <span className="shrink-0 text-[13px] font-bold text-[var(--ink)]">{p.progress}%</span>
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <ProjectAvatars members={p.members} />
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
-        </div>
+        </section>
+
+        {/* TASK HARI INI — one card per task, as the comp draws it. The comp's
+            clock time ("Today · 10:15am") is omitted: cards carry a due date,
+            not a due time. */}
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Task hari ini</h2>
+            <Link
+              to="/my-tasks"
+              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--accent)]"
+            >
+              See all
+            </Link>
+          </div>
+          {myToday.length === 0 ? (
+            <div className="rounded-[20px] bg-[var(--col)] px-[18px] py-7 text-center">
+              <p className="text-[14.5px] font-bold text-[var(--ink)]">Clear semua 🎉</p>
+              <p className="mt-1 text-[13px] text-[var(--ink3)]">
+                {total} task total · {d.myStats.overdue} telat · {overallPct}% selesai
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {myToday.map((t) => (
+                <TodayCard key={t.id} task={t} onComplete={complete} busy={busyId === t.id} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
-  )
-}
-
-function Stat({ n, label, tint }: { n: string; label: string; tint?: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="display-title text-2xl font-extrabold" style={{ color: tint ?? 'var(--ink)' }}>
-        {n}
-      </span>
-      <span className="text-[11px] font-semibold text-[var(--ink3)]">{label}</span>
-    </div>
-  )
-}
-
-function ProgRow({ label, n, tint }: { label: string; n: number; tint: string }) {
-  return (
-    <div className="flex items-center justify-between text-[12px]">
-      <span className="flex items-center gap-2 font-semibold text-[var(--ink2)]">
-        <span className="h-2 w-2 rounded-full" style={{ background: tint }} />
-        {label}
-      </span>
-      <span className="font-extrabold text-[var(--ink)]">{n}</span>
-    </div>
   )
 }

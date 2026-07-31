@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { ShieldCheck } from 'lucide-react'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import AuthShell from '#/components/AuthShell'
 
@@ -11,7 +12,7 @@ export const Route = createFileRoute('/signup')({
   component: Signup,
 })
 
-const fieldLabel = 'mb-1.5 block text-xs font-bold text-[var(--ink2)]'
+const fieldLabel = 'mb-2 block text-[12.5px] font-semibold text-[var(--ink2)]'
 
 function Signup() {
   const navigate = useNavigate()
@@ -65,6 +66,12 @@ function Signup() {
     <AuthShell
       heading="Create your account"
       subtitle="Start tracking projects in minutes."
+      footer={
+        <p className="flex items-center gap-2.5 rounded-[18px] bg-[var(--col)] px-4 py-3.5 text-[12.5px] leading-[1.45] text-[var(--ink2)]">
+          <ShieldCheck size={17} className="shrink-0" />
+          New accounts need admin approval before access.
+        </p>
+      }
     >
       <form onSubmit={onSubmit}>
         <label htmlFor="signup-name" className={fieldLabel}>
@@ -133,7 +140,7 @@ function Signup() {
       </form>
       <p className="mt-[18px] text-center text-[13px] text-[var(--ink2)]">
         Already have an account?{' '}
-        <Link to="/login" className="font-bold text-[var(--accent-ink)] no-underline">
+        <Link to="/login" className="font-bold text-[var(--ink)] no-underline">
           Log in
         </Link>
       </p>

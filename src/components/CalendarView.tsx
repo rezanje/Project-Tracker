@@ -78,7 +78,7 @@ export default function CalendarView({ cards, pillars, canEdit, onCardClick, onA
         {card.content_status && (
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ background: STATUS_COLOR[card.content_status] ?? '#9ca3af' }}
+            style={{ background: STATUS_COLOR[card.content_status] ?? 'var(--ink3)' }}
             aria-hidden="true"
           />
         )}

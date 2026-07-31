@@ -14,18 +14,33 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { CalendarDays } from '@/components/pixel-icons'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Repeat,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
 import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
+import {
+  addWorkspaceMemberForCaller,
+  callerOwnsBoard,
+  listAddableWorkspaceMembersForCaller,
+  type AddableMember,
+} from '#/lib/board-members'
 import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/lib/cards'
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
 import { setBoardPics } from '#/lib/board-pics'
+import { fetchNavDeduped, type NavBoard } from '#/lib/nav'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
+import { BoardFilterSheet, BoardMoreSheet } from '#/components/BoardSheets'
 import ProjectEdit from '#/components/ProjectEdit'
 import TaskCreate from '#/components/TaskCreate'
 import CalendarView from '#/components/CalendarView'
@@ -61,7 +76,7 @@ function flush(headers: Headers) {
 }
 
 // Deterministic accent per board (matches the boards grid) — derived from id.
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function accentFor(id: string): string {
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
@@ -96,16 +111,50 @@ const inviteFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
-    const { data: m } = await supabase
-      .from('board_members')
-      .select('role')
-      .eq('board_id', data.boardId)
-      .eq('user_id', user.id)
-      .single()
-    if (m?.role !== 'owner') throw new Error('forbidden')
+    // Workspace owners see this form too (board-data.ts maps their workspace
+    // role onto the board), so checking only the board_members row rejected
+    // callers the UI had already offered the control to.
+    if (!(await callerOwnsBoard(supabase, data.boardId, user.id))) throw new Error('forbidden')
     const res = await inviteClient(getServiceSupabase(), data.boardId, data.email, data.role)
     flush(headers)
     return res
+  })
+
+const boardIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const fetchAddableMembersFn = createServerFn({ method: 'GET' })
+  .validator((d: unknown) => {
+    const boardId = (d as { boardId?: unknown })?.boardId
+    if (typeof boardId !== 'string' || !boardIdUuid.test(boardId))
+      throw new Error('valid boardId required')
+    return { boardId }
+  })
+  .handler(async ({ data }): Promise<AddableMember[]> => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    const list = await listAddableWorkspaceMembersForCaller(
+      supabase,
+      getServiceSupabase(),
+      data.boardId,
+      user.id,
+    )
+    flush(headers)
+    return list
+  })
+
+const addBoardMemberFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { boardId, userId } = (d ?? {}) as { boardId?: unknown; userId?: unknown }
+    if (typeof boardId !== 'string' || !boardIdUuid.test(boardId))
+      throw new Error('valid boardId required')
+    if (typeof userId !== 'string' || !boardIdUuid.test(userId)) throw new Error('valid userId required')
+    return { boardId, userId }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await addWorkspaceMemberForCaller(supabase, getServiceSupabase(), data.boardId, data.userId, user.id)
+    flush(headers)
   })
 
 const addCardFn = createServerFn({ method: 'POST' })
@@ -438,7 +487,7 @@ const addPillarFn = createServerFn({ method: 'POST' })
     return {
       workspaceId,
       name: name.trim(),
-      color: typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#2563eb',
+      color: typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : 'var(--ink)',
     }
   })
   .handler(async ({ data }) => {
@@ -475,8 +524,13 @@ function BoardView() {
   const [inviteRole, setInviteRole] = useState<'member' | 'client'>('member')
   const [result, setResult] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [addable, setAddable] = useState<AddableMember[]>([])
+  const [addUserId, setAddUserId] = useState('')
+  const [addingMember, setAddingMember] = useState(false)
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
+  // Which lane the mobile pill selector is showing (desktop shows all of them).
+  const [mobileColId, setMobileColId] = useState<string | null>(null)
   // The column a card started in, captured at drag-start (handleDragOver moves
   // the card across columns optimistically, so by drag-end the origin is lost).
   const dragOriginColRef = useRef<string | null>(null)
@@ -491,6 +545,10 @@ function BoardView() {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // The comp's swap button cycles projects inside the current workspace.
+  const [siblingBoards, setSiblingBoards] = useState<NavBoard[]>([])
   // Which list-view row (if any) currently has its swipe-action tray open.
   const [openListRowId, setOpenListRowId] = useState<string | null>(null)
   const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
@@ -519,7 +577,36 @@ function BoardView() {
     if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
   }, [initialBoard.id, boardMeta])
   const board = { ...initialBoard, columns }
+  // Owner-only: the endpoint rejects non-owners, so don't even ask.
+  useEffect(() => {
+    if (!isOwner) return
+    let alive = true
+    fetchAddableMembersFn({ data: { boardId: board.id } })
+      .then((list) => {
+        if (alive) setAddable(list)
+      })
+      .catch(() => {
+        if (alive) setAddable([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [isOwner, board.id])
   const isContent = board.kind === 'content'
+  const roundBtn =
+    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)] transition hover:-translate-y-px active:scale-[.94]'
+
+  useEffect(() => {
+    fetchNavDeduped()
+      .then((nav) => setSiblingBoards(nav.boards))
+      .catch(() => {})
+  }, [])
+
+  // Next project in the same workspace, wrapping around. Null when this board
+  // is the only one there — the swap button has nowhere to go.
+  const wsBoards = siblingBoards.filter((b) => b.workspaceId === board.workspaceId)
+  const here = wsBoards.findIndex((b) => b.id === board.id)
+  const siblingBoard = wsBoards.length > 1 && here !== -1 ? wsBoards[(here + 1) % wsBoards.length] : null
 
   function openAddContent(date: string) {
     setAddInitialDate(date)
@@ -602,6 +689,29 @@ function BoardView() {
       setEmail('')
     } catch {
       setResult('Failed to invite.')
+    }
+  }
+
+  async function onAddMember(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addUserId || addingMember) return
+    const picked = addable.find((m) => m.id === addUserId)
+    setResult(null)
+    setInviteLink(null)
+    setAddingMember(true)
+    try {
+      await addBoardMemberFn({ data: { boardId: board.id, userId: addUserId } })
+      setResult(`Added ${picked?.name ?? 'member'} to this project.`)
+      setAddUserId('')
+      // Refresh both lists: the dropdown drops the added person, and the
+      // project's member list (which feeds PIC and mentions) gains them.
+      // boardMeta is only refetched when null — see the effect that guards on it.
+      setAddable(await fetchAddableMembersFn({ data: { boardId: board.id } }))
+      setBoardMeta(null)
+    } catch (err) {
+      setResult(err instanceof Error && err.message ? err.message : 'Failed to add member.')
+    } finally {
+      setAddingMember(false)
     }
   }
 
@@ -786,42 +896,76 @@ function BoardView() {
     cards: g.cards,
   }))
 
+  // Mobile shows one lane at a time behind a pill selector (the comp's layout);
+  // desktop keeps every lane side by side. Falls back to the first lane when the
+  // selected one disappears (group-by switch, column deleted).
+  const visibleColumns = groupBy === 'phase' ? phaseColumns : categoryColumns
+  const activeColId =
+    visibleColumns.find((c) => c.id === mobileColId)?.id ?? visibleColumns[0]?.id ?? null
+
   const columnsContent = (
-    <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
-      {groupBy === 'phase'
-        ? phaseColumns.map((col, i) => {
-            const prev = phaseColumns[i - 1]
-            const next = phaseColumns[i + 1]
-            return (
-              <Column
+    <>
+      <div className="gt-scroll mb-3.5 flex gap-2 overflow-x-auto pb-1 md:hidden">
+        {visibleColumns.map((col) => (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => setMobileColId(col.id)}
+            aria-pressed={col.id === activeColId}
+            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold ${
+              col.id === activeColId
+                ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                : 'bg-[var(--col)] text-[var(--ink2)]'
+            }`}
+          >
+            {col.title} <span className="opacity-60">{col.cards.length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
+        {groupBy === 'phase'
+          ? phaseColumns.map((col, i) => {
+              const prev = phaseColumns[i - 1]
+              const next = phaseColumns[i + 1]
+              return (
+                <div
+                  key={col.id}
+                  className={`${col.id === activeColId ? 'flex' : 'hidden md:flex'} w-full shrink-0 md:w-auto`}
+                >
+                  <Column
+                    column={col}
+                    isOwner={canEdit}
+                    onAddCard={onAddCard}
+                    onCardClick={openCardDetail}
+                    members={boardMeta?.members}
+                    onMoveCardPrev={
+                      canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
+                    }
+                    prevColumnTitle={prev?.title}
+                    onMoveCardNext={
+                      canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
+                    }
+                    nextColumnTitle={next?.title}
+                  />
+                </div>
+              )
+            })
+          : categoryColumns.map((col) => (
+              // Read-only view: no owner tools / drag in category mode.
+              <div
                 key={col.id}
-                column={col}
-                isOwner={canEdit}
-                onAddCard={onAddCard}
-                onCardClick={openCardDetail}
-                members={boardMeta?.members}
-                onMoveCardPrev={
-                  canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
-                }
-                prevColumnTitle={prev?.title}
-                onMoveCardNext={
-                  canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
-                }
-                nextColumnTitle={next?.title}
-              />
-            )
-          })
-        : categoryColumns.map((col) => (
-            // Read-only view: no owner tools / drag in category mode.
-            <Column
-              key={col.id}
-              column={col}
-              isOwner={false}
-              onCardClick={openCardDetail}
-              members={boardMeta?.members}
-            />
-          ))}
-    </div>
+                className={`${col.id === activeColId ? 'flex' : 'hidden md:flex'} w-full shrink-0 md:w-auto`}
+              >
+                <Column
+                  column={col}
+                  isOwner={false}
+                  onCardClick={openCardDetail}
+                  members={boardMeta?.members}
+                />
+              </div>
+            ))}
+      </div>
+    </>
   )
 
   return (
@@ -836,54 +980,27 @@ function BoardView() {
             Projects
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              className="h-3.5 w-3.5 rounded-full"
-              style={{ background: accentFor(board.id) }}
-              aria-hidden="true"
-            />
-            <h1 className="display-title text-[32px] font-extrabold text-[var(--ink)]">
+            <h1 className="text-[30px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
               {board.title}
             </h1>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
-                isOwner
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]'
-                  : 'bg-[var(--col)] text-[var(--ink2)]'
-              }`}
-            >
-              {board.role}
-            </span>
+            <span className={`chip capitalize ${isOwner ? 'chip-solid' : ''}`}>{board.role}</span>
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            {board.type && (
-              <span
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                style={{ background: `${accentFor(board.type)}22`, color: accentFor(board.type) }}
-              >
-                {board.type}
-              </span>
-            )}
-            <span className="rounded-full bg-[var(--col)] px-2.5 py-1 text-[11px] font-bold capitalize text-[var(--ink2)]">
-              {board.status.replace('_', ' ')}
-            </span>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {board.type && <span className="chip">{board.type}</span>}
+            <span className="chip capitalize">{board.status.replace('_', ' ')}</span>
             {board.priority && (
               <span
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold capitalize"
-                style={
-                  board.priority === 'urgent'
-                    ? { background: 'var(--danger)', color: '#fff' }
-                    : { background: 'var(--col)', color: 'var(--ink2)' }
-                }
+                className={`chip capitalize ${board.priority === 'urgent' ? 'chip-solid' : ''}`}
               >
                 {board.priority}{board.priority === 'urgent' ? '' : ' priority'}
               </span>
             )}
             {board.client_name && (
-              <span className="text-[12px] text-[var(--ink3)]">· {board.client_name}</span>
+              <span className="text-[12.5px] text-[var(--ink3)]">· {board.client_name}</span>
             )}
             {board.deadline && (
-              <span className="text-[12px] text-[var(--ink3)]">
+              <span className="text-[12.5px] text-[var(--ink3)]">
                 · Due {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               </span>
             )}
@@ -895,17 +1012,17 @@ function BoardView() {
               // otherwise a board with both legacy text and account PICs shows
               // the legacy text first, then swaps to account names a beat later.
               const text = picNames.length > 0 ? picNames.join(', ') : boardMeta ? board.pic : null
-              return text ? <span className="text-[12px] text-[var(--ink3)]">· PIC {text}</span> : null
+              return text ? <span className="text-[12.5px] text-[var(--ink3)]">· PIC {text}</span> : null
             })()}
             {isOwner && board.value_idr != null && (
-              <span className="text-[12px] font-bold text-[var(--accent-ink)]">
+              <span className="text-[12.5px] font-bold tabular-nums text-[var(--ink)]">
                 · Rp {board.value_idr.toLocaleString('id-ID')}
               </span>
             )}
           </div>
 
           {board.description && (
-            <p className="mt-2.5 max-w-[640px] text-[14px] leading-relaxed text-[var(--ink2)]">
+            <p className="mt-3 max-w-[640px] text-[14.5px] leading-[1.6] text-[var(--ink2)]">
               {board.description}
             </p>
           )}
@@ -919,7 +1036,7 @@ function BoardView() {
                   <span
                     key={m.id}
                     title={m.name}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-[12px] font-bold text-[var(--card)]"
                     style={{ background: accentFor(m.id) }}
                   >
                     {m.avatar_url ? (
@@ -930,38 +1047,40 @@ function BoardView() {
                   </span>
                 ))}
                 {(boardMeta?.members.length ?? 0) > 4 && (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--col)] text-[10px] font-bold text-[var(--ink2)]">
+                  <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--sunk)] text-[11px] font-bold text-[var(--ink2)]">
                     +{(boardMeta?.members.length ?? 0) - 4}
                   </span>
                 )}
               </span>
             )}
             {board.deadline && (
-              <div className="stat-tile flex items-center gap-2 px-3 py-2">
-                <CalendarDays size={16} className="text-[var(--accent)]" aria-hidden="true" />
+              <div className="flex items-center gap-2.5">
+                <CalendarDays size={16} className="text-[var(--ink3)]" aria-hidden="true" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Deadline</p>
-                  <p className="text-[13px] font-extrabold text-[var(--ink)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Deadline</p>
+                  <p className="mt-0.5 text-[16px] font-bold tracking-[-0.02em] text-[var(--ink)]">
                     {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
               </div>
             )}
-            <div className="stat-tile min-w-[140px] px-3 py-2">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ink3)]">Progress</p>
-                <span className="text-[12px] font-extrabold text-[var(--accent-ink)]">{boardProgress}%</span>
+            <div className="min-w-[150px]">
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Progress</p>
+                <span className="text-[13px] font-bold tabular-nums text-[var(--ink)]">{boardProgress}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--col)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
+              <div className="progress-track">
+                <div className="progress-fill bg-[var(--accent)]" style={{ width: `${boardProgress}%` }} />
               </div>
             </div>
           </div>
         )}
 
-        {canEdit ? (
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
+        {/* Swap and filter stay available to clients — on mobile this row is the
+            only way to reach them, since the toolbar below is desktop-only. */}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {canEdit && (
               <button
                 type="button"
                 onClick={() => openAddContent('')}
@@ -969,92 +1088,248 @@ function BoardView() {
               >
                 {isContent ? '+ Add content' : '+ Add task'}
               </button>
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  disabled={!boardMeta}
-                  className="btn btn-ghost shrink-0"
-                >
-                  Edit project
-                </button>
-              )}
-            </div>
+            )}
+            {siblingBoard && (
+              <button
+                type="button"
+                onClick={() => router.navigate({ to: '/board/$boardId', params: { boardId: siblingBoard.id } })}
+                aria-label={`Pindah ke ${siblingBoard.title}`}
+                title={siblingBoard.title}
+                className={roundBtn}
+              >
+                <Repeat size={17} aria-hidden="true" />
+              </button>
+            )}
+            {!isContent && (
+              <button
+                type="button"
+                onClick={() => setFilterOpen(true)}
+                aria-label="Filter & urutan"
+                className={roundBtn}
+              >
+                <SlidersHorizontal size={17} aria-hidden="true" />
+              </button>
+            )}
             {isOwner && (
-              <>
-                <form onSubmit={onInvite} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:flex-nowrap">
-                  <input
-                    type="email"
-                    placeholder="Invite by email…"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="field flex-1 rounded-full px-4 py-2.5 text-[13px] sm:w-[190px]"
-                  />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'client')}
-                    className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
-                  >
-                    <option value="member">Member</option>
-                    <option value="client">Client</option>
-                  </select>
-                  <button type="submit" className="btn btn-primary shrink-0">
-                    Invite
-                  </button>
-                </form>
-                {result && (
-                  <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
-                )}
-                {inviteLink && (
-                  <div className="flex w-full items-center gap-2 sm:w-[360px]">
-                    <input
-                      readOnly
-                      value={inviteLink}
-                      onFocus={(e) => e.target.select()}
-                      className="field flex-1 rounded-full px-3 py-2 text-[12px]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(inviteLink)}
-                      className="btn btn-ghost shrink-0 px-3 py-2 text-xs"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                )}
-              </>
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-label="Kelola project"
+                className={roundBtn}
+              >
+                <MoreHorizontal size={18} aria-hidden="true" />
+              </button>
             )}
           </div>
-        ) : (
-          <p className="max-w-[290px] rounded-[14px] border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-[13px] leading-relaxed text-[var(--ink2)]">
-            You're viewing as a{' '}
-            <b className="text-[var(--ink)]">client</b> — read-only. You can still
-            comment and upload files.
-          </p>
-        )}
+          {!canEdit && (
+            <p className="max-w-[290px] rounded-[14px] border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-[13px] leading-relaxed text-[var(--ink2)]">
+              You're viewing as a{' '}
+              <b className="text-[var(--ink)]">client</b> — read-only. You can still
+              comment and upload files.
+            </p>
+          )}
+        </div>
       </div>
 
-      {!isContent && (
-        <BoardStats
-          dueToday={dueTodayCount}
-          overdue={overdueCount}
-          completed={completedCount}
-          total={allCards.length}
-          members={(boardMeta?.members ?? []).length}
-          budgetIdr={board.value_idr ?? null}
+      {moreOpen && (
+        <BoardMoreSheet onClose={() => setMoreOpen(false)}>
+          <div className="flex flex-col items-stretch gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false)
+                setEditing(true)
+              }}
+              disabled={!boardMeta}
+              className="btn btn-ghost w-full rounded-full"
+            >
+              Edit project
+            </button>
+            <Link
+              to="/reports"
+              onClick={() => setMoreOpen(false)}
+              className="btn btn-ghost w-full rounded-full no-underline"
+            >
+              KPI &amp; target tim
+            </Link>
+
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+              Orang di project ini
+            </p>
+            <form onSubmit={onInvite} className="flex flex-wrap gap-2">
+              <input
+                type="email"
+                placeholder="Undang lewat email…"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field min-w-0 flex-1 rounded-full px-4 py-2.5 text-[13px]"
+              />
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as 'member' | 'client')}
+                className="field w-auto rounded-full px-3 py-2.5 text-[13px]"
+              >
+                <option value="member">Member</option>
+                <option value="client">Client</option>
+              </select>
+              <button type="submit" className="btn btn-primary shrink-0">
+                Undang
+              </button>
+            </form>
+            <form onSubmit={onAddMember} className="flex flex-wrap gap-2">
+              <select
+                value={addUserId}
+                onChange={(e) => setAddUserId(e.target.value)}
+                disabled={addable.length === 0}
+                aria-label="Tambah dari workspace"
+                className="field min-w-0 flex-1 rounded-full px-3 py-2.5 text-[13px]"
+              >
+                {addable.length === 0 ? (
+                  <option value="">Semua orang di workspace sudah ada di project ini</option>
+                ) : (
+                  <>
+                    <option value="">Tambah dari workspace…</option>
+                    {addable.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <button
+                type="submit"
+                disabled={!addUserId || addingMember}
+                className="btn btn-primary shrink-0"
+              >
+                Tambah
+              </button>
+            </form>
+            {result && (
+              <span className="text-xs font-semibold text-[var(--accent-ink)]">{result}</span>
+            )}
+            {inviteLink && (
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={inviteLink}
+                  onFocus={(e) => e.target.select()}
+                  className="field min-w-0 flex-1 rounded-full px-3 py-2 text-[12px]"
+                />
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(inviteLink)}
+                  className="btn btn-ghost shrink-0 px-3 py-2 text-xs"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+          </div>
+        </BoardMoreSheet>
+      )}
+
+      {filterOpen && (
+        <BoardFilterSheet
+          onClose={() => setFilterOpen(false)}
+          view={view}
+          onView={setView}
+          groupBy={groupBy}
+          onGroupBy={setGroupBy}
+          search={search}
+          onSearch={setSearch}
+          category={filterCat}
+          onCategory={setFilterCat}
+          categories={categories}
+          sortBy={sortBy}
+          onSortBy={setSortBy}
         />
       )}
 
       {!isContent && (
-      <div className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center gap-3 px-1">
+        <>
+          {/* Mobile: the comp's single summary card. Desktop carries the same
+              numbers in the header, plus the stat tiles below. */}
+          <section className="panel mx-auto mb-5 max-w-[1400px] p-[18px] md:hidden">
+            <div className="mb-3.5 flex flex-wrap items-center gap-2">
+              {board.priority && (
+                <span className={`chip ${board.priority === 'urgent' ? 'chip-solid' : ''} capitalize`}>
+                  {board.priority}
+                </span>
+              )}
+              <span className="chip capitalize">{board.status.replace('_', ' ')}</span>
+              {board.deadline && (
+                <span className="text-[12.5px] text-[var(--ink3)]">
+                  Due{' '}
+                  {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+            </div>
+            <div className="mb-2.5 flex items-end justify-between gap-3">
+              {isOwner && board.value_idr != null ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+                    Project value
+                  </p>
+                  <p className="mt-0.5 text-[22px] font-bold tracking-[-0.02em] tabular-nums text-[var(--ink)]">
+                    Rp {board.value_idr.toLocaleString('id-ID')}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Progress</p>
+              )}
+              <span className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">{boardProgress}%</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill bg-[var(--ink)]" style={{ width: `${boardProgress}%` }} />
+            </div>
+            <div className="mt-3.5 flex items-center justify-between gap-3">
+              <span className="avatar-stack">
+                {(boardMeta?.members ?? []).slice(0, 4).map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.name}
+                    className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[10px] font-bold text-[var(--card)]"
+                    style={{ background: accentFor(m.id) }}
+                  >
+                    {(m.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()}
+                  </span>
+                ))}
+                {(boardMeta?.members.length ?? 0) > 4 && (
+                  <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--sunk)] text-[10px] font-bold text-[var(--ink2)]">
+                    +{(boardMeta?.members.length ?? 0) - 4}
+                  </span>
+                )}
+              </span>
+              <span className="text-[12.5px] font-medium text-[var(--ink2)]">
+                {completedCount} / {allCards.length} tasks
+              </span>
+            </div>
+          </section>
+
+          <div className="hidden md:block">
+            <BoardStats
+              dueToday={dueTodayCount}
+              overdue={overdueCount}
+              completed={completedCount}
+              total={allCards.length}
+              members={(boardMeta?.members ?? []).length}
+              budgetIdr={board.value_idr ?? null}
+            />
+          </div>
+        </>
+      )}
+
+      {!isContent && (
+      <div className="mx-auto mb-4 hidden max-w-[1400px] flex-wrap items-center gap-3 px-1 md:flex">
         {/* view tabs */}
-        <div className="flex overflow-hidden rounded-full border-2 border-[var(--ink)]">
+        <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
           {(['board', 'list'] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setView(v)}
-              className={`px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+              className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
                 view === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)]'
               }`}
             >
@@ -1063,14 +1338,14 @@ function BoardView() {
           ))}
         </div>
         {view === 'board' && (
-          <div className="flex overflow-hidden rounded-full border border-[var(--line)]">
+          <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
             {(['phase', 'category'] as const).map((g) => (
               <button
                 key={g}
                 type="button"
                 onClick={() => setGroupBy(g)}
-                className={`px-3 py-1.5 text-[13px] font-bold capitalize ${
-                  groupBy === g ? 'bg-[var(--btn)] text-white' : 'text-[var(--ink2)]'
+                className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
+                  groupBy === g ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)]'
                 }`}
               >
                 {g}
@@ -1078,20 +1353,20 @@ function BoardView() {
             ))}
           </div>
         )}
-        <label className="flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5">
-          <Search size={14} className="text-[var(--ink3)]" aria-hidden="true" />
+        <label className="flex items-center gap-2.5 rounded-full bg-[var(--card)] px-4 py-2.5 shadow-[var(--shadow-sm)]">
+          <Search size={16} className="text-[var(--ink3)]" aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="search"
             placeholder="Search tasks…"
-            className="w-32 bg-transparent text-[13px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
+            className="w-32 bg-transparent text-[13.5px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
           />
         </label>
         <select
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
-          className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+          className="field w-auto rounded-full px-4 py-2.5 text-[13.5px]"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -1104,7 +1379,7 @@ function BoardView() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'none' | 'due' | 'title')}
-            className="field w-auto rounded-full px-3 py-1.5 text-[13px]"
+            className="field w-auto rounded-full px-4 py-2.5 text-[13.5px]"
           >
             <option value="none">Sort: default</option>
             <option value="due">Sort: due date</option>
@@ -1140,7 +1415,7 @@ function BoardView() {
                 key={v}
                 type="button"
                 onClick={() => setContentView(v)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize ${
+                className={`rounded-full px-4 py-2 text-[13px] font-semibold capitalize ${
                   contentView === v ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'text-[var(--ink2)] hover:bg-[var(--col)]'
                 }`}
               >
@@ -1171,33 +1446,36 @@ function BoardView() {
           </div>
         </div>
       ) : board.columns.length === 0 ? (
-        <div className="card mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
+        <div className="panel mx-auto grid max-w-[1400px] place-items-center px-6 py-16 text-center text-[var(--ink2)]">
           No columns yet.
         </div>
       ) : view === 'list' ? (
         <div className="mx-auto max-w-[1400px]">
-          <div className="card p-1.5">
+          <div className="panel p-3">
             {listCards.length === 0 ? (
-              <p className="p-6 text-center text-sm text-[var(--ink3)]">No matching tasks.</p>
+              <p className="p-6 text-center text-[14px] text-[var(--ink3)]">No matching tasks.</p>
             ) : (
               <div className="flex flex-col">
                 {listCards.map(({ card, colId, colTitle }) => {
                   const rowContent = (
                     <>
-                      <span className="h-4 w-4 shrink-0 rounded-[5px] border-2 border-[var(--ink)]" aria-hidden="true" />
+                      <span
+                        className="h-[22px] w-[22px] shrink-0 rounded-[12px] border-[1.8px] border-[var(--line-strong)]"
+                        aria-hidden="true"
+                      />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-bold text-[var(--ink)]">{card.title}</p>
-                        <p className="truncate text-[11px] text-[var(--ink3)]">
+                        <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{card.title}</p>
+                        <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
                           {colTitle}
                           {card.category ? ` · ${card.category}` : ''}
                         </p>
                       </div>
                       {card.due_date && (
-                        <span className="shrink-0 text-[11px] font-bold tabular-nums text-[var(--ink2)]">
+                        <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[var(--ink2)]">
                           {new Date(card.due_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                         </span>
                       )}
-                      <ChevronRight size={15} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                      <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
                     </>
                   )
 
@@ -1227,7 +1505,7 @@ function BoardView() {
                         key={card.id}
                         type="button"
                         onClick={() => openCardDetail(card)}
-                        className="flex items-center gap-3 border-b border-[var(--line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--col)]"
+                        className="flex items-center gap-3.5 rounded-[var(--r-md)] border-b border-[var(--line-soft)] px-4 py-3.5 text-left last:border-0 hover:bg-[var(--col)]"
                       >
                         {rowContent}
                       </button>
@@ -1294,6 +1572,17 @@ function BoardView() {
           boardId={board.id}
           meta={boardMeta ?? { members: [], labels: [], milestones: [] }}
           isOwner={canEdit}
+          projectName={board.title}
+          columns={columns.map((c) => ({ id: c.id, title: c.title }))}
+          columnId={findColumnId(selectedCard.id)}
+          onMove={
+            canEdit
+              ? (toColumnId) => {
+                  const from = findColumnId(selectedCard.id)
+                  if (from) moveListCard(selectedCard.id, from, toColumnId)
+                }
+              : undefined
+          }
           onClose={closeCardDetail}
           onSaved={() => {
             router.invalidate()
@@ -1354,7 +1643,7 @@ function BoardView() {
       )}
 
       {pendingDelete && (
-        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(16,28,22,0.5)] gt-back">
+        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(28,26,23,0.42)] gt-back">
           <span>Card deleted</span>
           <button
             type="button"

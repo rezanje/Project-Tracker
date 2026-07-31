@@ -1,475 +1,390 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
-import {
-  Banknote,
-  FileText,
-  Image as ImageIcon,
-  Info,
-  Star,
-  TrendingUp,
-  X,
-} from 'lucide-react'
-import { Building2, Clock, Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
+import { useMemo, useState } from 'react'
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Check, ChevronRight, Megaphone, Plus, StickyNote } from 'lucide-react'
+import { accentFor } from '#/lib/accent'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
-import { fetchTodayEventsFn, type EventItem } from '#/lib/events'
-import { fetchPendingApprovalsFn, resolveApprovalFn, type ApprovalRequest, type ApprovalKind } from '#/lib/approval-requests'
+import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
+import { setScope } from '#/lib/workspace-scope'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
+import { completeCardFn, deleteNoteFn } from '#/lib/actions'
+import { toast } from '#/components/Toast'
+import { NotificationsBell } from '#/components/Header'
+import NoteDetail from '#/components/NoteDetail'
+import Popover from '#/components/Popover'
+import QuickNoteForm from '#/components/QuickNoteForm'
+import ThemeToggle from '#/components/ThemeToggle'
+import { WorkspacePill, WorkspaceSwitcherSheet } from '#/components/WorkspaceSwitcher'
 
-type CommandCenterData = Omit<DashboardData, 'approvals'> & { events: EventItem[]; approvals: ApprovalRequest[] }
+type CommandCenterData = DashboardData & { approvalList: ApprovalRequest[] }
 
 export const Route = createFileRoute('/')({
   loader: async (): Promise<CommandCenterData> => {
-    const [dashboard, events, approvals] = await Promise.all([
+    const [dashboard, approvalList] = await Promise.all([
       fetchDashboard(),
-      fetchTodayEventsFn(),
-      fetchPendingApprovalsFn(),
+      fetchPendingApprovalsFn().catch(() => [] as ApprovalRequest[]),
     ])
-    return { ...dashboard, events, approvals }
+    return { ...dashboard, approvalList }
   },
   component: CommandCenter,
 })
 
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
-function accentFor(id: string): string {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return ACCENTS[h % ACCENTS.length]
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2)
+  return chars.toUpperCase() || '?'
 }
 
-const STAT_META = [
-  { key: 'workspaces', icon: Building2, label: 'Workspaces', tint: 'var(--accent)' },
-  { key: 'projects', icon: FolderKanban, label: 'Projects', tint: '#7c3aed' },
-  { key: 'totalTasks', icon: ListChecks, label: 'Total tasks', tint: '#2563eb' },
-  { key: 'dueToday', icon: Clock, label: 'Due today', tint: '#d97706' },
-  { key: 'overdue', icon: Flame, label: 'Need attention', tint: 'var(--danger)' },
-  { key: 'completed', icon: TrendingUp, label: 'Completed', tint: 'var(--accent)' },
-] as const
-
-const HEALTH_COLORS: Record<string, string> = {
-  Healthy: 'var(--accent)',
-  'Need attention': '#d9a406',
-  'Behind schedule': 'var(--danger)',
-}
-const DUE_COLORS: Record<string, string> = {
-  Overdue: 'var(--danger)',
-  'Due today': '#d97706',
-  'Due tomorrow': '#2563eb',
-  'Due soon': 'var(--ink3)',
-}
-function progressColor(pct: number): string {
-  if (pct >= 80) return 'var(--accent)'
-  if (pct >= 45) return '#d9a406'
-  return 'var(--danger)'
-}
-
-const TYPE_COLORS: Record<string, string> = {
-  Meeting: '#7c3aed',
-  Approval: '#2563eb',
-  Call: '#0891b2',
-  Review: '#d97706',
-  Content: '#db2777',
-}
-const APPROVAL_ICON: Record<ApprovalKind, typeof Banknote> = {
-  budget: Banknote,
-  leave: FileText,
-  content: ImageIcon,
-}
-const SPARK = [4, 6, 5, 8, 7, 9, 11]
-
-function CardHead({ title, action }: { title: string; action?: string }) {
+/** A stat tile. Pass `to` to make it a doorway — the approvals queue lives
+ *  behind the Approval count rather than in a menu of its own. */
+function Stat({
+  label,
+  value,
+  accent,
+  to,
+}: {
+  label: string
+  value: number
+  accent?: boolean
+  to?: '/reports'
+}) {
+  const body = (
+    <>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">{label}</p>
+      <p
+        className={`mt-[5px] text-[26px] font-extrabold tabular-nums tracking-[-0.03em] ${
+          accent ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
+        }`}
+      >
+        {value}
+      </p>
+    </>
+  )
+  const cls = 'flex-1 rounded-[22px] bg-[var(--card)] p-[15px] shadow-[var(--shadow)]'
+  if (!to) return <div className={cls}>{body}</div>
   return (
-    <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">{title}</h3>
-      {action && (
-        <button type="button" className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
-          {action} →
-        </button>
-      )}
-    </div>
+    <Link to={to} className={`${cls} block no-underline transition hover:-translate-y-0.5 active:scale-[.99]`}>
+      {body}
+    </Link>
   )
 }
 
-function Avatars({ n }: { n: number }) {
-  const show = Math.min(n, 3)
+function Empty({ title, sub }: { title: string; sub: string }) {
   return (
-    <span className="avatar-stack">
-      {Array.from({ length: show }).map((_, i) => (
-        <span
-          key={i}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
-          style={{ background: ['#7c3aed', '#2563eb', '#db2777'][i % 3] }}
-        >
-          {String.fromCharCode(65 + i)}
-        </span>
-      ))}
-      {n > 3 && (
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--col)] text-[9px] font-bold text-[var(--ink2)]">
-          +{n - 3}
-        </span>
-      )}
-    </span>
-  )
-}
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const span = max - min || 1
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 72},${20 - ((v - min) / span) * 18}`).join(' ')
-  return (
-    <svg width="72" height="22" viewBox="0 0 72 22" className="shrink-0">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function Meter({ pct, color }: { pct: number; color: string }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--col)]">
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+    <div className="rounded-[20px] bg-[var(--col)] px-[18px] py-7 text-center">
+      <p className="text-[14.5px] font-bold text-[var(--ink)]">{title}</p>
+      <p className="mt-[5px] text-[13px] text-[var(--ink3)]">{sub}</p>
     </div>
   )
 }
 
 function CommandCenter() {
   const d = Route.useLoaderData() as CommandCenterData
+  const navigate = useNavigate()
   const router = useRouter()
-  async function handleResolve(id: string, decision: 'approved' | 'rejected') {
-    await resolveApprovalFn({ data: { id, decision } })
-    router.invalidate()
+  const [wsOpen, setWsOpen] = useState(false)
+  const [selectedNote, setSelectedNote] = useState<CommandCenterData['notes'][number] | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function complete(id: string) {
+    setBusyId(id)
+    try {
+      await completeCardFn({ data: { cardId: id } })
+      toast('Task selesai ✓')
+      router.invalidate()
+    } catch {
+      toast('Gagal menandai selesai')
+    } finally {
+      setBusyId(null)
+    }
+  }
+  const noteCategories = useMemo(
+    () => Array.from(new Set(d.notes.map((n) => n.category).filter((c): c is string => !!c))).sort(),
+    [d.notes],
+  )
+
+  const active = Math.max(0, d.stats.totalTasks - d.stats.completed)
+  // "Butuh perhatian" in the design is late ∪ in-review. The aggregation
+  // exposes due buckets but not column names, so this is the late half only.
+  const attention = d.priority.filter((p) => p.bucket === 'Overdue')
+
+  function openWorkspace(id: string) {
+    setScope(id)
+    navigate({ to: '/home' })
   }
 
   return (
-    <main className="min-w-0 flex-1 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-        {/* stats */}
-        <div className="card flex flex-wrap items-stretch p-0">
-          {STAT_META.map(({ icon: Icon, key, label, tint }, i) => (
-            <div
-              key={label}
-              className={`flex min-w-[140px] flex-1 items-center gap-3 px-4 py-4 ${
-                i > 0 ? 'border-l-2 border-[var(--line)]' : ''
-              }`}
-            >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
-                style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
-              >
-                <Icon size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="display-title text-xl font-extrabold leading-none text-[var(--ink)]">
-                  {d.stats[key]}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--ink2)]">{label}</p>
-              </div>
+    <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+      <div className="gt-fade mx-auto flex max-w-[560px] flex-col gap-[18px]">
+        {/* header */}
+        <div className="flex items-start gap-2.5">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2.5">
+              <WorkspacePill onOpen={() => setWsOpen(true)} />
             </div>
-          ))}
+            <h1 className="text-[27px] font-extrabold leading-[1.1] tracking-[-0.03em] text-[var(--ink)]">
+              Command center
+            </h1>
+            <p className="mt-[5px] text-[13.5px] text-[var(--ink2)]">
+              {d.stats.workspaces} perusahaan · {d.stats.projects} project aktif
+            </p>
+          </div>
+          <NotificationsBell compact />
+          <ThemeToggle />
         </div>
 
-        {/* workspace health + AI summary */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <section className="card p-4 lg:col-span-12">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">
-                Workspace Health <Info size={12} className="text-[var(--ink3)]" />
-              </h3>
-              <button type="button" className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
-                View all workspaces →
-              </button>
-            </div>
-            {d.workspaces.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--ink3)]">No workspaces yet.</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                {d.workspaces.slice(0, 4).map((w) => (
-                  <div key={w.id} className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      {workspaceLogoFor(w.name) ? (
-                        <img
-                          src={workspaceLogoFor(w.name) as string}
-                          alt=""
-                          className="h-7 w-7 rounded-[7px] object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                          style={{ background: accentFor(w.id) }}
-                        >
-                          {w.name.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
-                      <Star
-                        size={14}
-                        className={w.progress >= 80 ? 'fill-[#f5c451] text-[#f5c451]' : 'text-[var(--ink3)]'}
-                      />
-                    </div>
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{w.name}</p>
-                    <div className="my-2 flex h-14 items-end justify-center gap-1" aria-hidden="true">
-                      {[8, 12, 6, 14, 10].map((h, i) => (
-                        <span
-                          key={i}
-                          className="w-2 rounded-t-sm border border-[var(--ink)]"
-                          style={{ height: `${h * 3}px`, background: 'color-mix(in oklab, var(--ink) 12%, var(--card))' }}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Meter pct={w.progress} color={HEALTH_COLORS[w.status]} />
-                      </div>
+        {/* stat tiles */}
+        <div className="flex gap-2.5">
+          <Stat label="Aktif" value={active} />
+          <Stat label="Telat" value={d.stats.overdue} accent />
+          <Stat label="Approval" value={d.approvals} to="/reports" />
+        </div>
+
+        {/* workspace cards */}
+        <section>
+          <h2 className="mb-3 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Workspace kamu</h2>
+          <div className="flex flex-col gap-2.5">
+            {d.workspaces.length === 0 && (
+              <Empty title="Belum ada workspace" sub="Bikin satu lewat tombol pindah workspace." />
+            )}
+            {d.workspaces.map((w) => {
+              const logo = workspaceLogoFor(w.name)
+              const tone = accentFor(w.id)
+              const done = Math.round((w.tasks * w.progress) / 100)
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => openWorkspace(w.id)}
+                  className="rounded-[22px] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-sm)] transition hover:-translate-y-0.5 active:scale-[.99]"
+                >
+                  <div className="flex items-center gap-3">
+                    {logo ? (
+                      <img src={logo} alt="" className="h-[42px] w-[42px] rounded-[15px] object-cover" />
+                    ) : (
                       <span
-                        className="shrink-0 whitespace-nowrap text-[12px] font-extrabold"
-                        style={{ color: HEALTH_COLORS[w.status] }}
+                        className="flex h-[42px] w-[42px] items-center justify-center rounded-[15px] text-[13.5px] font-extrabold text-white"
+                        style={{ background: tone }}
                       >
-                        {w.progress}%
+                        {initials(w.name)}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15.5px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+                        {w.name}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[12.5px] text-[var(--ink3)]">{w.status}</span>
+                    </span>
+                    {w.status === 'Behind schedule' && (
+                      <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-bold text-[var(--accent-ink)]">
+                        Telat
+                      </span>
+                    )}
+                    <ChevronRight size={17} strokeWidth={2.2} className="shrink-0 text-[var(--ink3)]" />
+                  </div>
+                  <div className="mt-3.5 flex items-center gap-2.5">
+                    <span className="progress-track flex-1">
+                      <span
+                        className="progress-fill block"
+                        style={{ width: `${w.progress}%`, background: tone }}
+                      />
+                    </span>
+                    <span className="text-[12px] font-bold tabular-nums text-[var(--ink2)]">{w.progress}%</span>
+                  </div>
+                  <p className="mt-2.5 text-[12.5px] text-[var(--ink3)]">
+                    {Math.max(0, w.tasks - done)} aktif · {done} selesai · {w.projects} project
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* needs attention */}
+        <section>
+          <h2 className="mb-3 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Butuh perhatian</h2>
+          <div className="flex flex-col gap-2.5">
+            {attention.length === 0 ? (
+              <Empty title="Semua aman ✓" sub="Ga ada yang telat di semua workspace." />
+            ) : (
+              attention.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex gap-3.5 rounded-[20px] bg-[var(--card)] px-4 py-[15px] shadow-[var(--shadow-sm)]"
+                >
+                  <span className="w-[3px] shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2.5">
+                      <p className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">
+                        {t.title}
+                      </p>
+                      <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-bold text-[var(--accent-ink)]">
+                        Telat
                       </span>
                     </div>
-                    <span
-                      className="chip mt-2"
-                      style={{
-                        background: `color-mix(in oklab, ${HEALTH_COLORS[w.status]} 16%, transparent)`,
-                        color: HEALTH_COLORS[w.status],
-                        borderColor: HEALTH_COLORS[w.status],
-                      }}
-                    >
-                      {w.status}
-                    </span>
-                    <p className="mt-2 text-[11px] font-semibold text-[var(--ink3)]">
-                      {w.projects} Projects · {w.tasks} Tasks
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* priority radar + timeline + approvals */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <section className="card p-4 lg:col-span-4">
-            <CardHead title="Priority Radar" action="View all" />
-            {d.myPriority.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[var(--ink3)]">Nothing urgent 🎉</p>
-            ) : (
-              <div className="flex flex-col">
-                {d.myPriority.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
-                    <span className="h-8 w-1 shrink-0 rounded-full" style={{ background: DUE_COLORS[p.bucket] }} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-bold text-[var(--ink)]">{p.title}</p>
-                      <p className="truncate text-[11px] text-[var(--ink3)]">
-                        {p.boardTitle}
-                        {p.wsName ? ` • ${p.wsName}` : ''}
-                      </p>
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <span
+                        className="h-[7px] w-[7px] shrink-0 rounded-full"
+                        style={{ background: accentFor(t.wsName) }}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink3)]">
+                        {t.wsName} · {t.boardTitle}
+                      </span>
                     </div>
-                    <span
-                      className="chip shrink-0"
-                      style={{
-                        background: `color-mix(in oklab, ${DUE_COLORS[p.bucket]} 16%, transparent)`,
-                        color: DUE_COLORS[p.bucket],
-                        borderColor: DUE_COLORS[p.bucket],
-                      }}
-                    >
-                      {p.bucket}
-                    </span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             )}
-          </section>
+          </div>
+        </section>
 
-          <section className="card p-4 lg:col-span-5">
-            <CardHead title="Today's Timeline" action="View calendar" />
-            <div className="flex flex-col">
-              {d.events.length === 0 && (
-                <p className="py-4 text-center text-sm text-[var(--ink3)]">Nothing scheduled today 🎉</p>
-              )}
-              {d.events.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 border-b border-[var(--line)] py-2 last:border-0">
-                  <span className="w-11 shrink-0 text-[12px] font-bold tabular-nums text-[var(--ink2)]">{t.time}</span>
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLORS[t.type] }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-[var(--ink)]">{t.title}</p>
-                    <p className="truncate text-[11px] text-[var(--ink3)]">{t.sub}</p>
-                  </div>
-                  <span
-                    className="chip shrink-0"
-                    style={{
-                      background: `color-mix(in oklab, ${TYPE_COLORS[t.type]} 16%, transparent)`,
-                      color: TYPE_COLORS[t.type],
-                      borderColor: TYPE_COLORS[t.type],
-                    }}
+        {/* today, all teams */}
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Hari ini, semua tim</h2>
+            <Link
+              to="/my-tasks"
+              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--accent)]"
+            >
+              See all
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {d.today.length === 0 ? (
+              <Empty title="Clear semua 🎉" sub="Ga ada task tersisa hari ini." />
+            ) : (
+              d.today.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-start gap-3.5 rounded-[20px] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => complete(t.id)}
+                    disabled={busyId === t.id}
+                    aria-label={`Tandai "${t.title}" selesai`}
+                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
                   >
-                    {t.type}
-                  </span>
-                  <Avatars n={t.people} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="card p-4 lg:col-span-3">
-            <CardHead title="Need Approval" action="View all" />
-            {d.approvals.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[var(--ink3)]">No approvals pending 🎉</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {d.approvals.map((a) => {
-                  const Icon = APPROVAL_ICON[a.kind]
-                  return (
-                    <div key={a.id} className="rounded-[10px] border-2 border-[var(--line)] p-2.5">
-                      <div className="flex items-center gap-2">
-                        <Icon size={16} className="shrink-0 text-[var(--ink2)]" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12px] font-bold text-[var(--ink)]">{a.title}</p>
-                          <p className="truncate text-[11px] text-[var(--ink3)]">{a.sub}</p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-[12px] font-bold text-[var(--ink)]">{a.meta}</span>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            className="btn btn-primary px-3 py-1 text-[12px]"
-                            onClick={() => handleResolve(a.id, 'approved')}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Reject"
-                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--line)] text-[var(--ink2)] hover:border-[var(--danger)] hover:text-[var(--danger)]"
-                            onClick={() => handleResolve(a.id, 'rejected')}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
+                    <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">{t.title}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span
+                        className="h-[7px] w-[7px] shrink-0 rounded-full"
+                        style={{ background: accentFor(t.boardTitle) }}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink3)]">{t.boardTitle}</span>
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* project radar + heatmap + portfolio + weekly */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <section className="card p-4">
-            <CardHead title="Project Radar" action="View all projects" />
-            <div className="flex flex-col gap-2.5">
-              {d.projects.slice(0, 5).map((p) => (
-                <div key={p.id}>
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: progressColor(p.progress) }} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-bold text-[var(--ink)]">{p.title}</p>
-                      <p className="truncate text-[10px] text-[var(--ink3)]">{p.wsName}</p>
-                    </div>
-                    <span className="text-[12px] font-extrabold text-[var(--ink2)]">{p.progress}%</span>
                   </div>
-                  <Meter pct={p.progress} color={progressColor(p.progress)} />
                 </div>
-              ))}
-              {d.projects.length === 0 && <p className="text-sm text-[var(--ink3)]">No projects yet.</p>}
-            </div>
-          </section>
+              ))
+            )}
+          </div>
+        </section>
 
-          <section className="card p-4">
-            <CardHead title={`Workload Heatmap (${d.monthLabel})`} />
-            <div className="flex flex-col gap-1.5">
-              {['W1', 'W2', 'W3', 'W4', 'W5'].map((w, r) => (
-                <div key={w} className="flex items-center gap-1.5">
-                  <span className="w-6 text-[10px] font-bold text-[var(--ink3)]">{w}</span>
-                  {d.heatmap[r].map((intensity, c) => (
-                    <span
-                      key={c}
-                      className="h-4 flex-1 rounded-[3px] border border-[var(--line)]"
-                      style={{ background: `color-mix(in oklab, var(--accent) ${intensity}%, var(--col))` }}
-                    />
-                  ))}
+        {/* Announcements and notes were Home's right rail until Home was cut
+            back to the comp's three sections. Both are account-wide rather than
+            per-workspace, so the cross-workspace monitor is where they belong.
+            fetchDashboard already carries them — no extra query. */}
+        <section>
+          <h2 className="mb-3 flex items-center gap-1.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+            <Megaphone size={17} className="text-[var(--ink3)]" aria-hidden="true" />
+            Pengumuman
+          </h2>
+          {d.announcements.length === 0 ? (
+            <Empty title="Belum ada pengumuman" sub="Kabar buat tim muncul di sini." />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {d.announcements.map((a) => (
+                <div key={a.id} className="flex gap-3 rounded-[20px] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)]">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                    style={{ background: accentFor(a.author ?? 'Team') }}
+                  >
+                    {(a.author ?? 'Team').trim().split(/\s+/)[0]?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-semibold text-[var(--ink)]">{a.author ?? 'Team'}</p>
+                    <p className="mt-0.5 text-[13.5px] leading-[1.45] text-[var(--ink2)]">{a.body}</p>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="mt-2 flex items-center justify-end gap-1 text-[10px] font-semibold text-[var(--ink3)]">
-              Less
-              {[10, 30, 55, 80].map((o) => (
-                <span
-                  key={o}
-                  className="h-3 w-3 rounded-[2px]"
-                  style={{ background: `color-mix(in oklab, var(--accent) ${o}%, var(--col))` }}
+          )}
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="flex items-center gap-1.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+              <StickyNote size={17} className="text-[var(--ink3)]" aria-hidden="true" />
+              Catatan
+            </h2>
+            <Popover
+              panelClassName="w-64 max-w-[calc(100vw-2.5rem)]"
+              renderTrigger={(_open, toggle) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="flex items-center gap-1 text-[13.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
+                >
+                  <Plus size={14} aria-hidden="true" /> Baru
+                </button>
+              )}
+              renderPanel={(close) => (
+                <QuickNoteForm
+                  categorySuggestions={noteCategories}
+                  onDone={() => {
+                    close()
+                    router.invalidate()
+                  }}
                 />
-              ))}
-              More
-            </div>
-          </section>
-
-          <section className="card p-4">
-            <CardHead title="Portfolio Overview" action="View report" />
-            <div className="flex flex-col">
-              {d.workspaces.slice(0, 4).map((w) => (
-                <div key={w.id} className="flex items-center gap-2 border-b border-[var(--line)] py-2 last:border-0">
-                  {workspaceLogoFor(w.name) ? (
-                    <img
-                      src={workspaceLogoFor(w.name) as string}
-                      alt=""
-                      className="h-7 w-7 shrink-0 rounded-[7px] object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-extrabold text-white"
-                      style={{ background: accentFor(w.id) }}
-                    >
-                      {w.name.slice(0, 1).toUpperCase()}
+              )}
+            />
+          </div>
+          {d.notes.length === 0 ? (
+            <Empty title="Belum ada catatan" sub="Simpan yang penting sebelum lupa." />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {d.notes.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => setSelectedNote(n)}
+                  className="rounded-[20px] bg-[var(--card)] px-4 py-3.5 text-left shadow-[var(--shadow-sm)] transition hover:-translate-y-px"
+                >
+                  <p className="text-[13.5px] leading-[1.45] text-[var(--ink)]">{n.body}</p>
+                  {n.category && (
+                    <span className="mt-2.5 inline-block rounded-full bg-[var(--col)] px-2.5 py-[3px] text-[11px] font-semibold text-[var(--ink2)]">
+                      {n.category}
                     </span>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-bold text-[var(--ink)]">{w.name}</p>
-                    <p className="truncate text-[10px] text-[var(--ink3)]">
-                      {w.projects} Projects · {w.tasks} Tasks
-                    </p>
-                  </div>
-                  <Sparkline data={SPARK} color={progressColor(w.progress)} />
-                </div>
-              ))}
-              {d.workspaces.length === 0 && <p className="text-sm text-[var(--ink3)]">No workspaces yet.</p>}
-            </div>
-          </section>
-
-          <section className="card p-4">
-            <CardHead title="Weekly Progress" action="This week" />
-            <div className="mb-3 flex h-28 items-end gap-1.5">
-              {d.weekProgress.map((b) => (
-                <div key={b.d} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                  <div
-                    className="w-full rounded-t-[4px] border-2 border-[var(--ink)]"
-                    style={{
-                      height: `${b.v}%`,
-                      background: b.v > 80 ? 'var(--accent)' : 'color-mix(in oklab, var(--accent) 35%, var(--col))',
-                    }}
-                  />
-                  <span className="text-[9px] font-semibold text-[var(--ink3)]">{b.d}</span>
-                </div>
+                </button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <WeekStat n={d.stats.completed} label="Completed" />
-              <WeekStat n={d.projectProgress.inProgress} label="On Progress" />
-              <WeekStat n={d.stats.overdue} label="Overdue" />
-              <WeekStat n={Math.max(0, d.stats.totalTasks - d.stats.completed)} label="Not Started" />
-            </div>
-          </section>
-        </div>
+          )}
+        </section>
       </div>
-    </main>
-  )
-}
 
-function WeekStat({ n, label }: { n: number; label: string }) {
-  return (
-    <div className="rounded-[8px] border border-[var(--line)] p-2">
-      <p className="display-title text-base font-extrabold leading-none text-[var(--ink)]">{n}</p>
-      <p className="text-[10px] font-semibold text-[var(--ink3)]">{label}</p>
-    </div>
+      {selectedNote && (
+        <NoteDetail
+          note={selectedNote}
+          categorySuggestions={noteCategories}
+          onClose={() => setSelectedNote(null)}
+          onSaved={() => {
+            setSelectedNote(null)
+            router.invalidate()
+          }}
+          onDelete={async () => {
+            await deleteNoteFn({ data: { id: selectedNote.id } })
+            setSelectedNote(null)
+            router.invalidate()
+          }}
+        />
+      )}
+
+      <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
+    </main>
   )
 }

@@ -10,6 +10,9 @@ export type Task = {
   workspaceId: string | null
   workspaceName: string
   due: string | null
+  /** Completed tasks are loaded too now, for the Selesai filter and the
+   *  checkbox's checked state. */
+  done: boolean
 }
 
 /** One rendered section of the My Tasks list. Every grouping mode produces this
@@ -21,8 +24,8 @@ export function bucketize(tasks: Task[]): Group[] {
   const in7 = localDateStr(new Date(Date.now() + 7 * 86_400_000))
   const buckets: Group[] = [
     { key: 'overdue', label: 'Overdue', tint: 'var(--danger)', tasks: [] },
-    { key: 'today', label: 'Today', tint: '#d97706', tasks: [] },
-    { key: 'week', label: 'This week', tint: '#2563eb', tasks: [] },
+    { key: 'today', label: 'Today', tint: 'var(--pop)', tasks: [] },
+    { key: 'week', label: 'This week', tint: 'var(--ink)', tasks: [] },
     { key: 'later', label: 'Later', tint: 'var(--ink3)', tasks: [] },
     { key: 'none', label: 'No due date', tint: 'var(--ink3)', tasks: [] },
   ]

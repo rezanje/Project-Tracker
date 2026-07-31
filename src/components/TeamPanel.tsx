@@ -182,10 +182,10 @@ export default function TeamPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(16,28,22,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(28,26,23,0.42)] px-5 py-10 backdrop-blur-[3px] gt-back"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(16,28,22,0.5)] gt-pop">
+      <div className="w-full max-w-[640px] overflow-hidden rounded-[24px] bg-[var(--card)] p-6 shadow-[0_30px_80px_-20px_rgba(28,26,23,0.42)] gt-pop">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="display-title text-2xl font-extrabold text-[var(--ink)]">
             Team · {members.length}
@@ -204,7 +204,7 @@ export default function TeamPanel({
             const isMe = m.user_id === meId
             return (
               <li key={m.user_id} className="flex items-center gap-3 py-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] font-bold text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] font-bold text-[var(--card)]">
                   {initials(m.name, m.email)}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -242,7 +242,7 @@ export default function TeamPanel({
 
         {isOwner && (
           <div className="mb-4 border-t border-[var(--line)] pt-4">
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
               Invite member
             </p>
             <div className="relative">
@@ -259,7 +259,7 @@ export default function TeamPanel({
                 </button>
               </div>
               {(searching || searchResults.length > 0) && (
-                <div className="absolute left-0 right-[86px] top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[var(--card)] shadow-[0_12px_30px_-10px_rgba(16,28,22,0.35)]">
+                <div className="absolute left-0 right-[86px] top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[var(--card)] shadow-[0_12px_30px_-10px_rgba(28,26,23,0.3)]">
                   {searching && (
                     <p className="px-3 py-2 text-xs text-[var(--ink3)]">Searching…</p>
                   )}
@@ -270,7 +270,7 @@ export default function TeamPanel({
                       onClick={() => handleAdd(a.id)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--col)]"
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-[var(--card)]">
                         {initials(a.name, null)}
                       </span>
                       <span className="truncate">{a.name}</span>

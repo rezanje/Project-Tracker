@@ -1,4 +1,7 @@
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+/* Warm neutral ramp. The redesign spends its one accent (orange) on charts and
+   calls to action, so identity colours for workspaces/boards/avatars are tones,
+   not hues — they never compete with a CTA. */
+const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 
 /** Stable colour for an id — same id always yields the same accent, so a
  *  workspace or board keeps one colour across the sidebar, dashboards, and

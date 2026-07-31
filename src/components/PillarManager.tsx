@@ -8,7 +8,7 @@ interface Props {
   onDelete: (id: string) => Promise<void>
 }
 
-const SWATCHES = ['#2563eb', '#1f9d55', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#dc2626']
+const SWATCHES = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a', '#e8622c', '#1c1a17']
 
 /** Owner-only strip to manage workspace content pillars. */
 export default function PillarManager({ pillars, onAdd, onDelete }: Props) {
@@ -33,7 +33,7 @@ export default function PillarManager({ pillars, onAdd, onDelete }: Props) {
       {pillars.map((p) => (
         <span
           key={p.id}
-          className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold text-white"
+          className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold text-[var(--card)]"
           style={{ background: p.color }}
         >
           {p.name}

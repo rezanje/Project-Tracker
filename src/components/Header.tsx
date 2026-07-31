@@ -2,27 +2,26 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Bell,
-  Bot,
   CheckSquare,
   ChevronDown,
+  FolderKanban,
   LogOut,
   Plus,
   Search,
   Settings,
 } from 'lucide-react'
-import { CalendarDays, Clock, FolderKanban } from '@/components/pixel-icons'
+import { accentFor } from '#/lib/accent'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 import { searchFn, type SearchResults } from '#/lib/search'
-import {
-  fetchNotificationsFn,
-  markAllNotificationsReadFn,
-  markNotificationReadFn,
-  type Notification,
-} from '#/lib/notifications'
+import { fetchNotificationsFn } from '#/lib/notifications'
+import NotificationSheet from './NotificationSheet'
 import Popover from './Popover'
+import QuickNoteForm from './QuickNoteForm'
 import QuickProjectForm from './QuickProjectForm'
+import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
 import ThemeToggle from './ThemeToggle'
+import { WorkspacePill, WorkspaceSwitcherSheet } from './WorkspaceSwitcher'
 
 function greeting(h: number): string {
   if (h < 12) return 'Good morning'
@@ -45,14 +44,6 @@ function initials(name: string | null, email: string | null): string {
   return chars.toUpperCase() || '?'
 }
 
-function timeAgo(iso: string): string {
-  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
-  if (secs < 60) return 'just now'
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-  return `${Math.floor(secs / 86400)}d ago`
-}
-
 function ProfileMenu({ email, name }: { email: string | null; name: string | null }) {
   const navigate = useNavigate()
 
@@ -69,10 +60,13 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
           <button
             type="button"
             onClick={toggle}
-            className="flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] py-1 pl-1 pr-2"
+            className="flex items-center gap-1.5 rounded-full bg-[var(--card)] py-1 pl-1 pr-2 shadow-[var(--shadow-sm)]"
             title={email ?? undefined}
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white">
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-[var(--card)]"
+              style={{ background: accentFor(email ?? name ?? '?') }}
+            >
               {initials(name, email)}
             </span>
             <ChevronDown size={14} className="text-[var(--ink3)]" aria-hidden="true" />
@@ -80,14 +74,14 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
         )}
         renderPanel={(close) => (
           <>
-            <p className="truncate px-2.5 py-2 text-[12px] font-semibold text-[var(--ink3)]">{email}</p>
+            <p className="truncate px-3 py-2 text-[12px] font-medium text-[var(--ink3)]">{email}</p>
             <button
               type="button"
               onClick={() => {
                 close()
                 navigate({ to: '/coming-soon' })
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-bold text-[var(--ink2)] hover:bg-[var(--col)]"
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--ink2)] hover:bg-[var(--col)]"
             >
               <Settings size={15} aria-hidden="true" />
               Settings
@@ -95,7 +89,7 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
             <button
               type="button"
               onClick={logout}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-bold text-[var(--danger)] hover:bg-[var(--col)]"
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--danger)] hover:bg-[var(--col)]"
             >
               <LogOut size={15} aria-hidden="true" />
               Log out
@@ -107,8 +101,18 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
   )
 }
 
+const NEW_TABS = [
+  ['task', 'Task'],
+  ['project', 'Project'],
+  ['note', 'Note'],
+  ['reminder', 'Reminder'],
+] as const
+type NewTab = (typeof NEW_TABS)[number][0]
+
+// Note and Reminder used to live in Home's "Quick actions" grid; Home is the
+// comp's three sections now, so creation collects here and in the FAB sheet.
 function NewMenu() {
-  const [tab, setTab] = useState<'task' | 'project'>('task')
+  const [tab, setTab] = useState<NewTab>('task')
 
   return (
     <Popover
@@ -128,27 +132,24 @@ function NewMenu() {
       )}
       renderPanel={(close) => (
         <>
-          <div className="mb-2 flex gap-1 rounded-lg bg-[var(--col)] p-1">
-            <button
-              type="button"
-              onClick={() => setTab('task')}
-              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
-                tab === 'task' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              Task
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('project')}
-              className={`flex-1 rounded-md py-1 text-[12px] font-bold ${
-                tab === 'project' ? 'bg-[var(--card)] text-[var(--ink)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              Project
-            </button>
+          <div className="mb-3 flex gap-1 rounded-full bg-[var(--col)] p-1">
+            {NEW_TABS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                className={`flex-1 rounded-full py-1.5 text-[11.5px] font-semibold ${
+                  tab === id ? 'bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]' : 'text-[var(--ink3)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          {tab === 'task' ? <QuickTaskForm onDone={close} /> : <QuickProjectForm onDone={close} />}
+          {tab === 'task' && <QuickTaskForm onDone={close} />}
+          {tab === 'project' && <QuickProjectForm onDone={close} />}
+          {tab === 'note' && <QuickNoteForm onDone={close} />}
+          {tab === 'reminder' && <QuickReminderForm onDone={close} />}
         </>
       )}
     />
@@ -174,12 +175,12 @@ function SearchBox() {
   const hasResults = results.workspaces.length + results.boards.length + results.tasks.length > 0
 
   return (
-    <div className="hidden sm:block">
+    <div className="min-w-0 flex-1 sm:flex-none">
       <Popover
         panelClassName="w-80 max-h-[70vh] overflow-y-auto p-1.5"
         renderTrigger={(open, toggle) => (
-          <label className="flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5">
-            <Search size={15} className="text-[var(--ink3)]" aria-hidden="true" />
+          <label className="flex items-center gap-2.5 rounded-[var(--r-md)] bg-[var(--col)] px-4 py-3.5 sm:rounded-full sm:bg-[var(--card)] sm:px-[18px] sm:py-[11px] sm:shadow-[var(--shadow-sm)]">
+            <Search size={17} className="text-[var(--ink3)]" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search anything…"
@@ -193,7 +194,7 @@ function SearchBox() {
               onFocus={() => {
                 if (q.trim().length >= 2 && !open) toggle()
               }}
-              className="w-36 bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink3)]"
+              className="w-full min-w-0 bg-transparent text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)] sm:w-40 xl:w-52"
             />
           </label>
         )}
@@ -211,7 +212,7 @@ function SearchBox() {
               )}
               {results.workspaces.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Workspaces
                   </p>
                   {results.workspaces.map((w) => (
@@ -228,7 +229,7 @@ function SearchBox() {
               )}
               {results.boards.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Boards
                   </p>
                   {results.boards.map((b) => (
@@ -246,7 +247,7 @@ function SearchBox() {
               )}
               {results.tasks.length > 0 && (
                 <>
-                  <p className="px-2.5 pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">
+                  <p className="px-2.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                     Tasks
                   </p>
                   {results.tasks.map((t) => (
@@ -270,88 +271,41 @@ function SearchBox() {
   )
 }
 
-function NotificationsBell() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<Notification[]>([])
-  const unread = items.filter((n) => !n.read).length
+/** The bell. Notifications and messages both live behind it now that the nav is
+ *  four tabs — it opens the sheet rather than a popover. */
+export function NotificationsBell({ compact = false }: { compact?: boolean } = {}) {
+  const [open, setOpen] = useState(false)
+  const [unread, setUnread] = useState(0)
 
   useEffect(() => {
-    fetchNotificationsFn().then(setItems).catch(() => {})
-  }, [])
-
-  async function onItemClick(n: Notification, close: () => void) {
-    close()
-    if (n.kind === 'approval') {
-      navigate({ to: '/admin/approvals' })
-      return
-    }
-    if (!n.read) {
-      await markNotificationReadFn({ data: { id: n.id, kind: n.kind } }).catch(() => {})
-      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, read: true } : i)))
-    }
-    if (n.boardId) navigate({ to: '/board/$boardId', params: { boardId: n.boardId } })
-  }
-
-  async function markAll() {
-    await markAllNotificationsReadFn().catch(() => {})
-    setItems((prev) => prev.map((i) => ({ ...i, read: true })))
-  }
+    fetchNotificationsFn()
+      .then((items) => setUnread(items.filter((n) => !n.read).length))
+      .catch(() => {})
+  }, [open])
 
   return (
-    <Popover
-      panelClassName="w-80 max-h-[70vh] overflow-y-auto p-1.5"
-      renderTrigger={(_open, toggle) => (
-        <button
-          type="button"
-          aria-label="Notifications"
-          onClick={() => {
-            toggle()
-            fetchNotificationsFn().then(setItems).catch(() => {})
-          }}
-          className="btn btn-ghost relative px-2.5"
-        >
-          <Bell size={16} aria-hidden="true" />
-          {unread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold text-white">
-              {unread}
-            </span>
-          )}
-        </button>
-      )}
-      renderPanel={(close) => (
-        <>
-          <div className="flex items-center justify-between px-2 py-1.5">
-            <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink3)]">Notifications</p>
-            {unread > 0 && (
-              <button type="button" onClick={markAll} className="text-[11px] font-bold text-[var(--accent-ink)]">
-                Mark all read
-              </button>
-            )}
-          </div>
-          {items.length === 0 && (
-            <p className="px-2.5 py-4 text-center text-[12px] text-[var(--ink3)]">Nothing yet — you're all caught up.</p>
-          )}
-          {items.map((n) => (
-            <button
-              key={`${n.kind}:${n.id}`}
-              type="button"
-              onClick={() => onItemClick(n, close)}
-              className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--col)] ${
-                n.read ? '' : 'bg-[var(--accent-soft)]'
-              }`}
-            >
-              <span className="text-[13px] font-semibold text-[var(--ink)]">{n.message}</span>
-              <span className="text-[11px] text-[var(--ink3)]">{timeAgo(n.createdAt)}</span>
-            </button>
-          ))}
-        </>
-      )}
-    />
+    <>
+      <button
+        type="button"
+        aria-label="Notifikasi"
+        onClick={() => setOpen(true)}
+        className={`relative flex shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)] transition active:scale-[.94] ${
+          compact ? 'h-10 w-10' : 'h-11 w-11'
+        }`}
+      >
+        <Bell size={19} strokeWidth={1.7} aria-hidden="true" />
+        {unread > 0 && (
+          <span className="absolute right-[9px] top-[9px] h-[7px] w-[7px] rounded-full bg-[var(--accent)] shadow-[0_0_0_1.5px_var(--card)]" />
+        )}
+      </button>
+      {open && <NotificationSheet onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
 export default function Header() {
   const navigate = useNavigate()
+  const [wsOpen, setWsOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
   const [name, setName] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
@@ -382,56 +336,55 @@ export default function Header() {
     : ''
   const timeStr = now ? now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
+  // Not sticky: in the comps the header scrolls away with the page and the
+  // floating bottom nav is the only pinned chrome. The translucent background
+  // and blur went with it — both only existed to keep a pinned bar readable
+  // over scrolling content.
   return (
-    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b-2 border-[var(--ink)] bg-[var(--header-bg)] px-4 py-2.5 backdrop-blur-md sm:px-6">
-      {/* greeting + robot bubble */}
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="min-w-0 leading-tight">
-          <p className="text-[11px] font-semibold text-[var(--ink3)]">{hello},</p>
-          <p className="display-title truncate text-xl font-extrabold text-[var(--ink)]">{who} 👋</p>
-        </div>
-        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-2 border-[var(--ink)] bg-[var(--accent-soft)] text-[var(--accent-ink)] sm:flex">
-          <Bot size={18} aria-hidden="true" />
-        </span>
-        <span className="hidden rounded-[10px] border-2 border-[var(--ink)] bg-[var(--card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink2)] lg:inline">
-          Here's what matters today!
-        </span>
-      </div>
-
-      <div className="flex flex-1 items-center justify-end gap-2">
-        {/* date / time */}
-        {dateStr && (
-          <div className="mr-1 hidden text-right leading-tight xl:block">
-            <p className="flex items-center justify-end gap-1 text-[12px] font-bold text-[var(--ink)]">
-              <CalendarDays size={13} className="text-[var(--ink3)]" aria-hidden="true" />
-              {dateStr}
-            </p>
-            <p className="flex items-center justify-end gap-1 text-[11px] font-semibold text-[var(--ink3)]">
-              <Clock size={12} aria-hidden="true" />
-              {timeStr}
-            </p>
+    <header className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-7 sm:py-6">
+      {/* Greeting sits beside the round controls on mobile, matching the comp. */}
+      <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2">
+            <WorkspacePill onOpen={() => setWsOpen(true)} />
           </div>
-        )}
+          {dateStr && (
+            <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
+              {dateStr}
+              <span className="hidden xl:inline"> · {timeStr}</span>
+            </p>
+          )}
+          <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
+            {hello}, {who}
+          </h1>
+        </div>
 
-        <SearchBox />
-        <NotificationsBell />
-        <NewMenu />
-        <ProfileMenu email={email} name={name} />
-
-        {/* mobile theme + logout */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* mobile-only: bell + theme + logout as round buttons */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <NotificationsBell />
           <ThemeToggle compact />
           <button
             type="button"
             onClick={logout}
             aria-label="Log out"
             title="Log out"
-            className="btn btn-ghost px-2.5"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
           >
-            <LogOut size={16} aria-hidden="true" />
+            <LogOut size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
+
+      <div className="flex w-full items-center gap-2.5 sm:w-auto">
+        <SearchBox />
+        <span className="hidden sm:contents">
+          <NotificationsBell />
+          <NewMenu />
+        </span>
+        <ProfileMenu email={email} name={name} />
+      </div>
+
+      <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
     </header>
   )
 }

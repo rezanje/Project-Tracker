@@ -1,7 +1,15 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Award, Plus, Sparkles, Trophy, Users } from 'lucide-react'
-import { Flame, FolderKanban, ListChecks } from '@/components/pixel-icons'
+import {
+  Award,
+  Flame,
+  FolderKanban,
+  ListChecks,
+  Plus,
+  Sparkles,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import { workspaceLogoFor } from '#/lib/workspace-logos'
 
 // ponytail: presentational workspace dashboard matching the mockup. Real data
@@ -16,7 +24,7 @@ export type WsScheduleItem = { id: string; title: string; tag: string | null; ta
 export type WsActivity = { id: string; text: string; when: string; author: string | null }
 export type WsBreakdown = { done: number; inProgress: number; todo: number; blocked: number; total: number }
 
-const ACCENTS = ['#1f9d55', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function accentFor(id: string): string {
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
@@ -29,16 +37,16 @@ function initials(name: string | null): string {
 }
 
 function statusLabel(pct: number): { text: string; color: string } {
-  if (pct >= 80) return { text: 'Healthy Workspace', color: 'var(--accent)' }
-  if (pct >= 45) return { text: 'Needs Attention', color: '#d9a406' }
-  return { text: 'Behind Schedule', color: 'var(--danger)' }
+  if (pct >= 80) return { text: 'Healthy workspace', color: 'var(--ink)' }
+  if (pct >= 45) return { text: 'Needs attention', color: 'var(--pop)' }
+  return { text: 'Behind schedule', color: 'var(--danger)' }
 }
 
 function Avatar({ name, url, i = 0 }: { name: string | null; url?: string | null; i?: number }) {
   if (url) return <img src={url} alt="" className="h-7 w-7 rounded-full border-2 border-[var(--card)] object-cover" />
   return (
     <span
-      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] text-[10px] font-bold text-white"
+      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] text-[10px] font-bold text-[var(--card)]"
       style={{ background: ACCENTS[i % ACCENTS.length] }}
     >
       {initials(name)}
@@ -46,17 +54,14 @@ function Avatar({ name, url, i = 0 }: { name: string | null; url?: string | null
   )
 }
 
-function SegBar({ pct, color, blocks = 10 }: { pct: number; color: string; blocks?: number }) {
-  const on = Math.round((Math.max(0, Math.min(100, pct)) / 100) * blocks)
+/** Continuous progress track. */
+function SegBar({ pct, color }: { pct: number; color: string; blocks?: number }) {
   return (
-    <span className="inline-flex flex-1 gap-[3px]">
-      {Array.from({ length: blocks }).map((_, i) => (
-        <span
-          key={i}
-          className="h-3 flex-1 rounded-[2px] border-[1.5px] border-[var(--ink)]"
-          style={{ background: i < on ? color : 'var(--col)' }}
-        />
-      ))}
+    <span className="progress-track flex-1">
+      <span
+        className="progress-fill block"
+        style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: color }}
+      />
     </span>
   )
 }
@@ -65,7 +70,7 @@ function Donut({ b }: { b: WsBreakdown }) {
   const total = b.total || 1
   const segs = [
     { n: b.done, c: 'var(--accent)' },
-    { n: b.inProgress, c: '#2563eb' },
+    { n: b.inProgress, c: 'var(--ink)' },
     { n: b.todo, c: 'var(--ink3)' },
     { n: b.blocked, c: 'var(--danger)' },
   ]
@@ -74,7 +79,7 @@ function Donut({ b }: { b: WsBreakdown }) {
   let off = 0
   return (
     <svg width="112" height="112" viewBox="0 0 112 112" className="shrink-0">
-      <circle cx="56" cy="56" r={r} fill="none" stroke="var(--col)" strokeWidth="14" />
+      <circle cx="56" cy="56" r={r} fill="none" stroke="var(--sunk)" strokeWidth="14" />
       {segs.map((s, i) => {
         const len = (s.n / total) * c
         const el = (
@@ -84,25 +89,25 @@ function Donut({ b }: { b: WsBreakdown }) {
         off += len
         return el
       })}
-      <text x="56" y="52" textAnchor="middle" className="display-title fill-[var(--ink)] text-lg font-extrabold">{b.total}</text>
-      <text x="56" y="68" textAnchor="middle" className="fill-[var(--ink3)] text-[9px] font-bold">Total Tasks</text>
+      <text x="56" y="52" textAnchor="middle" className="fill-[var(--ink)] text-lg font-extrabold">{b.total}</text>
+      <text x="56" y="68" textAnchor="middle" className="fill-[var(--ink3)] text-[9px] font-semibold">Total tasks</text>
     </svg>
   )
 }
 
 const ACHIEVEMENTS = [
-  { icon: Trophy, label: 'Perfect Week', sub: 'No overdue tasks', tint: '#d9a406', bg: 'var(--pop-soft)' },
+  { icon: Trophy, label: 'Perfect Week', sub: 'No overdue tasks', tint: 'var(--pop-ink)', bg: 'var(--pop-soft)' },
   { icon: Flame, label: '7 Days Streak', sub: 'Active every day', tint: 'var(--danger)', bg: 'color-mix(in oklab, var(--danger) 12%, transparent)' },
   { icon: Award, label: 'Tree Planter', sub: '100 tasks done', tint: 'var(--accent)', bg: 'var(--accent-soft)' },
-  { icon: Sparkles, label: 'Top Performer', sub: 'High completion', tint: '#2563eb', bg: 'color-mix(in oklab, #2563eb 12%, transparent)' },
+  { icon: Sparkles, label: 'Top Performer', sub: 'High completion', tint: 'var(--ink)', bg: 'var(--col)' },
 ]
 
 function Head({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
     <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink2)]">{title}</h3>
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">{title}</h3>
       {action && (
-        <button type="button" onClick={onAction} className="text-[11px] font-bold text-[var(--accent-ink)] hover:underline">
+        <button type="button" onClick={onAction} className="text-[11px] font-bold text-[var(--ink2)] hover:text-[var(--ink)]">
           {action} →
         </button>
       )}
@@ -162,11 +167,11 @@ export default function WorkspaceDashboard({
             <img
               src={workspaceLogoFor(name) as string}
               alt=""
-              className="h-11 w-11 rounded-[10px] border-2 border-[var(--ink)] object-cover"
+              className="h-11 w-11 rounded-[14px] border border-[var(--line)] object-cover"
             />
           ) : (
             <span
-              className="flex h-11 w-11 items-center justify-center rounded-[10px] border-2 border-[var(--ink)] text-lg font-extrabold text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line)] text-lg font-extrabold text-white"
               style={{ background: accentFor(workspaceId) }}
             >
               {name.slice(0, 1).toUpperCase()}
@@ -189,14 +194,14 @@ export default function WorkspaceDashboard({
         </div>
 
         {/* today's overview */}
-        <div className="card flex flex-wrap items-center gap-4 p-4">
-          <OverviewStat icon={ListChecks} n={totalTasks} label="Tasks" tint="#2563eb" />
+        <div className="panel flex flex-wrap items-center gap-4 p-6">
+          <OverviewStat icon={ListChecks} n={totalTasks} label="Tasks" tint="var(--ink)" />
           <OverviewStat icon={Flame} n={overdue} label="Overdue" tint="var(--danger)" />
-          <OverviewStat icon={Users} n={membersCount} label="Members" tint="#7c3aed" />
+          <OverviewStat icon={Users} n={membersCount} label="Members" tint="var(--ink2)" />
           <OverviewStat icon={FolderKanban} n={activeProjects} label="Active Projects" tint="var(--accent)" />
           <div className="ml-auto flex min-w-[200px] flex-1 items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">Overall Progress</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Overall Progress</p>
               <SegBar pct={progress} color="var(--accent)" blocks={12} />
             </div>
             <span className="display-title text-xl font-extrabold text-[var(--accent-ink)]">{progress}%</span>
@@ -206,7 +211,7 @@ export default function WorkspaceDashboard({
         {/* schedule + active projects */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* upcoming schedule */}
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Upcoming Schedule" />
             <div className="flex flex-col">
               {schedule.length === 0 && <p className="py-2 text-sm text-[var(--ink3)]">Nothing scheduled today.</p>}
@@ -231,7 +236,7 @@ export default function WorkspaceDashboard({
           </section>
 
           {/* active projects */}
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Active Projects" />
             <div className="flex flex-col gap-3">
               {projects.length === 0 && <p className="text-sm text-[var(--ink3)]">No active projects.</p>}
@@ -264,12 +269,12 @@ export default function WorkspaceDashboard({
 
         {/* team members + achievements */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Team Members" action="Manage" onAction={onManageTeam} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {members.length === 0 && <p className="text-sm text-[var(--ink3)]">No members yet.</p>}
               {members.slice(0, 4).map((m, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5 rounded-[10px] border-2 border-[var(--line)] p-2 text-center">
+                <div key={i} className="flex flex-col items-center gap-1.5 rounded-[14px] border border-[var(--line-soft)] p-2 text-center">
                   <Avatar name={m.name} url={m.avatar_url} i={i} />
                   <p className="w-full truncate text-[12px] font-bold text-[var(--ink)]">{m.name ?? 'Member'}</p>
                   <p className="w-full truncate text-[10px] capitalize text-[var(--ink3)]">{m.role ?? 'member'}</p>
@@ -278,11 +283,11 @@ export default function WorkspaceDashboard({
             </div>
           </section>
 
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Achievements" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {ACHIEVEMENTS.map((a) => (
-                <div key={a.label} className="flex flex-col items-center gap-1 rounded-[10px] border-2 border-[var(--ink)] p-2.5 text-center" style={{ background: a.bg }}>
+                <div key={a.label} className="flex flex-col items-center gap-1 rounded-[14px] border border-[var(--line)] p-2.5 text-center" style={{ background: a.bg }}>
                   <a.icon size={20} style={{ color: a.tint }} />
                   <p className="text-[11px] font-extrabold text-[var(--ink)]">{a.label}</p>
                   <p className="text-[9px] text-[var(--ink3)]">{a.sub}</p>
@@ -294,12 +299,12 @@ export default function WorkspaceDashboard({
 
         {/* team overview + recent activity */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Team Overview" />
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1 space-y-2.5">
                 <BreakRow label="Done" n={breakdown.done} total={breakdown.total} color="var(--accent)" />
-                <BreakRow label="In Progress" n={breakdown.inProgress} total={breakdown.total} color="#2563eb" />
+                <BreakRow label="In Progress" n={breakdown.inProgress} total={breakdown.total} color="var(--ink)" />
                 <BreakRow label="To Do" n={breakdown.todo} total={breakdown.total} color="var(--ink3)" />
                 <BreakRow label="Blocked" n={breakdown.blocked} total={breakdown.total} color="var(--danger)" />
               </div>
@@ -307,7 +312,7 @@ export default function WorkspaceDashboard({
             </div>
           </section>
 
-          <section className="card p-4">
+          <section className="panel p-5">
             <Head title="Recent Activity" />
             <div className="flex flex-col gap-2.5">
               {activity.length === 0 && <p className="text-sm text-[var(--ink3)]">No recent activity.</p>}
@@ -342,7 +347,7 @@ function OverviewStat({ icon: Icon, n, label, tint }: { icon: ComponentType<{ si
   return (
     <div className="flex items-center gap-2.5">
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border-2 border-[var(--ink)]"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-[var(--line)]"
         style={{ background: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
       >
         <Icon size={17} />

@@ -494,7 +494,7 @@ function Home() {
     return { id: p.id, title: p.title, progress: t ? Math.round((d / t) * 100) : 0, members: p.members }
   })
 
-  const TAGC: Record<string, string> = { Finance: '#2563eb', Meeting: '#7c3aed', Content: '#0891b2', Design: '#db2777' }
+  const TAGC: Record<string, string> = { Finance: 'var(--ink)', Meeting: 'var(--ink2)', Content: 'var(--ink2)', Design: 'var(--ink2)' }
   const schedule: WsScheduleItem[] = active
     .flatMap((p) => p.tasks.map((t) => ({ task: t, boardId: p.id })))
     .filter(({ task }) => task.due === today && !task.done)
@@ -573,7 +573,7 @@ function Home() {
           className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setCreating(false)}
         >
-          <form onSubmit={onCreate} onClick={(e) => e.stopPropagation()} className="card w-full max-w-md p-5">
+          <form onSubmit={onCreate} onClick={(e) => e.stopPropagation()} className="panel w-full max-w-md p-6">
             <h3 className="display-title mb-3 text-lg font-bold text-[var(--ink)]">New project</h3>
             {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
             <input
@@ -592,8 +592,8 @@ function Home() {
               <option value="leads">Leads pipeline</option>
             </select>
             {isWsOwner && (
-              <div className="mb-3 border-t border-[var(--line)] pt-3">
-                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ink3)]">
+              <div className="mb-3 border-t border-[var(--line-soft)] pt-4">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
                   Invite member
                 </p>
                 <div className="flex gap-2">
@@ -608,7 +608,7 @@ function Home() {
                     Invite
                   </button>
                 </div>
-                {invMsg && <p className="mt-1 text-xs font-semibold text-[var(--accent-ink)]">{invMsg}</p>}
+                {invMsg && <p className="mt-1 text-xs font-semibold text-[var(--ink2)]">{invMsg}</p>}
                 {invLink && (
                   <input
                     readOnly
