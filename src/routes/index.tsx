@@ -45,7 +45,7 @@ function Stat({
   label: string
   value: number
   accent?: boolean
-  to?: '/reports'
+  to?: '/reports' | '/admin/approvals'
 }) {
   const body = (
     <>
@@ -136,7 +136,7 @@ function CommandCenter() {
         <div className="flex gap-2.5">
           <Stat label="Aktif" value={active} />
           <Stat label="Telat" value={d.stats.overdue} accent />
-          <Stat label="Approval" value={d.approvals} to="/reports" />
+          <Stat label="Approval" value={d.approvals} to="/admin/approvals" />
         </div>
 
         {/* workspace cards */}

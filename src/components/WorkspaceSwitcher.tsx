@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
@@ -196,7 +196,11 @@ function Row({
   )
 }
 
-/** Shared bottom-sheet chrome: scrim, grab handle, slide-up, escape to close.
+/** Past this many pixels of downward drag, letting go dismisses the sheet. */
+const DISMISS_AT = 110
+
+/** Shared bottom-sheet chrome: scrim, grab handle, slide-up, escape to close,
+ *  and drag-down-to-dismiss.
  *
  *  Portalled to `document.body` on purpose. The app header carries a
  *  `backdrop-filter`, which makes it a containing block for `position: fixed`
@@ -213,6 +217,14 @@ export function Sheet({
   children: React.ReactNode
   className?: string
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const startY = useRef<number | null>(null)
+  // The live offset lives in a ref as well as state: state drives the paint,
+  // the ref is what pointerup reads, so the decision can't act on a value one
+  // render behind the finger.
+  const dragRef = useRef(0)
+  const [drag, setDrag] = useState(0)
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -221,7 +233,49 @@ export function Sheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    // Only start a drag from the top of the scroll. Otherwise a downward swipe
+    // over a scrolled list would drag the sheet instead of scrolling it back up.
+    if ((panelRef.current?.scrollTop ?? 0) > 0) return
+    startY.current = e.clientY
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (startY.current === null) return
+    const dy = e.clientY - startY.current
+    // Downward only — an upward pull shouldn't lift the sheet off the bottom.
+    if (dy <= 0) {
+      dragRef.current = 0
+      setDrag(0)
+      return
+    }
+    dragRef.current = dy
+    setDrag(dy)
+    // Claim the gesture once it is clearly a drag, so the pointer keeps
+    // reporting to us even if it leaves the element. Guarded: capture throws
+    // for a pointer the browser no longer tracks, and losing the drag over it
+    // would leave the sheet stuck mid-slide.
+    if (dy > 4) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // keep dragging without capture
+      }
+    }
+  }
+
+  function endDrag() {
+    if (startY.current === null) return
+    startY.current = null
+    const dy = dragRef.current
+    dragRef.current = 0
+    if (dy > DISMISS_AT) onClose()
+    else setDrag(0)
+  }
+
   if (typeof document === 'undefined') return null
+
+  const dragging = drag > 0
 
   return createPortal(
     <div className="fixed inset-0 z-50">
@@ -230,12 +284,23 @@ export function Sheet({
         aria-label="Tutup"
         onClick={onClose}
         className="gt-back absolute inset-0 bg-[rgba(20,17,14,.42)] backdrop-blur-[2px]"
+        style={dragging ? { opacity: Math.max(0.2, 1 - drag / (DISMISS_AT * 2.5)) } : undefined}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className={`gt-up absolute inset-x-0 bottom-0 mx-auto max-w-[520px] overflow-y-auto rounded-t-[32px] bg-[var(--bg)] px-[22px] pb-[30px] pt-3.5 shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${className}`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        // touch-pan-y keeps vertical scrolling native inside the sheet; the
+        // browser only hands us the gesture, it doesn't stop scrolling.
+        className={`touch-pan-y absolute inset-x-0 bottom-0 mx-auto max-w-[520px] overflow-y-auto rounded-t-[32px] bg-[var(--bg)] px-[22px] pb-[30px] pt-3.5 shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${
+          dragging ? '' : 'gt-up'
+        } ${className}`}
+        style={dragging ? { transform: `translateY(${drag}px)` } : undefined}
       >
         <span className="mx-auto mb-[18px] block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
         {children}

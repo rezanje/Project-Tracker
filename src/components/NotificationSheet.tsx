@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { AtSign, Bell, CheckCircle2, Clock, MessageSquare, UserPlus } from 'lucide-react'
+import { AtSign, Bell, Clock, MessageSquare, UserPlus } from 'lucide-react'
 import { Sheet } from '#/components/WorkspaceSwitcher'
 import { toast } from '#/components/Toast'
 import { accentFor } from '#/lib/accent'
@@ -25,7 +25,6 @@ function timeAgo(iso: string): string {
 const KIND_ICON = {
   assignment: UserPlus,
   reminder: Clock,
-  approval: CheckCircle2,
   mention: AtSign,
   status: Bell,
   pic: UserPlus,
@@ -88,10 +87,6 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
 
   async function openNotification(n: Notification) {
     onClose()
-    if (n.kind === 'approval') {
-      navigate({ to: '/admin/approvals' })
-      return
-    }
     if (!n.read) {
       await markNotificationReadFn({ data: { id: n.id, kind: n.kind } }).catch(() => {})
     }
