@@ -42,12 +42,6 @@ export const Route = createFileRoute('/reports')({
   component: Reports,
 })
 
-function fmtRupiah(n: number): string {
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}jt`
-  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}rb`
-  return `Rp ${n.toLocaleString('id-ID')}`
-}
-
 function Bar({ label, sub, pct, color }: { label: string; sub?: string; pct: number; color: string }) {
   return (
     <div>
@@ -91,36 +85,6 @@ function Donut({ segments }: { segments: Array<{ n: number; color: string }> }) 
         return el
       })}
     </svg>
-  )
-}
-
-/** Revenue hero. The comp shows a trend badge and per-month columns; the schema
- *  has one revenue total and no history, so the columns are a flat placeholder
- *  and the badge is omitted rather than faked. */
-function RevenueHero({ revenue, months }: { revenue: number; months: number[] }) {
-  const max = Math.max(...months, 1)
-  return (
-    <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
-      <p className="mt-1.5 text-[30px] font-extrabold tracking-[-0.03em] tabular-nums">{fmtRupiah(revenue)}</p>
-      <div className="mt-[18px] flex h-14 items-end gap-1.5">
-        {months.map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-[5px]"
-            style={{
-              height: `${(v / max) * 100}%`,
-              background: i === months.length - 1 ? 'var(--accent)' : 'rgba(251,250,248,.22)',
-            }}
-          />
-        ))}
-      </div>
-      <div className="mt-2 flex justify-between text-[10.5px] font-medium opacity-45">
-        {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'].map((m) => (
-          <span key={m}>{m}</span>
-        ))}
-      </div>
-    </section>
   )
 }
 
@@ -215,27 +179,47 @@ function Reports() {
           <span className="w-10" />
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <RevenueHero revenue={d.revenue} months={[38, 52, 44, 70, 62, 84, 100]} />
-          <div className="grid grid-cols-2 gap-2.5 self-start">
-            <div className="panel p-4">
-              <p className="text-[12.5px] text-[var(--ink3)]">Tasks done</p>
-              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{d.stats.completed}</p>
-            </div>
-            <div className="panel p-4">
-              <p className="text-[12.5px] text-[var(--ink3)]">Completion</p>
-              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{completion}%</p>
-            </div>
-            <div className="panel p-4">
-              <p className="text-[12.5px] text-[var(--ink3)]">Total tasks</p>
-              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{total}</p>
-            </div>
-            <div className="panel p-4">
-              <p className="text-[12.5px] text-[var(--ink3)]">Overdue</p>
-              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{d.stats.overdue}</p>
-            </div>
+        {/* The comp's pair: Selesai over the total, and completion as the one
+            accent number. Its "On-time 92% · +4 vs bulan lalu" needs history
+            the schema doesn't keep, so completion stands in for it. */}
+        <div className="flex gap-3">
+          <div className="flex-1 rounded-[22px] bg-[var(--card)] p-4 shadow-[var(--shadow)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Selesai</p>
+            <p className="mt-1.5 text-[28px] font-extrabold tabular-nums tracking-[-0.03em] text-[var(--ink)]">
+              {d.stats.completed}
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-[var(--ink2)]">dari {total} task</p>
+          </div>
+          <div className="flex-1 rounded-[22px] bg-[var(--card)] p-4 shadow-[var(--shadow)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Completion</p>
+            <p className="mt-1.5 text-[28px] font-extrabold tracking-[-0.03em] text-[var(--accent)]">
+              {completion}%
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-[var(--ink2)]">{d.stats.overdue} telat</p>
           </div>
         </div>
+
+        {/* Minggu ini — the column needs a resolved height or the percentage
+            bars collapse, hence the stretch row with a flex-end wrapper. */}
+        <section className="rounded-[var(--r-lg)] bg-[var(--card)] p-[18px] shadow-[var(--shadow)]">
+          <h2 className="mb-4 text-[16px] font-bold tracking-[-0.02em] text-[var(--ink)]">Minggu ini</h2>
+          <div className="flex h-[120px] items-stretch gap-2">
+            {d.weekProgress.map((b, i) => (
+              <div key={b.d} className="flex h-full flex-1 flex-col items-center gap-2">
+                <div className="flex flex-1 w-full items-end">
+                  <div
+                    className="w-full rounded-[6px]"
+                    style={{
+                      height: `${Math.max(4, b.v)}%`,
+                      background: i === d.weekProgress.length - 1 ? 'var(--accent)' : 'var(--sunk)',
+                    }}
+                  />
+                </div>
+                <span className="text-[11px] font-medium text-[var(--ink3)]">{b.d}</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* My goals */}
         <section>
