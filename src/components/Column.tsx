@@ -54,7 +54,7 @@ export default function Column({
   const inner = (
     <section
       ref={setNodeRef}
-      className="col-surface flex min-h-[60vh] w-[300px] shrink-0 flex-col gap-3 p-[18px]"
+      className="col-surface flex min-h-[60vh] w-full shrink-0 flex-col gap-3 p-[18px] md:w-[300px]"
     >
       <div className="flex items-center gap-2.5 px-1 pb-1">
         <h3 className="text-[15px] font-bold tracking-[-0.015em] text-[var(--ink)]">{column.title}</h3>

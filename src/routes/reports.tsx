@@ -1,11 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
-import {
-  BarChart3,
-  CheckCircle2,
-  Clock,
-  ListChecks,
-} from 'lucide-react'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { ChevronLeft } from 'lucide-react'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
+import {
+  fetchAssignedGoalsFn,
+  fetchMyGoalsFn,
+  reviewKpiCheckinFn,
+  reviewKrCheckinFn,
+  submitKpiCheckinFn,
+  submitKrCheckinFn,
+  type AssignedGoals,
+  type MyGoals,
+} from '#/lib/goals'
 
 // ponytail: Reports reuses the dashboard aggregation — everything here is real
 // (per-workspace / per-project progress, task + project status). No new query.
@@ -22,10 +27,25 @@ function progressColor(pct: number): string {
   return 'var(--danger)'
 }
 
+type ReportsData = { dashboard: DashboardData; goals: MyGoals; assigned: AssignedGoals }
+
 export const Route = createFileRoute('/reports')({
-  loader: async () => await fetchDashboard(),
+  loader: async (): Promise<ReportsData> => {
+    const [dashboard, goals, assigned] = await Promise.all([
+      fetchDashboard(),
+      fetchMyGoalsFn(),
+      fetchAssignedGoalsFn(),
+    ])
+    return { dashboard, goals, assigned }
+  },
   component: Reports,
 })
+
+function fmtRupiah(n: number): string {
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}jt`
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}rb`
+  return `Rp ${n.toLocaleString('id-ID')}`
+}
 
 function Bar({ label, sub, pct, color }: { label: string; sub?: string; pct: number; color: string }) {
   return (
@@ -73,48 +93,237 @@ function Donut({ segments }: { segments: Array<{ n: number; color: string }> }) 
   )
 }
 
+/** Revenue hero. The comp shows a trend badge and per-month columns; the schema
+ *  has one revenue total and no history, so the columns are a flat placeholder
+ *  and the badge is omitted rather than faked. */
+function RevenueHero({ revenue, months }: { revenue: number; months: number[] }) {
+  const max = Math.max(...months, 1)
+  return (
+    <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
+      <p className="mt-1.5 text-[30px] font-extrabold tracking-[-0.03em] tabular-nums">{fmtRupiah(revenue)}</p>
+      <div className="mt-[18px] flex h-14 items-end gap-1.5">
+        {months.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-[5px]"
+            style={{
+              height: `${(v / max) * 100}%`,
+              background: i === months.length - 1 ? 'var(--accent)' : 'rgba(251,250,248,.22)',
+            }}
+          />
+        ))}
+      </div>
+      <div className="mt-2 flex justify-between text-[10.5px] font-medium opacity-45">
+        {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'].map((m) => (
+          <span key={m}>{m}</span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function pct(current: number, target: number): number {
+  if (!target) return 0
+  return Math.min(100, Math.max(0, Math.round((current / target) * 100)))
+}
+
 function Reports() {
-  const d = Route.useLoaderData() as DashboardData
+  const { dashboard: d, goals, assigned } = Route.useLoaderData() as ReportsData
+  const router = useRouter()
   const total = d.stats.totalTasks
   const completion = total ? Math.round((d.stats.completed / total) * 100) : 0
   const pp = d.projectProgress
   const notStarted = Math.max(0, pp.total - pp.completed - pp.inProgress)
 
-  const tiles = [
-    { icon: ListChecks, n: total, label: 'Total tasks', tint: 'var(--ink)' },
-    { icon: CheckCircle2, n: d.stats.completed, label: 'Completed', tint: 'var(--accent)' },
-    { icon: Clock, n: d.stats.overdue, label: 'Overdue', tint: 'var(--danger)' },
-    { icon: BarChart3, n: `${completion}%`, label: 'Completion', tint: 'var(--pop)' },
+  async function reviewKpi(checkinId: string, approve: boolean) {
+    await reviewKpiCheckinFn({ data: { checkinId, approve } })
+    router.invalidate()
+  }
+  async function reviewKr(checkinId: string, approve: boolean) {
+    await reviewKrCheckinFn({ data: { checkinId, approve } })
+    router.invalidate()
+  }
+  async function checkinKpi(kpiId: string) {
+    const raw = window.prompt('New value?')
+    if (raw == null || raw.trim() === '') return
+    await submitKpiCheckinFn({ data: { kpiId, proposedValue: Number(raw) || 0, note: '' } })
+    router.invalidate()
+  }
+  async function checkinKr(krId: string) {
+    const raw = window.prompt('New value?')
+    if (raw == null || raw.trim() === '') return
+    await submitKrCheckinFn({ data: { krId, proposedValue: Number(raw) || 0, note: '' } })
+    router.invalidate()
+  }
+
+  /** My KPIs + every key result, flattened into the comp's one goal list. */
+  const goalRows = [
+    ...goals.kpis.map((k) => ({
+      id: k.id,
+      title: k.name,
+      current: k.current,
+      target: k.target,
+      pending: k.pending,
+      onCheckin: () => checkinKpi(k.id),
+      onReview: reviewKpi,
+    })),
+    ...goals.objectives.flatMap((o) =>
+      o.krs.map((k) => ({
+        id: k.id,
+        title: `${o.title} · ${k.title}`,
+        current: k.current,
+        target: k.target,
+        pending: k.pending,
+        onCheckin: () => checkinKr(k.id),
+        onReview: reviewKr,
+      })),
+    ),
+  ]
+  /** Check-ins waiting on this user as the assigner, from the owner view. */
+  const inbox = [
+    ...assigned.kpis
+      .filter((k) => k.pending)
+      .map((k) => ({ id: k.id, who: k.assigneeName, title: k.name, p: k.pending!, onReview: reviewKpi })),
+    ...assigned.objectives.flatMap((o) =>
+      o.krs
+        .filter((k) => k.pending)
+        .map((k) => ({
+          id: k.id,
+          who: o.assigneeName,
+          title: `${o.title} · ${k.title}`,
+          p: k.pending!,
+          onReview: reviewKr,
+        })),
+    ),
   ]
 
   return (
     <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
       <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
-        <div className="flex items-center gap-2.5">
-          <BarChart3 size={22} className="text-[var(--ink3)]" aria-hidden="true" />
-          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Reports</h1>
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]">
+            <ChevronLeft size={18} aria-hidden="true" />
+          </span>
+          <h1 className="flex-1 text-center text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">
+            Performance
+          </h1>
+          <span className="w-10" />
         </div>
 
-        {/* overview */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {tiles.map(({ icon: Icon, n, label, tint }) => (
-            <div key={label} className="panel flex items-center gap-3.5 p-5">
-              <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-[var(--col)]"
-                style={{ color: tint }}
-              >
-                <Icon size={19} strokeWidth={1.7} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[24px] font-bold leading-none tracking-[-0.02em] text-[var(--ink)]">{n}</p>
-                <p className="mt-1.5 truncate text-[12.5px] text-[var(--ink3)]">{label}</p>
-              </div>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <RevenueHero revenue={d.revenue} months={[38, 52, 44, 70, 62, 84, 100]} />
+          <div className="grid grid-cols-2 gap-2.5 self-start">
+            <div className="panel p-4">
+              <p className="text-[12.5px] text-[var(--ink3)]">Tasks done</p>
+              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{d.stats.completed}</p>
             </div>
-          ))}
+            <div className="panel p-4">
+              <p className="text-[12.5px] text-[var(--ink3)]">Completion</p>
+              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{completion}%</p>
+            </div>
+            <div className="panel p-4">
+              <p className="text-[12.5px] text-[var(--ink3)]">Total tasks</p>
+              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{total}</p>
+            </div>
+            <div className="panel p-4">
+              <p className="text-[12.5px] text-[var(--ink3)]">Overdue</p>
+              <p className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[var(--ink)]">{d.stats.overdue}</p>
+            </div>
+          </div>
         </div>
 
+        {/* My goals */}
+        <section>
+          <div className="mb-3.5 flex items-baseline justify-between">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">My goals</h2>
+            <a
+              href="/home#my-goals"
+              className="text-[13.5px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
+            >
+              + New goal
+            </a>
+          </div>
+          {goalRows.length === 0 ? (
+            <p className="panel p-8 text-center text-[14px] text-[var(--ink3)]">No goals assigned yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              {goalRows.map((g) => (
+                <div key={g.id} className="card p-4">
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 text-[14.5px] font-semibold text-[var(--ink)]">{g.title}</p>
+                    <span className={`chip shrink-0 ${g.pending ? 'chip-warn' : ''}`}>
+                      {g.pending ? 'Pending approval' : 'On track'}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2.5">
+                    <div className="progress-track flex-1">
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${pct(g.current, g.target)}%`,
+                          background: g.pending ? 'var(--accent)' : 'var(--ink)',
+                        }}
+                      />
+                    </div>
+                    <span className="text-[12.5px] font-bold tabular-nums text-[var(--ink)]">
+                      {g.current} / {g.target}
+                    </span>
+                  </div>
+                  {!g.pending && (
+                    <button
+                      type="button"
+                      onClick={g.onCheckin}
+                      className="mt-3 text-[12.5px] font-semibold text-[var(--ink2)] hover:text-[var(--ink)]"
+                    >
+                      Check in →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Check-ins waiting on me as the assigner */}
+        {inbox.length > 0 && (
+          <section>
+            <h2 className="mb-3.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">Waiting on you</h2>
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              {inbox.map((g) => (
+                <div key={g.id} className="card p-4">
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 text-[14.5px] font-semibold text-[var(--ink)]">{g.title}</p>
+                    <span className="chip chip-warn shrink-0">Pending approval</span>
+                  </div>
+                  <p className="mt-1 text-[12.5px] text-[var(--ink3)]">
+                    {g.who ?? 'Someone'} proposed {g.p.proposedValue}
+                    {g.p.note ? ` — ${g.p.note}` : ''}
+                  </p>
+                  <div className="mt-3.5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => g.onReview(g.p.id, true)}
+                      className="btn btn-primary flex-1 py-2.5 text-[13px]"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => g.onReview(g.p.id, false)}
+                      className="btn btn-ghost flex-1 py-2.5 text-[13px]"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Beyond the comps: the workspace / project breakdowns the app already had. */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {/* workspace performance */}
           <section className="panel p-6 lg:col-span-2">
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
               Workspace performance
@@ -133,7 +342,6 @@ function Reports() {
             </div>
           </section>
 
-          {/* project status donut */}
           <section className="panel p-6">
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
               Project status
@@ -155,7 +363,6 @@ function Reports() {
           </section>
         </div>
 
-        {/* project completion */}
         <section className="panel p-6">
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
             Project completion

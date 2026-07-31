@@ -524,6 +524,8 @@ function BoardView() {
   const [addingMember, setAddingMember] = useState(false)
   // Local optimistic columns state for drag reordering
   const [columns, setColumns] = useState<ColumnRow[]>(initialBoard.columns)
+  // Which lane the mobile pill selector is showing (desktop shows all of them).
+  const [mobileColId, setMobileColId] = useState<string | null>(null)
   // The column a card started in, captured at drag-start (handleDragOver moves
   // the card across columns optimistically, so by drag-end the origin is lost).
   const dragOriginColRef = useRef<string | null>(null)
@@ -871,42 +873,76 @@ function BoardView() {
     cards: g.cards,
   }))
 
+  // Mobile shows one lane at a time behind a pill selector (the comp's layout);
+  // desktop keeps every lane side by side. Falls back to the first lane when the
+  // selected one disappears (group-by switch, column deleted).
+  const visibleColumns = groupBy === 'phase' ? phaseColumns : categoryColumns
+  const activeColId =
+    visibleColumns.find((c) => c.id === mobileColId)?.id ?? visibleColumns[0]?.id ?? null
+
   const columnsContent = (
-    <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
-      {groupBy === 'phase'
-        ? phaseColumns.map((col, i) => {
-            const prev = phaseColumns[i - 1]
-            const next = phaseColumns[i + 1]
-            return (
-              <Column
+    <>
+      <div className="gt-scroll mb-3.5 flex gap-2 overflow-x-auto pb-1 md:hidden">
+        {visibleColumns.map((col) => (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => setMobileColId(col.id)}
+            aria-pressed={col.id === activeColId}
+            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold ${
+              col.id === activeColId
+                ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                : 'bg-[var(--col)] text-[var(--ink2)]'
+            }`}
+          >
+            {col.title} <span className="opacity-60">{col.cards.length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="gt-scroll flex items-stretch gap-4 overflow-x-auto pb-3.5">
+        {groupBy === 'phase'
+          ? phaseColumns.map((col, i) => {
+              const prev = phaseColumns[i - 1]
+              const next = phaseColumns[i + 1]
+              return (
+                <div
+                  key={col.id}
+                  className={`${col.id === activeColId ? 'flex' : 'hidden md:flex'} w-full shrink-0 md:w-auto`}
+                >
+                  <Column
+                    column={col}
+                    isOwner={canEdit}
+                    onAddCard={onAddCard}
+                    onCardClick={openCardDetail}
+                    members={boardMeta?.members}
+                    onMoveCardPrev={
+                      canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
+                    }
+                    prevColumnTitle={prev?.title}
+                    onMoveCardNext={
+                      canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
+                    }
+                    nextColumnTitle={next?.title}
+                  />
+                </div>
+              )
+            })
+          : categoryColumns.map((col) => (
+              // Read-only view: no owner tools / drag in category mode.
+              <div
                 key={col.id}
-                column={col}
-                isOwner={canEdit}
-                onAddCard={onAddCard}
-                onCardClick={openCardDetail}
-                members={boardMeta?.members}
-                onMoveCardPrev={
-                  canEdit && prev ? (cardId) => moveListCard(cardId, col.id, prev.id) : undefined
-                }
-                prevColumnTitle={prev?.title}
-                onMoveCardNext={
-                  canEdit && next ? (cardId) => moveListCard(cardId, col.id, next.id) : undefined
-                }
-                nextColumnTitle={next?.title}
-              />
-            )
-          })
-        : categoryColumns.map((col) => (
-            // Read-only view: no owner tools / drag in category mode.
-            <Column
-              key={col.id}
-              column={col}
-              isOwner={false}
-              onCardClick={openCardDetail}
-              members={boardMeta?.members}
-            />
-          ))}
-    </div>
+                className={`${col.id === activeColId ? 'flex' : 'hidden md:flex'} w-full shrink-0 md:w-auto`}
+              >
+                <Column
+                  column={col}
+                  isOwner={false}
+                  onCardClick={openCardDetail}
+                  members={boardMeta?.members}
+                />
+              </div>
+            ))}
+      </div>
+    </>
   )
 
   return (
@@ -1122,14 +1158,77 @@ function BoardView() {
       </div>
 
       {!isContent && (
-        <BoardStats
-          dueToday={dueTodayCount}
-          overdue={overdueCount}
-          completed={completedCount}
-          total={allCards.length}
-          members={(boardMeta?.members ?? []).length}
-          budgetIdr={board.value_idr ?? null}
-        />
+        <>
+          {/* Mobile: the comp's single summary card. Desktop carries the same
+              numbers in the header, plus the stat tiles below. */}
+          <section className="panel mx-auto mb-5 max-w-[1400px] p-[18px] md:hidden">
+            <div className="mb-3.5 flex flex-wrap items-center gap-2">
+              {board.priority && (
+                <span className={`chip ${board.priority === 'urgent' ? 'chip-solid' : ''} capitalize`}>
+                  {board.priority}
+                </span>
+              )}
+              <span className="chip capitalize">{board.status.replace('_', ' ')}</span>
+              {board.deadline && (
+                <span className="text-[12.5px] text-[var(--ink3)]">
+                  Due{' '}
+                  {new Date(board.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+            </div>
+            <div className="mb-2.5 flex items-end justify-between gap-3">
+              {isOwner && board.value_idr != null ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+                    Project value
+                  </p>
+                  <p className="mt-0.5 text-[22px] font-bold tracking-[-0.02em] tabular-nums text-[var(--ink)]">
+                    Rp {board.value_idr.toLocaleString('id-ID')}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Progress</p>
+              )}
+              <span className="text-[20px] font-bold tracking-[-0.02em] text-[var(--ink)]">{boardProgress}%</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill bg-[var(--ink)]" style={{ width: `${boardProgress}%` }} />
+            </div>
+            <div className="mt-3.5 flex items-center justify-between gap-3">
+              <span className="avatar-stack">
+                {(boardMeta?.members ?? []).slice(0, 4).map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.name}
+                    className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[10px] font-bold text-[var(--card)]"
+                    style={{ background: accentFor(m.id) }}
+                  >
+                    {(m.name.trim().split(/\s+/)[0]?.[0] ?? '?').toUpperCase()}
+                  </span>
+                ))}
+                {(boardMeta?.members.length ?? 0) > 4 && (
+                  <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[var(--sunk)] text-[10px] font-bold text-[var(--ink2)]">
+                    +{(boardMeta?.members.length ?? 0) - 4}
+                  </span>
+                )}
+              </span>
+              <span className="text-[12.5px] font-medium text-[var(--ink2)]">
+                {completedCount} / {allCards.length} tasks
+              </span>
+            </div>
+          </section>
+
+          <div className="hidden md:block">
+            <BoardStats
+              dueToday={dueTodayCount}
+              overdue={overdueCount}
+              completed={completedCount}
+              total={allCards.length}
+              members={(boardMeta?.members ?? []).length}
+              budgetIdr={board.value_idr ?? null}
+            />
+          </div>
+        </>
       )}
 
       {!isContent && (

@@ -39,6 +39,35 @@ export async function listTodayEvents(supabase: SupabaseClient, todayStr: string
   }))
 }
 
+/** `events` has no end column, so the timeline shows a start time only. */
+export type ScheduleEvent = EventItem & { date: string }
+
+/** Every event the caller can see, for the Schedule day timeline. Unfiltered by
+ *  date — the app's event volume is small and the screen navigates months
+ *  client-side, so one load beats a round trip per day. */
+export async function listSchedule(supabase: SupabaseClient): Promise<ScheduleEvent[]> {
+  const { data } = await supabase
+    .from('events')
+    .select('id,title,sub,event_type,starts_at,attendee_ids')
+    .order('starts_at')
+  return ((data ?? []) as Array<{
+    id: string
+    title: string
+    sub: string | null
+    event_type: string
+    starts_at: string
+    attendee_ids: string[]
+  }>).map((r) => ({
+    id: r.id,
+    date: r.starts_at.slice(0, 10),
+    time: timeOf(r.starts_at),
+    title: r.title,
+    sub: r.sub ?? '',
+    type: r.event_type,
+    people: r.attendee_ids.length,
+  }))
+}
+
 export const fetchTodayEventsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<EventItem[]> => {
   const headers = new Headers()
   const { supabase } = await requireUser(getRequest(), headers)

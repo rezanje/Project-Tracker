@@ -310,11 +310,39 @@ function Home() {
     { label: 'Completion', val: `${ppPct}%` },
   ]
 
+  /** Revenue hero — leads the page on mobile, sits in the rail on desktop. */
+  const revenueHero = (
+    <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
+      <p className="mt-2 text-[30px] font-extrabold tracking-[-0.03em] tabular-nums">{fmtRupiah(d.revenue)}</p>
+      <div className="mt-5 flex h-16 items-end gap-1.5">
+        {KPI_BARS.map((v, i) => (
+          <span
+            key={i}
+            className="flex-1 rounded-[5px]"
+            style={{
+              height: `${(v / Math.max(...KPI_BARS)) * 100}%`,
+              background: i === KPI_BARS.length - 1 ? 'var(--accent)' : 'rgba(251,250,248,.2)',
+            }}
+          />
+        ))}
+      </div>
+      <Link
+        to="/reports"
+        className="mt-5 inline-flex items-center rounded-full bg-[var(--bg)] px-5 py-2.5 text-[13.5px] font-bold text-[var(--ink)] no-underline"
+      >
+        Check now
+      </Link>
+    </section>
+  )
+
   return (
     <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-5 lg:flex-row">
         {/* left / main */}
         <div className="flex min-w-0 flex-1 flex-col gap-5">
+          <div className="lg:hidden">{revenueHero}</div>
+
           {/* TODAY */}
           <section className="panel p-6">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -377,13 +405,13 @@ function Home() {
             {d.projects.length === 0 ? (
               <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="gt-scroll -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0">
                 {d.projects.slice(0, 3).map((p) => (
                   <Link
                     key={p.id}
                     to="/board/$boardId"
                     params={{ boardId: p.id }}
-                    className="panel card-hover p-5 no-underline"
+                    className="panel card-hover w-[200px] shrink-0 p-5 no-underline md:w-auto"
                   >
                     <MiniBars data={KPI_BARS} className="mb-4 h-[52px]" />
                     <p className="truncate text-[16px] font-bold tracking-[-0.015em] text-[var(--ink)]">{p.title}</p>
@@ -463,29 +491,8 @@ function Home() {
 
         {/* right rail */}
         <div className="flex w-full flex-col gap-5 lg:w-[340px] lg:shrink-0">
-          {/* REVENUE HERO */}
-          <section className="rounded-[var(--r-lg)] bg-[var(--ink)] p-6 text-[var(--bg)] shadow-[0_10px_28px_rgba(28,26,23,.16)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-55">Revenue</p>
-            <p className="mt-2 text-[30px] font-extrabold tracking-[-0.03em] tabular-nums">{fmtRupiah(d.revenue)}</p>
-            <div className="mt-5 flex h-16 items-end gap-1.5">
-              {KPI_BARS.map((v, i) => (
-                <span
-                  key={i}
-                  className="flex-1 rounded-[5px]"
-                  style={{
-                    height: `${(v / Math.max(...KPI_BARS)) * 100}%`,
-                    background: i === KPI_BARS.length - 1 ? 'var(--accent)' : 'rgba(251,250,248,.2)',
-                  }}
-                />
-              ))}
-            </div>
-            <a
-              href="#my-goals"
-              className="mt-5 inline-flex items-center rounded-full bg-[var(--bg)] px-5 py-2.5 text-[13.5px] font-bold text-[var(--ink)] no-underline"
-            >
-              Check now
-            </a>
-          </section>
+          {/* REVENUE HERO — mobile renders it at the top of the main column */}
+          <div className="hidden lg:block">{revenueHero}</div>
 
           {/* QUICK ACTIONS */}
           <section className="panel p-[22px]">

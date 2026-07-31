@@ -177,11 +177,11 @@ function SearchBox() {
   const hasResults = results.workspaces.length + results.boards.length + results.tasks.length > 0
 
   return (
-    <div className="hidden sm:block">
+    <div className="min-w-0 flex-1 sm:flex-none">
       <Popover
         panelClassName="w-80 max-h-[70vh] overflow-y-auto p-1.5"
         renderTrigger={(open, toggle) => (
-          <label className="flex items-center gap-2.5 rounded-full bg-[var(--card)] px-[18px] py-[11px] shadow-[var(--shadow-sm)]">
+          <label className="flex items-center gap-2.5 rounded-[var(--r-md)] bg-[var(--col)] px-4 py-3.5 sm:rounded-full sm:bg-[var(--card)] sm:px-[18px] sm:py-[11px] sm:shadow-[var(--shadow-sm)]">
             <Search size={17} className="text-[var(--ink3)]" aria-hidden="true" />
             <input
               type="search"
@@ -196,7 +196,7 @@ function SearchBox() {
               onFocus={() => {
                 if (q.trim().length >= 2 && !open) toggle()
               }}
-              className="w-40 bg-transparent text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)] xl:w-52"
+              className="w-full min-w-0 bg-transparent text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--ink3)] sm:w-40 xl:w-52"
             />
           </label>
         )}
@@ -384,38 +384,44 @@ export default function Header() {
   const timeStr = now ? now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
   return (
-    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-4 bg-[var(--header-bg)] px-5 py-4 backdrop-blur-md sm:px-7 sm:py-6">
-      <div className="min-w-0 flex-1">
-        {dateStr && (
-          <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
-            {dateStr}
-            <span className="hidden xl:inline"> · {timeStr}</span>
-          </p>
-        )}
-        <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
-          {hello}, {who}
-        </h1>
-      </div>
+    <header className="sticky top-0 z-20 flex flex-col gap-4 bg-[var(--header-bg)] px-5 py-4 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:px-7 sm:py-6">
+      {/* Greeting sits beside the round controls on mobile, matching the comp. */}
+      <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+        <div className="min-w-0 flex-1">
+          {dateStr && (
+            <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
+              {dateStr}
+              <span className="hidden xl:inline"> · {timeStr}</span>
+            </p>
+          )}
+          <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
+            {hello}, {who}
+          </h1>
+        </div>
 
-      <div className="flex items-center gap-2.5">
-        <SearchBox />
-        <NotificationsBell />
-        <NewMenu />
-        <ProfileMenu email={email} name={name} />
-
-        {/* mobile theme + logout */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* mobile-only: bell + theme + logout as round buttons */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <NotificationsBell />
           <ThemeToggle compact />
           <button
             type="button"
             onClick={logout}
             aria-label="Log out"
             title="Log out"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
           >
             <LogOut size={18} aria-hidden="true" />
           </button>
         </div>
+      </div>
+
+      <div className="flex w-full items-center gap-2.5 sm:w-auto">
+        <SearchBox />
+        <span className="hidden sm:contents">
+          <NotificationsBell />
+          <NewMenu />
+        </span>
+        <ProfileMenu email={email} name={name} />
       </div>
     </header>
   )
