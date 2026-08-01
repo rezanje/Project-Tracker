@@ -20,6 +20,7 @@ import QuickNoteForm from './QuickNoteForm'
 import QuickProjectForm from './QuickProjectForm'
 import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
+import SettingsSheet from './SettingsSheet'
 import ThemeToggle from './ThemeToggle'
 import { WorkspacePill, WorkspaceSwitcherSheet } from './WorkspaceSwitcher'
 
@@ -44,7 +45,15 @@ function initials(name: string | null, email: string | null): string {
   return chars.toUpperCase() || '?'
 }
 
-function ProfileMenu({ email, name }: { email: string | null; name: string | null }) {
+function ProfileMenu({
+  email,
+  name,
+  onOpenSettings,
+}: {
+  email: string | null
+  name: string | null
+  onOpenSettings: () => void
+}) {
   const navigate = useNavigate()
 
   async function logout() {
@@ -79,7 +88,7 @@ function ProfileMenu({ email, name }: { email: string | null; name: string | nul
               type="button"
               onClick={() => {
                 close()
-                navigate({ to: '/coming-soon' })
+                onOpenSettings()
               }}
               className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--ink2)] hover:bg-[var(--col)]"
             >
@@ -304,8 +313,8 @@ export function NotificationsBell({ compact = false }: { compact?: boolean } = {
 }
 
 export default function Header() {
-  const navigate = useNavigate()
   const [wsOpen, setWsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
   const [name, setName] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
@@ -323,11 +332,6 @@ export default function Header() {
     })
     return () => clearInterval(id)
   }, [])
-
-  async function logout() {
-    await getBrowserSupabase().auth.signOut()
-    navigate({ to: '/login' })
-  }
 
   const hello = now ? greeting(now.getHours()) : 'Welcome'
   const who = firstName(name, email)
@@ -359,18 +363,21 @@ export default function Header() {
           </h1>
         </div>
 
-        {/* mobile-only: bell + theme + logout as round buttons */}
+        {/* mobile-only: bell + theme + settings as round buttons. The profile
+            menu that carries Settings on desktop is hidden here, so the gear
+            needs its own slot or the sheet is unreachable on a phone. Log out
+            moved inside that sheet — it doesn't earn a permanent slot. */}
         <div className="flex items-center gap-2 sm:hidden">
           <NotificationsBell />
           <ThemeToggle compact />
           <button
             type="button"
-            onClick={logout}
-            aria-label="Log out"
-            title="Log out"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Pengaturan"
+            title="Pengaturan"
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)]"
           >
-            <LogOut size={18} aria-hidden="true" />
+            <Settings size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -381,10 +388,13 @@ export default function Header() {
           <NotificationsBell />
           <NewMenu />
         </span>
-        <ProfileMenu email={email} name={name} />
+        <ProfileMenu email={email} name={name} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
 
       <WorkspaceSwitcherSheet open={wsOpen} onClose={() => setWsOpen(false)} />
+      {settingsOpen && (
+        <SettingsSheet onClose={() => setSettingsOpen(false)} onSaved={setName} />
+      )}
     </header>
   )
 }

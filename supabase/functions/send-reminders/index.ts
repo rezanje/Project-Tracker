@@ -33,8 +33,26 @@ Deno.serve(async (req) => {
       return new Response('error', { status: 200 })
     }
 
+    // Who has switched reminder emails off (profiles.email_reminders, 0037).
+    // One query rather than one per reminder: the opted-out set is small and a
+    // missing row falls through to "send", matching the column default.
+    const optedOut = new Set<string>()
+    const { data: offRows, error: offErr } = await svc
+      .from('profiles')
+      .select('id')
+      .eq('email_reminders', false)
+    if (offErr) console.error('send-reminders: opt-out fetch failed', offErr)
+    for (const p of offRows ?? []) optedOut.add(p.id as string)
+
     let sent = 0
     for (const r of due ?? []) {
+      // Stamp opted-out reminders as handled too, or every run re-reads them
+      // forever. The bell still shows them in-app — this switch is email-only.
+      if (optedOut.has(r.user_id as string)) {
+        await svc.from('reminders').update({ emailed_at: new Date().toISOString() }).eq('id', r.id as string)
+        continue
+      }
+
       const { data: userData, error: userErr } = await svc.auth.admin.getUserById(r.user_id as string)
       const email = userData?.user?.email
       if (userErr || !email) continue
