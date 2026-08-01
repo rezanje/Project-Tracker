@@ -183,34 +183,39 @@ export default function CardDetail({
     .filter((l): l is NonNullable<typeof l> => Boolean(l))
 
   return (
-    <Sheet onClose={onClose} label={card.title} className="max-h-[86%]">
-      {/* Header: lane bar, project eyebrow, title, close */}
-      <div className="flex items-start gap-3">
-        <span
-          className="w-[3px] shrink-0 self-stretch rounded-full"
-          style={{ background: barColor(currentColumn?.title) }}
-          aria-hidden="true"
-        />
-        <div className="min-w-0 flex-1">
-          <p className={`truncate ${eyebrow}`}>{projectName}</p>
-          <h2
-            className={`mt-1 text-[21px] font-extrabold leading-[1.2] tracking-[-0.03em] text-[var(--ink)] ${
-              done ? 'line-through opacity-50' : ''
-            }`}
+    <Sheet
+      onClose={onClose}
+      label={card.title}
+      className="max-h-[86%]"
+      header={
+        // Lane bar, project eyebrow, title, close.
+        <div className="flex items-start gap-3">
+          <span
+            className="w-[3px] shrink-0 self-stretch rounded-full"
+            style={{ background: barColor(currentColumn?.title) }}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <p className={`truncate ${eyebrow}`}>{projectName}</p>
+            <h2
+              className={`mt-1 text-[21px] font-extrabold leading-[1.2] tracking-[-0.03em] text-[var(--ink)] ${
+                done ? 'line-through opacity-50' : ''
+              }`}
+            >
+              {card.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--ink)] active:scale-[.92]"
           >
-            {card.title}
-          </h2>
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Tutup"
-          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--ink)] active:scale-[.92]"
-        >
-          <X size={16} aria-hidden="true" />
-        </button>
-      </div>
-
+      }
+    >
       {labels.length > 0 && (
         <div className="mt-3.5 flex flex-wrap gap-2">
           {labels.map((l) => (

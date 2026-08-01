@@ -102,22 +102,27 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
   const list = tab === 'notif' ? items : threads
 
   return (
-    <Sheet onClose={onClose} label="Notifikasi" className="max-h-[78%]">
-      <div className="mb-4 flex items-center gap-3">
-        <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
-          Notifikasi
-        </h2>
-        {tab === 'notif' && unread > 0 && (
-          <button
-            type="button"
-            onClick={markAll}
-            className="text-[13px] font-bold text-[var(--accent-ink)]"
-          >
-            Tandai dibaca
-          </button>
-        )}
-      </div>
-
+    <Sheet
+      onClose={onClose}
+      label="Notifikasi"
+      className="max-h-[78%]"
+      header={
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
+            Notifikasi
+          </h2>
+          {tab === 'notif' && unread > 0 && (
+            <button
+              type="button"
+              onClick={markAll}
+              className="text-[13px] font-bold text-[var(--accent-ink)]"
+            >
+              Tandai dibaca
+            </button>
+          )}
+        </div>
+      }
+    >
       <div className="mb-4 flex gap-1.5 rounded-full bg-[var(--col)] p-1">
         {([['notif', 'Notifikasi'], ['pesan', 'Pesan']] as const).map(([id, label]) => (
           <button

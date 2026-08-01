@@ -99,12 +99,16 @@ export function WorkspaceSwitcherSheet({
   }
 
   return (
-    <Sheet onClose={onClose} label="Pindah workspace">
-      <div className="mb-4">
-        <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pindah workspace</h2>
-        <p className="mt-1 text-[13.5px] text-[var(--ink2)]">Semua perusahaan kamu di satu akun.</p>
-      </div>
-
+    <Sheet
+      onClose={onClose}
+      label="Pindah workspace"
+      header={
+        <div className="mb-4">
+          <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pindah workspace</h2>
+          <p className="mt-1 text-[13.5px] text-[var(--ink2)]">Semua perusahaan kamu di satu akun.</p>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-[9px]">
         <Row
           selected={scope === 'all'}
