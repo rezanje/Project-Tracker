@@ -87,21 +87,20 @@ export default function Column({
 
       {isOwner && onAddCard && (
         <>
-          <form onSubmit={handleAdd} className="mt-auto flex gap-2">
+          {/* One pill, not a field-plus-button pair: the round "+" was a
+              second tappable thing doing the same job as pressing Enter, and
+              a plain input read as a data field instead of an action. Shape
+              (rounded-full + shadow, the same "raised, tappable" language as
+              the header's search pill) plus a bold placeholder does the "this
+              is a button" job the icon used to. */}
+          <form onSubmit={handleAdd} className="mt-auto">
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="+ Add a card"
-              className="field min-w-0 flex-1 rounded-[16px] bg-[var(--card)] px-4 py-3 text-[13.5px]"
-            />
-            <button
-              type="submit"
               disabled={busy}
-              aria-label="Add card"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--btn)] text-[20px] leading-none text-[var(--btn-ink)] transition hover:opacity-90 disabled:opacity-50"
-            >
-              +
-            </button>
+              className="field w-full rounded-full bg-[var(--card)] px-5 py-3 text-[13.5px] font-bold text-[var(--ink2)] shadow-[var(--shadow-sm)] placeholder:font-bold placeholder:text-[var(--ink2)] disabled:opacity-50"
+            />
           </form>
           {addError && (
             <p className="text-[12.5px] text-[var(--danger)]">Failed to add card.</p>
