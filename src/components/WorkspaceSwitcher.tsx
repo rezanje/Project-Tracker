@@ -197,6 +197,23 @@ function Row({
 /** Past this many pixels of downward drag, letting go dismisses the sheet. */
 const DISMISS_AT = 110
 
+/** How a touch that started at the top of a sheet's body should be read, from
+ *  how far it has travelled so far.
+ *
+ *  `wait`    — too little movement to tell a tap from a gesture.
+ *  `release` — someone else's gesture: upward is the body scrolling, and
+ *              sideways-or-tied is a row swipe. A dead-even diagonal goes to
+ *              the swipe rather than here: closing the sheet under someone
+ *              who meant to swipe a row is the more surprising outcome.
+ *  `claim`   — a downward pull with nothing left to scroll: dismiss drag.
+ *
+ *  Exported so the rules can be tested without a thumb on a phone. */
+export function dragVerdict(dy: number, dx: number): 'wait' | 'release' | 'claim' {
+  if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return 'wait'
+  if (dy <= 0 || Math.abs(dx) >= Math.abs(dy)) return 'release'
+  return 'claim'
+}
+
 /** Shared bottom-sheet chrome: scrim, grab handle, slide-up, escape to close,
  *  and drag-down-to-dismiss.
  *
@@ -226,6 +243,12 @@ export function Sheet({
   // render behind the finger.
   const dragRef = useRef(0)
   const [drag, setDrag] = useState(0)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  // Read by listeners that are attached once; a prop captured directly would
+  // go stale, and re-attaching on every render would reset the gesture
+  // mid-drag (setDrag re-renders on every move).
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -234,6 +257,81 @@ export function Sheet({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  /** True when anything between `target` and the sheet body is a scroller that
+   *  has already been scrolled — pulling down there means "scroll back up",
+   *  not "close the sheet". */
+  function overScrolledContent(target: EventTarget | null, stop: HTMLElement): boolean {
+    let n = target as HTMLElement | null
+    while (n && n !== stop) {
+      if (n.scrollHeight > n.clientHeight + 1 && n.scrollTop > 0) return true
+      n = n.parentElement
+    }
+    return false
+  }
+
+  // Drag-to-dismiss from the body as well as the handle. The body must keep
+  // scrolling, so it cannot simply take the gesture the way the handle does
+  // (`touch-action: none`). Instead it watches raw touches and only claims one
+  // when the content is already at the top AND the finger is heading down —
+  // the point where there is no scrolling left to do. preventDefault in a
+  // non-passive touchmove is what stops the browser from starting its own
+  // overscroll; by then we know the gesture is ours.
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    let startY = 0
+    let startX = 0
+    let watching = false
+    let claimed = false
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) return
+      startY = e.touches[0].clientY
+      startX = e.touches[0].clientX
+      watching = el!.scrollTop <= 0 && !overScrolledContent(e.target, el!)
+      claimed = false
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!watching || e.touches.length !== 1) return
+      const dy = e.touches[0].clientY - startY
+      const dx = e.touches[0].clientX - startX
+      if (!claimed) {
+        const verdict = dragVerdict(dy, dx)
+        if (verdict === 'wait') return
+        if (verdict === 'release') {
+          watching = false
+          return
+        }
+        claimed = true
+      }
+      e.preventDefault()
+      dragRef.current = dy
+      setDrag(dy)
+    }
+
+    function onTouchEnd() {
+      watching = false
+      if (!claimed) return
+      claimed = false
+      const dy = dragRef.current
+      dragRef.current = 0
+      if (dy > DISMISS_AT) onCloseRef.current()
+      else setDrag(0)
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchEnd)
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     // The header can carry real buttons (e.g. "Keluar"); let taps on those
@@ -286,13 +384,10 @@ export function Sheet({
         } ${className}`}
         style={dragging ? { transform: `translateY(${drag}px)` } : undefined}
       >
-        {/* The grab handle is the drag zone, and it sits OUTSIDE the scrolling
-            body on purpose. A drag surface inside a scroller has to fight the
-            browser for the gesture: with `touch-action: pan-y` the browser
-            keeps vertical touches for scrolling and cancels our pointer, and
-            with `touch-action: none` the body stops scrolling. Splitting them
-            means neither has to compromise — which is also what the handle has
-            been promising the whole time. */}
+        {/* The handle and header take the gesture outright (`touch-action:
+            none`) because nothing up here scrolls. The body cannot do that
+            without losing its scrolling, so it earns the drag a different way
+            — see the touch listeners above. */}
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -304,7 +399,15 @@ export function Sheet({
           <span className="mx-auto mb-3 block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
           {header}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px] pt-[6px]">{children}</div>
+        {/* overscroll-contain keeps the browser's own rubber-band and
+            pull-to-refresh out of the way of the drag that starts at the top. */}
+        <div
+          ref={bodyRef}
+          style={{ overscrollBehavior: 'contain' }}
+          className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px] pt-[6px]"
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body,
