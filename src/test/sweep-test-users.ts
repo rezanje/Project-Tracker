@@ -6,8 +6,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 // `finally`, but a timeout or a dropped connection skips that — and the orphans
 // pile up as pending sign-ups the super admin sees forever.
 
-/** Test users are created as `${prefix}.${Date.now()}@gmail.com`. */
-const TEST_EMAIL = /^[a-z0-9-]+\.\d{13}@gmail\.com$/
+/** Test users are created as `${prefix}.${Date.now()}@gmail.com`, and — where a
+ *  single run makes several at the same millisecond — with a random suffix too:
+ *  `${prefix}.${Date.now()}.${random}@gmail.com` (makeSignedInUser, used by
+ *  board-members / board-pics / client-viewer). The suffixed shape was not
+ *  matched here, so every user those files created survived teardown; 101 of
+ *  them had piled up in the approvals queue before anyone noticed. */
+const TEST_EMAIL = /^[a-z0-9-]+\.\d{13}(\.[a-z0-9]+)?@gmail\.com$/
 
 function devVars(): Record<string, string> {
   return Object.fromEntries(
