@@ -1,22 +1,19 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  Award,
   Flame,
   FolderKanban,
   ListChecks,
   Plus,
-  Sparkles,
-  Trophy,
   Users,
 } from 'lucide-react'
 import { gradientFor } from '#/lib/accent'
 
-// ponytail: presentational workspace dashboard matching the mockup. Real data
-// is passed in by the route (stats, projects, schedule, members, status
-// breakdown, activity). AI Summary is a Coming Soon shell; Achievements are
-// static (no gamification backend); per-member online/status has no presence
-// source so we show role instead.
+// The workspace-level dashboard: one company at a glance. Real data is passed
+// in by the route (stats, projects, schedule, members, status breakdown,
+// activity). AI Summary is a Coming Soon shell; per-member online/status has no
+// presence source so we show role instead. The Achievements panel was removed —
+// nothing behind it was real.
 
 export type WsMember = { name: string | null; role: string | null; avatar_url: string | null }
 export type WsProject = { id: string; title: string; progress: number; members: Array<{ name: string | null; avatar_url: string | null }> }
@@ -94,13 +91,6 @@ function Donut({ b }: { b: WsBreakdown }) {
     </svg>
   )
 }
-
-const ACHIEVEMENTS = [
-  { icon: Trophy, label: 'Perfect Week', sub: 'No overdue tasks', tint: 'var(--pop-ink)', bg: 'var(--pop-soft)' },
-  { icon: Flame, label: '7 Days Streak', sub: 'Active every day', tint: 'var(--danger)', bg: 'color-mix(in oklab, var(--danger) 12%, transparent)' },
-  { icon: Award, label: 'Tree Planter', sub: '100 tasks done', tint: 'var(--accent)', bg: 'var(--accent-soft)' },
-  { icon: Sparkles, label: 'Top Performer', sub: 'High completion', tint: 'var(--ink)', bg: 'var(--col)' },
-]
 
 function Head({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
@@ -261,8 +251,8 @@ export default function WorkspaceDashboard({
           </section>
         </div>
 
-        {/* team members + achievements */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* team members */}
+        <div>
           <section className="panel p-5">
             <Head title="Team Members" action="Manage" onAction={onManageTeam} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -272,19 +262,6 @@ export default function WorkspaceDashboard({
                   <Avatar name={m.name} url={m.avatar_url} i={i} />
                   <p className="w-full truncate text-[12px] font-bold text-[var(--ink)]">{m.name ?? 'Member'}</p>
                   <p className="w-full truncate text-[10px] capitalize text-[var(--ink3)]">{m.role ?? 'member'}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel p-5">
-            <Head title="Achievements" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {ACHIEVEMENTS.map((a) => (
-                <div key={a.label} className="flex flex-col items-center gap-1 rounded-[14px] border border-[var(--line)] p-2.5 text-center" style={{ background: a.bg }}>
-                  <a.icon size={20} style={{ color: a.tint }} />
-                  <p className="text-[11px] font-extrabold text-[var(--ink)]">{a.label}</p>
-                  <p className="text-[9px] text-[var(--ink3)]">{a.sub}</p>
                 </div>
               ))}
             </div>

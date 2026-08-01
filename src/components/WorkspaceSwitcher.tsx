@@ -72,6 +72,9 @@ export function WorkspaceSwitcherSheet({
 
   if (!open) return null
 
+  // The pill is how you change level: "Semua workspace" is the account view,
+  // a workspace is that company's dashboard. Scope follows, so every scoped
+  // screen (Home, Projects, My tasks, Schedule, Performance) narrows with it.
   function pick(next: Scope) {
     setScope(next)
     onClose()
@@ -81,7 +84,7 @@ export function WorkspaceSwitcherSheet({
       return
     }
     toast(`Masuk ${workspaces.find((w) => w.id === next)?.name ?? 'workspace'}`)
-    navigate({ to: '/home' })
+    navigate({ to: '/workspace/$workspaceId', params: { workspaceId: next } })
   }
 
   async function addWorkspace() {

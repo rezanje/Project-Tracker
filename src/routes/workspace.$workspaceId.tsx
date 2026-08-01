@@ -15,6 +15,7 @@ import {
   type TeamMember,
   type AddableAccount,
 } from '#/lib/workspaces'
+import { setScope } from '#/lib/workspace-scope'
 import TeamPanel from '#/components/TeamPanel'
 import {
   fetchAssignedGoalsFn, assignKpiFn, reviewKpiCheckinFn, reviewKrCheckinFn,
@@ -336,6 +337,15 @@ function Home() {
   const router = useRouter()
   const { projects, workspaceId, workspaceName, wsRole, meId, announcements } = Route.useLoaderData()
   const isWsOwner = wsRole === 'owner'
+
+  // The URL is the authority on which workspace you are in. Landing here from
+  // the sidebar, a search result or a shared link used to leave the header pill
+  // pointing at whatever was picked last — the app then showed one company's
+  // dashboard under another company's name, and every scoped screen stayed
+  // filtered to the wrong one.
+  useEffect(() => {
+    setScope(workspaceId)
+  }, [workspaceId])
 
   // team panel (manage roles) — kept
   const [teamOpen, setTeamOpen] = useState(false)
