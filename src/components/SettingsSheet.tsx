@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { LogOut, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, Sparkles, UserCheck } from 'lucide-react'
 import { Sheet } from '#/components/WorkspaceSwitcher'
 import { toast } from '#/components/Toast'
 import { accentFor } from '#/lib/accent'
@@ -70,6 +70,7 @@ export default function SettingsSheet({
   const [name, setName] = useState('')
   const [email, setEmail] = useState<string | null>(null)
   const [emailReminders, setEmailReminders] = useState(true)
+  const [approvals, setApprovals] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -85,6 +86,7 @@ export default function SettingsSheet({
         setName(p.name ?? '')
         setEmail(p.email)
         setEmailReminders(p.emailReminders)
+        setApprovals(p.approvals)
       })
       .catch(() => setError('Gagal memuat pengaturan'))
       .finally(() => setLoading(false))
@@ -170,6 +172,39 @@ export default function SettingsSheet({
               hint="Kirimi saya email saat ada pengingat atau tugas jatuh tempo."
             />
           </div>
+
+          {/* Super admin only. Unsaved edits above are deliberately dropped on
+              navigate — this is a link out, not a form field, and pretending
+              otherwise would mean saving on someone's behalf. */}
+          {approvals !== null && (
+            <div>
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">Admin</p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  navigate({ to: '/admin/approvals' })
+                }}
+                className="flex w-full items-center gap-3 rounded-[18px] bg-[var(--col)] px-4 py-3.5 text-left"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink2)] shadow-[var(--shadow-sm)]">
+                  <UserCheck size={16} aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-bold text-[var(--ink)]">Approval akun</span>
+                  <span className="mt-0.5 block text-[12.5px] text-[var(--ink3)]">
+                    {approvals === 0 ? 'Tidak ada yang menunggu.' : `${approvals} orang menunggu disetujui.`}
+                  </span>
+                </span>
+                {approvals > 0 && (
+                  <span className="shrink-0 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[12px] font-bold text-white">
+                    {approvals}
+                  </span>
+                )}
+                <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+              </button>
+            </div>
+          )}
 
           {/* Placeholder only — no waiting list, no pricing. It exists so the
               paid tier has a visible home when there is something to sell. */}
