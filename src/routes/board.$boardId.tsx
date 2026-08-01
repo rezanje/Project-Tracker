@@ -972,8 +972,9 @@ function BoardView() {
     <main className="relative px-4 pb-11 pt-6 sm:px-6 gt-fade">
       <div className="mx-auto mb-5 flex max-w-[1400px] flex-wrap items-start justify-between gap-5">
         <div>
+          {/* Said "Projects" but went to the Command Center, two levels up. */}
           <Link
-            to="/"
+            to="/projects"
             className="mb-2.5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink2)] no-underline hover:text-[var(--ink)]"
           >
             <ChevronLeft size={16} aria-hidden="true" />

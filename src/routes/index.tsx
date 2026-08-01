@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { Check, ChevronRight, Megaphone, Plus, StickyNote } from 'lucide-react'
 import { accentFor, gradientFor } from '#/lib/accent'
@@ -84,6 +84,14 @@ function CommandCenter() {
   const [selectedNote, setSelectedNote] = useState<CommandCenterData['notes'][number] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  // Same rule as the workspace page: the URL says which level you are on. This
+  // screen IS the account level, so arriving here — from the nav tab, a link,
+  // a refresh — lifts the scope out of whatever workspace it was in. Otherwise
+  // the pill kept naming a company while the page showed all of them.
+  useEffect(() => {
+    setScope('all')
+  }, [])
+
   async function complete(id: string) {
     setBusyId(id)
     try {
@@ -106,9 +114,11 @@ function CommandCenter() {
   // exposes due buckets but not column names, so this is the late half only.
   const attention = d.priority.filter((p) => p.bucket === 'Overdue')
 
+  // A workspace card is a step down a level, so it lands on that workspace's
+  // dashboard — the same place the switcher goes.
   function openWorkspace(id: string) {
     setScope(id)
-    navigate({ to: '/home' })
+    navigate({ to: '/workspace/$workspaceId', params: { workspaceId: id } })
   }
 
   return (

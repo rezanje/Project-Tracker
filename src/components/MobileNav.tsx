@@ -8,20 +8,21 @@ import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
 import { Sheet } from './WorkspaceSwitcher'
 
-// The redesign's four destinations. Slot two is the comp's board tab — it lands
-// on the projects of whichever workspace the pill is currently set to. Reports,
-// Inbox, Approvals and the Command Center each keep a doorway elsewhere (the KPI
-// card, the header bell, the Approval tile, the "Semua workspace" row in the
-// switcher) rather than a nav entry here.
+// The redesign's four destinations. Slot two is the Command Center — the level
+// above workspaces, and the only place every company's numbers sit together.
+// It was reachable on a phone solely through the workspace switcher, which is
+// too deep for the view the whole account hangs off. Projects, Reports, Inbox
+// and Approvals each keep a doorway elsewhere (Home's "See all", the KPI card,
+// the header bell, the Approval tile) rather than a nav entry here.
 const BAR_NAV: Array<{
   label: string
   icon: ComponentType<LucideProps>
-  to: '/home' | '/projects' | '/my-tasks' | '/calendar'
+  to: '/home' | '/' | '/my-tasks' | '/calendar'
   /** Extra paths that should light this tab's dot. */
   also?: string
 }> = [
-  { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Projects', icon: PieChart, to: '/projects', also: '/board/' },
+  { label: 'Home', icon: Home, to: '/home', also: '/workspace/' },
+  { label: 'Command center', icon: PieChart, to: '/' },
   { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
