@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { requireUser } from './auth'
 import { myPicBoardIds, type PicMemberRow } from './board-pics'
-import { isDoneColumn, localDateStr, weekdayIndex, weekRange } from './home'
+import { isDoneColumn, lastNDays, localDateStr, weekdayIndex, weekRange } from './home'
 
 // One aggregation feeding both dashboards (Command Center + Home). Panels
 // that need history or event data we don't store (timeline times, sparkline
@@ -29,6 +29,12 @@ export type DashProject = {
   members: DashProjectMember[]
   /** True when the signed-in user is flagged PIC on this board. */
   isMyPic: boolean
+  /** Cards completed each of the last 7 local days, oldest first — the
+   *  project card's sparkline. Real from cards.completed_at (migration 0039);
+   *  a card moved before that migration has no completion date and never
+   *  counts here, so a project with old, untouched history reads as flat
+   *  rather than guessing. */
+  weeklyCompletions: number[]
 }
 export type DashPriority = {
   id: string
@@ -138,6 +144,25 @@ export function computeHeatmap(cards: Array<{ due_date: string | null }>, todayS
   return grid
 }
 
+/** How many cards became done on each of the last 7 local days — the project
+ *  card sparkline. Cards with no completed_at (never moved since migration
+ *  0039, or never done) simply don't count anywhere; this never fabricates a
+ *  date for history that was never recorded. */
+export function computeWeeklyCompletions(
+  cards: Array<{ completed_at: string | null }>,
+  todayStr: string,
+): number[] {
+  const days = lastNDays(7, todayStr)
+  const indexOf = new Map(days.map((d, i) => [d, i]))
+  const counts = new Array(7).fill(0)
+  for (const c of cards) {
+    if (!c.completed_at) continue
+    const i = indexOf.get(localDateStr(new Date(c.completed_at)))
+    if (i !== undefined) counts[i]++
+  }
+  return counts
+}
+
 export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async (): Promise<DashboardData> => {
   const headers = new Headers()
   // requireUser throws a redirect (to /login or /pending) for unauthenticated or
@@ -151,7 +176,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         supabase.from('workspaces').select('id,name').order('created_at'),
         supabase
           .from('boards')
-          .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date,assignee_id))')
+          .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date,assignee_id,completed_at))')
           .neq('status', 'archived'),
         supabase.from('notes').select('id,body,category,created_at').order('created_at', { ascending: false }).limit(50),
         supabase
@@ -226,6 +251,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
 
       let bTotal = 0
       let bDone = 0
+      const boardCards: Array<{ completed_at: string | null }> = []
       for (const col of (b.columns ?? []) as Array<{ title: string; cards?: unknown[] }>) {
         const isDone = isDoneColumn(col.title)
         for (const c of (col.cards ?? []) as Array<{
@@ -233,10 +259,12 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
           title: string
           due_date: string | null
           assignee_id: string | null
+          completed_at: string | null
         }>) {
           totalTasks++
           bTotal++
           allCards.push({ due_date: c.due_date, done: isDone })
+          boardCards.push({ completed_at: c.completed_at })
           const mine = c.assignee_id === user.id
           if (mine) myTotal++
           if (isDone) {
@@ -302,6 +330,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         total: bTotal,
         members: membersByBoard.get(b.id) ?? [],
         isMyPic: myPicBoards.has(b.id as string),
+        weeklyCompletions: computeWeeklyCompletions(boardCards, today),
       })
       if (bTotal > 0 && bDone === bTotal) pDone++
       else if (bDone > 0) pInProgress++

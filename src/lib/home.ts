@@ -22,6 +22,17 @@ export function weekdayIndex(dateStr: string): number {
   return (d.getDay() + 6) % 7
 }
 
+/** The `n` local calendar dates ending on (and including) `dateStr`, oldest
+ *  first — a sliding window, unlike weekRange's fixed Mon-start week. */
+export function lastNDays(n: number, dateStr: string): string[] {
+  const base = new Date(dateStr + 'T00:00:00')
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(base)
+    d.setDate(base.getDate() - (n - 1 - i))
+    return localDateStr(d)
+  })
+}
+
 /** Local `YYYY-MM-DD` dates for the Monday..Sunday week containing `dateStr`. */
 export function weekRange(dateStr: string): string[] {
   const d = new Date(dateStr + 'T00:00:00')

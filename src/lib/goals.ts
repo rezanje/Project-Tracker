@@ -161,6 +161,76 @@ export async function listAssignedGoals(
   }
 }
 
+export type KpiTrend = { name: string; bars: number[] }
+
+/** Which of `rows` best represents "my KPI progress" for the Home teaser: the
+ *  one that moved most recently, so an old, stagnant KPI doesn't crowd out
+ *  one someone is actively checking in on. Exported for testing. */
+export function pickFeaturedKpi<T extends { kpi_checkins: { status: string; reviewed_at: string | null }[] }>(
+  rows: T[],
+): T | null {
+  if (rows.length === 0) return null
+  function latestApprovedAt(r: T): number {
+    const times = r.kpi_checkins
+      .filter((c) => c.status === 'approved' && c.reviewed_at)
+      .map((c) => new Date(c.reviewed_at!).getTime())
+    return times.length ? Math.max(...times) : -1
+  }
+  return [...rows].sort((a, b) => latestApprovedAt(b) - latestApprovedAt(a))[0]
+}
+
+/** Bar heights (0-100, against `target`) for a KPI teaser: up to the last 7
+ *  approved check-ins in the order they landed, or just the current value
+ *  when there's no check-in history yet — never a guess at points that were
+ *  never recorded. Exported for testing. */
+export function kpiTrendBars(
+  checkins: Array<{ proposed_value: number; status: string; reviewed_at: string | null }>,
+  current: number,
+  target: number,
+): number[] {
+  const approved = checkins
+    .filter((c) => c.status === 'approved' && c.reviewed_at)
+    .sort((a, b) => new Date(a.reviewed_at!).getTime() - new Date(b.reviewed_at!).getTime())
+    .slice(-7)
+    .map((c) => Number(c.proposed_value) || 0)
+  const values = approved.length > 0 ? approved : [current]
+  if (target <= 0) return values.map(() => 0)
+  return values.map((v) => Math.min(100, Math.max(0, (v / target) * 100)))
+}
+
+/** The Home page's "Lihat progres KPI kamu" teaser. Null when the signed-in
+ *  user has no active KPI — the section hides rather than show an empty or
+ *  fabricated chart. */
+export const fetchMyKpiTrendFn = createServerFn({ method: 'GET' }).handler(async (): Promise<KpiTrend | null> => {
+  const headers = new Headers()
+  // requireUser throws a redirect for unauthenticated/unapproved users — keep
+  // it outside the try, same reasoning as fetchDashboard: that control-flow
+  // redirect must not be swallowed by the data-error fallback below.
+  const { user, supabase } = await requireUser(getRequest(), headers)
+  try {
+    const { data } = await supabase
+      .from('kpis')
+      .select('name,target,current,kpi_checkins(proposed_value,status,reviewed_at)')
+      .eq('assignee_id', user.id)
+      .eq('status', 'active')
+    flush(headers)
+    const rows = (data ?? []) as Array<{
+      name: string
+      target: number
+      current: number
+      kpi_checkins: { proposed_value: number; status: string; reviewed_at: string | null }[]
+    }>
+    const featured = pickFeaturedKpi(rows)
+    if (!featured) return null
+    return {
+      name: featured.name,
+      bars: kpiTrendBars(featured.kpi_checkins, Number(featured.current) || 0, Number(featured.target) || 0),
+    }
+  } catch {
+    return null
+  }
+})
+
 export const fetchMyGoalsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<MyGoals> => {
   const headers = new Headers()
   const { user, supabase } = await requireUser(getRequest(), headers)

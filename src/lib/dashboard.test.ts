@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { computeWeekProgress, computeHeatmap } from './dashboard'
+import { computeWeekProgress, computeHeatmap, computeWeeklyCompletions } from './dashboard'
 
 test('computeWeekProgress computes % done per weekday for the week containing todayStr', () => {
   const cards = [
@@ -48,4 +48,26 @@ test('computeHeatmap returns an all-zero 5x7 grid for an empty card list', () =>
   const grid = computeHeatmap([], '2026-07-14')
   expect(grid).toHaveLength(5)
   expect(grid.every((row) => row.every((v) => v === 0))).toBe(true)
+})
+
+test('computeWeeklyCompletions buckets by the local day a card was completed', () => {
+  // Times chosen mid-day WIB (this suite's timezone) so the local calendar
+  // day can't slip a day from a UTC offset near midnight.
+  const cards = [
+    { completed_at: '2026-07-14T02:00:00Z' }, // today, 09:00 WIB
+    { completed_at: '2026-07-14T09:00:00Z' }, // today, later, 16:00 WIB
+    { completed_at: '2026-07-12T03:00:00Z' }, // two days ago, 10:00 WIB
+    { completed_at: null },                   // never completed, ignored
+  ]
+  const counts = computeWeeklyCompletions(cards, '2026-07-14')
+  expect(counts).toEqual([0, 0, 0, 0, 1, 0, 2]) // Jul 8..14: 12th at index 4, today (14th) at index 6
+})
+
+test('computeWeeklyCompletions drops completions outside the 7-day window', () => {
+  const counts = computeWeeklyCompletions([{ completed_at: '2026-06-01T00:00:00Z' }], '2026-07-14')
+  expect(counts).toEqual([0, 0, 0, 0, 0, 0, 0])
+})
+
+test('computeWeeklyCompletions returns an all-zero week for an empty card list', () => {
+  expect(computeWeeklyCompletions([], '2026-07-14')).toEqual([0, 0, 0, 0, 0, 0, 0])
 })

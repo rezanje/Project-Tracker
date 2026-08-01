@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { computeStats, isDoneColumn, weekdayIndex, weekRange } from './home'
+import { computeStats, isDoneColumn, lastNDays, weekdayIndex, weekRange } from './home'
 
 test('isDoneColumn matches done/complete case-insensitively', () => {
   expect(isDoneColumn('Done')).toBe(true)
@@ -39,4 +39,19 @@ test('weekRange on a Sunday stays in that same week (does not roll into the next
     '2026-07-13', '2026-07-14', '2026-07-15', '2026-07-16',
     '2026-07-17', '2026-07-18', '2026-07-19',
   ])
+})
+
+test('lastNDays is a sliding window ending on dateStr, oldest first', () => {
+  expect(lastNDays(7, '2026-07-14')).toEqual([
+    '2026-07-08', '2026-07-09', '2026-07-10', '2026-07-11',
+    '2026-07-12', '2026-07-13', '2026-07-14',
+  ])
+})
+
+test('lastNDays crosses a month boundary correctly', () => {
+  expect(lastNDays(3, '2026-08-01')).toEqual(['2026-07-30', '2026-07-31', '2026-08-01'])
+})
+
+test('lastNDays of 1 is just today', () => {
+  expect(lastNDays(1, '2026-07-14')).toEqual(['2026-07-14'])
 })
