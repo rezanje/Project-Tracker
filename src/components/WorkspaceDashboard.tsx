@@ -10,7 +10,7 @@ import {
   Trophy,
   Users,
 } from 'lucide-react'
-import { workspaceLogoFor } from '#/lib/workspace-logos'
+import { gradientFor } from '#/lib/accent'
 
 // ponytail: presentational workspace dashboard matching the mockup. Real data
 // is passed in by the route (stats, projects, schedule, members, status
@@ -163,16 +163,10 @@ export default function WorkspaceDashboard({
           <Link to="/" className="text-[12px] font-semibold text-[var(--ink3)] no-underline hover:text-[var(--ink)]">
             ← Workspaces
           </Link>
-          {workspaceLogoFor(name) ? (
-            <img
-              src={workspaceLogoFor(name) as string}
-              alt=""
-              className="h-11 w-11 rounded-[14px] border border-[var(--line)] object-cover"
-            />
-          ) : (
+          {(
             <span
-              className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line)] text-lg font-extrabold text-white"
-              style={{ background: accentFor(workspaceId) }}
+              className="flex h-11 w-11 items-center justify-center rounded-[14px] text-lg font-extrabold text-white"
+              style={{ background: gradientFor(workspaceId) }}
             >
               {name.slice(0, 1).toUpperCase()}
             </span>

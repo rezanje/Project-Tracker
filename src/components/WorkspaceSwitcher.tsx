@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
-import { accentFor } from '#/lib/accent'
+import { gradientFor } from '#/lib/accent'
 import { createWorkspaceFn } from '#/lib/actions'
 import { fetchNav, fetchNavDeduped, type NavWorkspace } from '#/lib/nav'
-import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { setScope, useScope, type Scope } from '#/lib/workspace-scope'
 import { toast } from './Toast'
 
@@ -34,7 +33,6 @@ export function useWorkspaces() {
 /** The pill in the Command Center / Home / My tasks headers. */
 export function WorkspacePill({ onOpen }: { onOpen: () => void }) {
   const { active, name } = useWorkspaces()
-  const logo = active ? workspaceLogoFor(active.name) : null
 
   return (
     <button
@@ -42,20 +40,16 @@ export function WorkspacePill({ onOpen }: { onOpen: () => void }) {
       onClick={onOpen}
       className="inline-flex items-center gap-2 rounded-full bg-[var(--card)] py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-bold text-[var(--ink)] shadow-[var(--shadow-sm)] transition hover:-translate-y-px active:scale-[.97]"
     >
-      {logo ? (
-        <img src={logo} alt="" className="h-[22px] w-[22px] rounded-full object-cover" />
-      ) : (
-        <span
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9.5px] font-extrabold text-white"
-          style={
-            active
-              ? { background: accentFor(active.id) }
-              : { background: 'linear-gradient(135deg,#E8622C 0%,#8A6A4B 52%,#4F6D7A 100%)' }
-          }
-        >
-          {active ? initials(active.name) : ''}
-        </span>
-      )}
+      <span
+        className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9.5px] font-extrabold text-white"
+        style={{
+          background: active
+            ? gradientFor(active.id)
+            : 'linear-gradient(135deg,#E8622C 0%,#8A6A4B 52%,#4F6D7A 100%)',
+        }}
+      >
+        {active ? initials(active.name) : ''}
+      </span>
       <span className="max-w-[9rem] truncate">{name}</span>
       <ChevronsUpDown size={13} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
     </button>
@@ -120,7 +114,6 @@ export function WorkspaceSwitcherSheet({
           }
         />
         {workspaces.map((w) => {
-          const logo = workspaceLogoFor(w.name)
           const n = taskCounts?.[w.id]
           return (
             <Row
@@ -130,16 +123,12 @@ export function WorkspaceSwitcherSheet({
               name={w.name}
               role={n == null ? '' : `${n} task aktif`}
               avatar={
-                logo ? (
-                  <img src={logo} alt="" className="h-10 w-10 rounded-[14px] object-cover" />
-                ) : (
-                  <span
-                    className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[13.5px] font-extrabold text-white"
-                    style={{ background: accentFor(w.id) }}
-                  >
-                    {initials(w.name)}
-                  </span>
-                )
+                <span
+                  className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[13.5px] font-extrabold text-white"
+                  style={{ background: gradientFor(w.id) }}
+                >
+                  {initials(w.name)}
+                </span>
               }
             />
           )

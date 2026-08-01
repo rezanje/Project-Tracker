@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { Check, ChevronRight, Megaphone, Plus, StickyNote } from 'lucide-react'
-import { accentFor } from '#/lib/accent'
+import { accentFor, gradientFor } from '#/lib/accent'
 import { fetchDashboard, type DashboardData } from '#/lib/dashboard'
 import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
 import { setScope } from '#/lib/workspace-scope'
-import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { completeCardFn, deleteNoteFn } from '#/lib/actions'
 import { toast } from '#/components/Toast'
 import { NotificationsBell } from '#/components/Header'
@@ -147,7 +146,6 @@ function CommandCenter() {
               <Empty title="Belum ada workspace" sub="Bikin satu lewat tombol pindah workspace." />
             )}
             {d.workspaces.map((w) => {
-              const logo = workspaceLogoFor(w.name)
               const tone = accentFor(w.id)
               const done = Math.round((w.tasks * w.progress) / 100)
               return (
@@ -158,16 +156,12 @@ function CommandCenter() {
                   className="rounded-[22px] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-sm)] transition hover:-translate-y-0.5 active:scale-[.99]"
                 >
                   <div className="flex items-center gap-3">
-                    {logo ? (
-                      <img src={logo} alt="" className="h-[42px] w-[42px] rounded-[15px] object-cover" />
-                    ) : (
-                      <span
-                        className="flex h-[42px] w-[42px] items-center justify-center rounded-[15px] text-[13.5px] font-extrabold text-white"
-                        style={{ background: tone }}
-                      >
-                        {initials(w.name)}
-                      </span>
-                    )}
+                    <span
+                      className="flex h-[42px] w-[42px] items-center justify-center rounded-[15px] text-[13.5px] font-extrabold text-white"
+                      style={{ background: gradientFor(w.id) }}
+                    >
+                      {initials(w.name)}
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15.5px] font-bold tracking-[-0.02em] text-[var(--ink)]">
                         {w.name}

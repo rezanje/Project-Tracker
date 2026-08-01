@@ -13,11 +13,10 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { fetchNav, fetchNavDeduped, type NavBoard, type NavWorkspace } from '#/lib/nav'
-import { workspaceLogoFor } from '#/lib/workspace-logos'
 import { fetchInboxUnreadDeduped } from '#/lib/messages'
 import { createWorkspaceFn } from '#/lib/actions'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
-import { accentFor } from '#/lib/accent'
+import { accentFor, gradientFor } from '#/lib/accent'
 import ThemeToggle from './ThemeToggle'
 
 export { accentFor } from '#/lib/accent'
@@ -223,16 +222,10 @@ export default function Sidebar() {
                   : 'font-medium text-[var(--ink2)] hover:bg-[var(--col)]'
               }`}
             >
-              {workspaceLogoFor(w.name) ? (
-                <img
-                  src={workspaceLogoFor(w.name) as string}
-                  alt=""
-                  className="h-[22px] w-[22px] shrink-0 rounded-[7px] object-cover"
-                />
-              ) : (
+              {(
                 <span
-                  className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-[var(--card)]"
-                  style={{ background: accentFor(w.id) }}
+                  className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-white"
+                  style={{ background: gradientFor(w.id) }}
                 >
                   {w.name.slice(0, 1).toUpperCase()}
                 </span>
