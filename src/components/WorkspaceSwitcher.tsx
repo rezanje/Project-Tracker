@@ -72,15 +72,17 @@ export function WorkspaceSwitcherSheet({
 
   if (!open) return null
 
-  // The pill is how you change level: "Semua workspace" is the account view,
-  // a workspace is that company's dashboard. Scope follows, so every scoped
-  // screen (Home, Projects, My tasks, Schedule, Performance) narrows with it.
+  // The pill is how you change level. "Semua workspace" is the account view,
+  // which Home renders itself — there is no separate Command Center page. A
+  // workspace goes to that company's dashboard. Scope follows either way, so
+  // every scoped screen (Home, Project, Task, Schedule, Performance) narrows
+  // with it.
   function pick(next: Scope) {
     setScope(next)
     onClose()
     if (next === 'all') {
       toast('Monitor semua workspace')
-      navigate({ to: '/' })
+      navigate({ to: '/home' })
       return
     }
     toast(`Masuk ${workspaces.find((w) => w.id === next)?.name ?? 'workspace'}`)

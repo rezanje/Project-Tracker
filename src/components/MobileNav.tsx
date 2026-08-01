@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { useRouterState, Link } from '@tanstack/react-router'
-import { Calendar, CheckSquare, Home, PieChart, Plus, X } from 'lucide-react'
+import { Calendar, CheckSquare, FolderKanban, Home, Plus, X } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
 import QuickNoteForm from './QuickNoteForm'
 import QuickProjectForm from './QuickProjectForm'
@@ -8,22 +8,21 @@ import QuickReminderForm from './QuickReminderForm'
 import QuickTaskForm from './QuickTaskForm'
 import { Sheet } from './WorkspaceSwitcher'
 
-// The redesign's four destinations. Slot two is the Command Center — the level
-// above workspaces, and the only place every company's numbers sit together.
-// It was reachable on a phone solely through the workspace switcher, which is
-// too deep for the view the whole account hangs off. Projects, Reports, Inbox
-// and Approvals each keep a doorway elsewhere (Home's "See all", the KPI card,
-// the header bell, the Approval tile) rather than a nav entry here.
+// All four are one workspace's view of itself, and all four follow the pill.
+// There is no Command Center tab: the account level is Home with the scope on
+// "Semua workspace", so it is the same button one level up rather than a fifth
+// destination. Reports, Inbox and Approvals keep doorways elsewhere (the KPI
+// card, the header bell, the Approval tile).
 const BAR_NAV: Array<{
   label: string
   icon: ComponentType<LucideProps>
-  to: '/home' | '/' | '/my-tasks' | '/calendar'
+  to: '/home' | '/projects' | '/my-tasks' | '/calendar'
   /** Extra paths that should light this tab's dot. */
   also?: string
 }> = [
   { label: 'Home', icon: Home, to: '/home', also: '/workspace/' },
-  { label: 'Command center', icon: PieChart, to: '/' },
-  { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
+  { label: 'Project', icon: FolderKanban, to: '/projects', also: '/board/' },
+  { label: 'Task', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
 

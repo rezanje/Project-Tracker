@@ -4,7 +4,7 @@ import {
   Calendar,
   CheckSquare,
   Home,
-  PieChart,
+  FolderKanban,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
@@ -38,12 +38,12 @@ function initials(email: string): string {
 const MAIN_NAV: Array<{
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  to: '/home' | '/' | '/my-tasks' | '/calendar'
+  to: '/home' | '/projects' | '/my-tasks' | '/calendar'
   badge?: number
 }> = [
   { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Command center', icon: PieChart, to: '/' },
-  { label: 'My tasks', icon: CheckSquare, to: '/my-tasks' },
+  { label: 'Project', icon: FolderKanban, to: '/projects' },
+  { label: 'Task', icon: CheckSquare, to: '/my-tasks' },
   { label: 'Schedule', icon: Calendar, to: '/calendar' },
 ]
 

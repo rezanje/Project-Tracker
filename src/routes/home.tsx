@@ -6,6 +6,8 @@ import { completeCardFn } from '#/lib/actions'
 import { isDoneColumn, isInProgressColumn } from '#/lib/home'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import { fetchDashboard, type DashboardData, type DashProjectMember, type DashTask } from '#/lib/dashboard'
+import { fetchPendingApprovalsFn, type ApprovalRequest } from '#/lib/approval-requests'
+import CommandCenter from '#/components/CommandCenter'
 import { toast } from '#/components/Toast'
 
 /** The 3px lane bar, same reading as the task-detail sheet's. */
@@ -22,9 +24,17 @@ function barColor(title: string): string {
 // task and project creation to the "+ New" menu and the FAB.
 
 export const Route = createFileRoute('/home')({
-  loader: async () => await fetchDashboard(),
+  loader: async (): Promise<HomeData> => {
+    const [dashboard, approvals] = await Promise.all([
+      fetchDashboard(),
+      fetchPendingApprovalsFn().catch(() => [] as ApprovalRequest[]),
+    ])
+    return { ...dashboard, approvals: approvals.length }
+  },
   component: Home,
 })
+
+type HomeData = DashboardData & { approvals: number }
 
 const KPI_BARS = [4, 6, 5, 7, 6, 8, 9]
 
@@ -145,7 +155,7 @@ function TodayCard({
 }
 
 function Home() {
-  const d = Route.useLoaderData() as DashboardData
+  const d = Route.useLoaderData() as HomeData
   const router = useRouter()
   const scope = useScope()
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -168,6 +178,20 @@ function Home() {
 
   const total = d.myStats.total
   const overallPct = total ? Math.round((d.myStats.completed / total) * 100) : 0
+
+  // Home is the level indicator. "Semua workspace" is the account level, so it
+  // shows every company at once; inside a workspace it shows that company's
+  // day. Two views, one tab — which is why the Command Center never needed a
+  // nav entry of its own.
+  if (scope === 'all') {
+    return (
+      <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
+        <div className="gt-fade mx-auto flex max-w-[900px] flex-col">
+          <CommandCenter d={d} />
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="min-w-0 flex-1 px-5 pb-8 sm:px-7">
