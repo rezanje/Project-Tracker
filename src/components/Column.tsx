@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { Plus } from 'lucide-react'
 import Card, { type CardAssignee } from './Card'
 import type { ColumnRow, CardRow } from '#/lib/board-data'
 
@@ -87,20 +88,32 @@ export default function Column({
 
       {isOwner && onAddCard && (
         <>
-          {/* One pill, not a field-plus-button pair: the round "+" was a
-              second tappable thing doing the same job as pressing Enter, and
-              a plain input read as a data field instead of an action. Shape
-              (rounded-full + shadow, the same "raised, tappable" language as
-              the header's search pill) plus a bold placeholder does the "this
-              is a button" job the icon used to. */}
-          <form onSubmit={handleAdd} className="mt-auto">
+          {/* One pill holding both the field and its submit control — not the
+              two separate floating shapes this used to be (a plain field plus
+              a disconnected round "+"), and not a field alone either: Enter
+              submitting a form isn't reliable across every mobile keyboard,
+              so a visible button stays the one way this is guaranteed to
+              work. The "+" is greyed out until there's text to submit, which
+              doubles as "type first, then tap here". */}
+          <form
+            onSubmit={handleAdd}
+            className="mt-auto flex w-full items-center gap-2 rounded-full border border-transparent bg-[var(--card)] py-1.5 pl-5 pr-1.5 shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--ring)]"
+          >
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="+ Add a card"
+              placeholder="Add a card"
               disabled={busy}
-              className="field w-full rounded-full bg-[var(--card)] px-5 py-3 text-[13.5px] font-bold text-[var(--ink2)] shadow-[var(--shadow-sm)] placeholder:font-bold placeholder:text-[var(--ink2)] disabled:opacity-50"
+              className="min-w-0 flex-1 bg-transparent py-1.5 text-[13.5px] font-semibold text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[var(--ink2)] disabled:opacity-50"
             />
+            <button
+              type="submit"
+              disabled={busy || !newTitle.trim()}
+              aria-label="Add card"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--btn)] text-[var(--btn-ink)] transition disabled:opacity-30"
+            >
+              <Plus size={16} aria-hidden="true" />
+            </button>
           </form>
           {addError && (
             <p className="text-[12.5px] text-[var(--danger)]">Failed to add card.</p>
