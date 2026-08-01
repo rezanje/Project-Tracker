@@ -109,22 +109,29 @@ export default function SettingsSheet({
   }
 
   return (
-    <Sheet onClose={onClose} label="Pengaturan" className="max-h-[86%]">
-      {/* Log out lives here rather than as its own round button in the mobile
-          header — it is a once-in-a-while action, not one of the three things
-          worth a permanent slot next to the bell. */}
-      <div className="mb-4 flex items-center gap-3">
-        <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pengaturan</h2>
-        <button
-          type="button"
-          onClick={logout}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--danger-soft)] px-3.5 py-2 text-[12.5px] font-bold text-[var(--danger-ink)]"
-        >
-          <LogOut size={14} aria-hidden="true" />
-          Keluar
-        </button>
-      </div>
-
+    <Sheet
+      onClose={onClose}
+      label="Pengaturan"
+      className="max-h-[86%]"
+      header={
+        // Log out lives here rather than as its own round button in the
+        // mobile header — it is a once-in-a-while action, not one of the
+        // three things worth a permanent slot next to the bell. Living in
+        // the sheet's header (not the scrolling body) also means dragging
+        // down from this row, not just the grab handle, closes the sheet.
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pengaturan</h2>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex items-center gap-1.5 rounded-full bg-[var(--danger-soft)] px-3.5 py-2 text-[12.5px] font-bold text-[var(--danger-ink)]"
+          >
+            <LogOut size={14} aria-hidden="true" />
+            Keluar
+          </button>
+        </div>
+      }
+    >
       {loading ? (
         <p className="py-8 text-center text-[13px] text-[var(--ink3)]">Memuat…</p>
       ) : (

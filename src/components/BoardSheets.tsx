@@ -62,26 +62,31 @@ export function BoardFilterSheet({
   const active = (category ? 1 : 0) + (search.trim() ? 1 : 0) + (sortBy === 'none' ? 0 : 1)
 
   return (
-    <Sheet onClose={onClose} label="Filter & urutan" className="max-h-[80%]">
-      <div className="mb-4 flex items-center gap-3">
-        <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
-          Filter & urutan
-        </h2>
-        {active > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              onSearch('')
-              onCategory('')
-              onSortBy('none')
-            }}
-            className="text-[13px] font-bold text-[var(--accent-ink)]"
-          >
-            Reset
-          </button>
-        )}
-      </div>
-
+    <Sheet
+      onClose={onClose}
+      label="Filter & urutan"
+      className="max-h-[80%]"
+      header={
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
+            Filter & urutan
+          </h2>
+          {active > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                onSearch('')
+                onCategory('')
+                onSortBy('none')
+              }}
+              className="text-[13px] font-bold text-[var(--accent-ink)]"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      }
+    >
       <label className="mb-4 flex items-center gap-2.5 rounded-[18px] bg-[var(--col)] px-4 py-3.5">
         <Search size={17} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
         <input
@@ -156,10 +161,16 @@ export function BoardMoreSheet({
   children: React.ReactNode
 }) {
   return (
-    <Sheet onClose={onClose} label="Kelola project" className="max-h-[82%]">
-      <h2 className="mb-4 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
-        Kelola project
-      </h2>
+    <Sheet
+      onClose={onClose}
+      label="Kelola project"
+      className="max-h-[82%]"
+      header={
+        <h2 className="mb-4 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
+          Kelola project
+        </h2>
+      }
+    >
       {children}
     </Sheet>
   )

@@ -85,21 +85,26 @@ export default function MobileNav() {
 
       {sheetOpen && (
         <div className="md:hidden">
-          <Sheet onClose={() => setSheetOpen(false)} label="Task baru" className="max-h-[86dvh]">
-            <div className="mb-4 flex items-center gap-3">
-              <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
-                Task baru
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                aria-label="Tutup"
-                className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition active:scale-[.92]"
-              >
-                <X size={16} strokeWidth={2.2} aria-hidden="true" />
-              </button>
-            </div>
-
+          <Sheet
+            onClose={() => setSheetOpen(false)}
+            label="Task baru"
+            className="max-h-[86dvh]"
+            header={
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="flex-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">
+                  Task baru
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(false)}
+                  aria-label="Tutup"
+                  className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition active:scale-[.92]"
+                >
+                  <X size={16} strokeWidth={2.2} aria-hidden="true" />
+                </button>
+              </div>
+            }
+          >
             {/* Note and Reminder moved here (and to the header's "+ New") when
                 Home lost its Quick actions grid. */}
             <div className="mb-4 flex gap-1.5 rounded-full bg-[var(--col)] p-1">

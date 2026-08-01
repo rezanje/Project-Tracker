@@ -99,12 +99,16 @@ export function WorkspaceSwitcherSheet({
   }
 
   return (
-    <Sheet onClose={onClose} label="Pindah workspace">
-      <div className="mb-4">
-        <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pindah workspace</h2>
-        <p className="mt-1 text-[13.5px] text-[var(--ink2)]">Semua perusahaan kamu di satu akun.</p>
-      </div>
-
+    <Sheet
+      onClose={onClose}
+      label="Pindah workspace"
+      header={
+        <div className="mb-4">
+          <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--ink)]">Pindah workspace</h2>
+          <p className="mt-1 text-[13.5px] text-[var(--ink2)]">Semua perusahaan kamu di satu akun.</p>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-[9px]">
         <Row
           selected={scope === 'all'}
@@ -205,11 +209,16 @@ export function Sheet({
   label,
   children,
   className = '',
+  header,
 }: {
   onClose: () => void
   label: string
   children: React.ReactNode
   className?: string
+  /** Rendered above the scrolling body, inside the drag zone — use this for a
+   *  sheet's title row so dragging down from the header (not just the thin
+   *  grab handle) also dismisses the sheet. */
+  header?: React.ReactNode
 }) {
   const startY = useRef<number | null>(null)
   // The live offset lives in a ref as well as state: state drives the paint,
@@ -227,6 +236,9 @@ export function Sheet({
   }, [onClose])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    // The header can carry real buttons (e.g. "Keluar"); let taps on those
+    // through instead of hijacking them into a drag.
+    if ((e.target as HTMLElement).closest('button, a, input, textarea, select')) return
     startY.current = e.clientY
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -289,7 +301,8 @@ export function Sheet({
           style={{ touchAction: 'none' }}
           className="shrink-0 cursor-grab px-[22px] pb-3 pt-3.5 active:cursor-grabbing"
         >
-          <span className="mx-auto block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
+          <span className="mx-auto mb-3 block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
+          {header}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px] pt-[6px]">{children}</div>
       </div>
