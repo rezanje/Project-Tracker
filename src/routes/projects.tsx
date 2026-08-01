@@ -80,40 +80,41 @@ function Projects() {
         )}
 
 
+        {/* One card per project, the same shape the workspace cards and the
+            "Task hari ini" cards use — rows inside a single panel read as a
+            table, and this is a list you pick from. */}
         {shown.length > 0 && (
-          <section className="panel p-6">
-            <div className="flex flex-col">
-              {shown.map((p, i) => {
-                const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
-                return (
-                  <Link
-                    key={p.id}
-                    to="/board/$boardId"
-                    params={{ boardId: p.id }}
-                    className="flex items-center gap-3.5 border-b border-[var(--line-soft)] py-3.5 no-underline last:border-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-2 truncate text-[14.5px] font-semibold text-[var(--ink)]">
-                        <span className="truncate">{p.title}</span>
-                        {p.isMyPic && <span className="chip chip-accent shrink-0 text-[10px]">PIC</span>}
-                      </p>
-                      <p className="mt-0.5 truncate text-[12.5px] text-[var(--ink3)]">
-                        {scope === 'all' ? `${p.wsName} · ` : ''}
-                        {p.done}/{p.total} tasks
-                      </p>
-                      <div className="mt-2.5 max-w-[260px]">
-                        <Bar pct={p.progress} color={tint} />
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-[13px] font-bold tabular-nums text-[var(--ink)]">
+          <div className="flex flex-col gap-2.5">
+            {shown.map((p, i) => {
+              const tint = PROJECT_TINTS[i % PROJECT_TINTS.length]
+              return (
+                <Link
+                  key={p.id}
+                  to="/board/$boardId"
+                  params={{ boardId: p.id }}
+                  className="rounded-[20px] bg-[var(--card)] px-4 py-[15px] no-underline shadow-[var(--shadow-sm)] transition hover:-translate-y-px active:scale-[.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <p className="min-w-0 flex-1 truncate text-[15.5px] font-bold tracking-[-0.015em] text-[var(--ink)]">
+                      {p.title}
+                    </p>
+                    {p.isMyPic && <span className="chip chip-accent shrink-0 text-[10px]">PIC</span>}
+                    <ChevronRight size={17} strokeWidth={2.2} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
+                  </div>
+                  <p className="mt-1 truncate text-[12.5px] text-[var(--ink3)]">
+                    {scope === 'all' ? `${p.wsName} · ` : ''}
+                    {p.done}/{p.total} tasks
+                  </p>
+                  <div className="mt-3.5 flex items-center gap-2.5">
+                    <Bar pct={p.progress} color={tint} />
+                    <span className="shrink-0 text-[12px] font-bold tabular-nums text-[var(--ink2)]">
                       {p.progress}%
                     </span>
-                    <ChevronRight size={16} className="shrink-0 text-[var(--ink3)]" aria-hidden="true" />
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         )}
       </div>
     </main>
