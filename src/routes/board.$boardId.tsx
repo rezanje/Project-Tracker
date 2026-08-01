@@ -19,7 +19,6 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Repeat,
   Search,
   SlidersHorizontal,
 } from 'lucide-react'
@@ -37,7 +36,6 @@ import { createCard, moveCard, updateCard, setCardLabels, deleteCard } from '#/l
 import { updateBoard, setBoardFinance, deleteBoard, type BoardMetaUpdate } from '#/lib/boards'
 import { createPillar, deletePillar } from '#/lib/pillars'
 import { setBoardPics } from '#/lib/board-pics'
-import { fetchNavDeduped, type NavBoard } from '#/lib/nav'
 import Column from '#/components/Column'
 import CardDetail from '#/components/CardDetail'
 import { BoardFilterSheet, BoardMoreSheet } from '#/components/BoardSheets'
@@ -547,8 +545,6 @@ function BoardView() {
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
   const [filterOpen, setFilterOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
-  // The comp's swap button cycles projects inside the current workspace.
-  const [siblingBoards, setSiblingBoards] = useState<NavBoard[]>([])
   // Which list-view row (if any) currently has its swipe-action tray open.
   const [openListRowId, setOpenListRowId] = useState<string | null>(null)
   const [contentView, setContentView] = useState<'calendar' | ContentView>('calendar')
@@ -595,18 +591,6 @@ function BoardView() {
   const isContent = board.kind === 'content'
   const roundBtn =
     'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--ink)] shadow-[var(--shadow-sm)] transition hover:-translate-y-px active:scale-[.94]'
-
-  useEffect(() => {
-    fetchNavDeduped()
-      .then((nav) => setSiblingBoards(nav.boards))
-      .catch(() => {})
-  }, [])
-
-  // Next project in the same workspace, wrapping around. Null when this board
-  // is the only one there — the swap button has nowhere to go.
-  const wsBoards = siblingBoards.filter((b) => b.workspaceId === board.workspaceId)
-  const here = wsBoards.findIndex((b) => b.id === board.id)
-  const siblingBoard = wsBoards.length > 1 && here !== -1 ? wsBoards[(here + 1) % wsBoards.length] : null
 
   function openAddContent(date: string) {
     setAddInitialDate(date)
@@ -1077,8 +1061,8 @@ function BoardView() {
           </div>
         )}
 
-        {/* Swap and filter stay available to clients — on mobile this row is the
-            only way to reach them, since the toolbar below is desktop-only. */}
+        {/* Filter stays available to clients — on mobile this row is the only
+            way to reach it, since the toolbar below is desktop-only. */}
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
             {canEdit && (
@@ -1088,17 +1072,6 @@ function BoardView() {
                 className="btn btn-primary shrink-0"
               >
                 {isContent ? '+ Add content' : '+ Add task'}
-              </button>
-            )}
-            {siblingBoard && (
-              <button
-                type="button"
-                onClick={() => router.navigate({ to: '/board/$boardId', params: { boardId: siblingBoard.id } })}
-                aria-label={`Pindah ke ${siblingBoard.title}`}
-                title={siblingBoard.title}
-                className={roundBtn}
-              >
-                <Repeat size={17} aria-hidden="true" />
               </button>
             )}
             {!isContent && (
