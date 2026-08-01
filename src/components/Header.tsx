@@ -312,7 +312,7 @@ export function NotificationsBell({ compact = false }: { compact?: boolean } = {
   )
 }
 
-export default function Header() {
+export default function Header({ minimal = false }: { minimal?: boolean } = {}) {
   const [wsOpen, setWsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
@@ -346,22 +346,30 @@ export default function Header() {
   // over scrolling content.
   return (
     <header className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-7 sm:py-6">
-      {/* Greeting sits beside the round controls on mobile, matching the comp. */}
+      {/* Greeting sits beside the round controls on mobile, matching the comp.
+          Skipped entirely in `minimal` mode: a board detail page already has
+          its own back-link and title immediately below, so the workspace
+          pill, greeting and search here would just repeat context the user
+          just came from. The icon row stays — bell/theme/settings are still
+          reachable from inside a project, they just lose the now-redundant
+          label they used to sit beside. */}
       <div className="flex min-w-0 items-center gap-3 sm:flex-1">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2">
-            <WorkspacePill onOpen={() => setWsOpen(true)} />
+        {!minimal && (
+          <div className="min-w-0 flex-1">
+            <div className="mb-2">
+              <WorkspacePill onOpen={() => setWsOpen(true)} />
+            </div>
+            {dateStr && (
+              <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
+                {dateStr}
+                <span className="hidden xl:inline"> · {timeStr}</span>
+              </p>
+            )}
+            <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
+              {hello}, {who}
+            </h1>
           </div>
-          {dateStr && (
-            <p className="truncate text-[13px] font-medium text-[var(--ink3)]">
-              {dateStr}
-              <span className="hidden xl:inline"> · {timeStr}</span>
-            </p>
-          )}
-          <h1 className="mt-0.5 truncate text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ink)] sm:text-[30px]">
-            {hello}, {who}
-          </h1>
-        </div>
+        )}
 
         {/* mobile-only: bell + theme + settings as round buttons. The profile
             menu that carries Settings on desktop is hidden here, so the gear
@@ -383,7 +391,7 @@ export default function Header() {
       </div>
 
       <div className="flex w-full items-center gap-2.5 sm:w-auto">
-        <SearchBox />
+        {!minimal && <SearchBox />}
         <span className="hidden sm:contents">
           <NotificationsBell />
           <NewMenu />

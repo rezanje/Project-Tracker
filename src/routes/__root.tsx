@@ -39,6 +39,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   // Auth screens are full-bleed with their own brand mark — skip the app chrome.
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const bare = ['/login', '/signup', '/forgot', '/reset'].includes(pathname)
+  // A board detail page has its own back-link and title right below the
+  // header, so the workspace pill, greeting and search there would only
+  // repeat where the user just came from.
+  const minimalHeader = pathname.startsWith('/board/')
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -49,7 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {!bare && <Sidebar />}
         {/* Mobile nav floats above the content, so leave room for the bar + FAB. */}
         <div className={`flex min-w-0 flex-1 flex-col ${!bare ? 'pb-28 md:pb-0' : ''}`}>
-          {!bare && <Header />}
+          {!bare && <Header minimal={minimalHeader} />}
           {children}
           {!bare && <Footer />}
         </div>
