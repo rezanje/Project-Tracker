@@ -206,7 +206,6 @@ export function Sheet({
   children: React.ReactNode
   className?: string
 }) {
-  const panelRef = useRef<HTMLDivElement>(null)
   const startY = useRef<number | null>(null)
   // The live offset lives in a ref as well as state: state drives the paint,
   // the ref is what pointerup reads, so the decision can't act on a value one
@@ -223,34 +222,20 @@ export function Sheet({
   }, [onClose])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    // Only start a drag from the top of the scroll. Otherwise a downward swipe
-    // over a scrolled list would drag the sheet instead of scrolling it back up.
-    if ((panelRef.current?.scrollTop ?? 0) > 0) return
     startY.current = e.clientY
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // A pointer the browser no longer tracks — carry on without capture.
+    }
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (startY.current === null) return
-    const dy = e.clientY - startY.current
     // Downward only — an upward pull shouldn't lift the sheet off the bottom.
-    if (dy <= 0) {
-      dragRef.current = 0
-      setDrag(0)
-      return
-    }
+    const dy = Math.max(0, e.clientY - startY.current)
     dragRef.current = dy
     setDrag(dy)
-    // Claim the gesture once it is clearly a drag, so the pointer keeps
-    // reporting to us even if it leaves the element. Guarded: capture throws
-    // for a pointer the browser no longer tracks, and losing the drag over it
-    // would leave the sheet stuck mid-slide.
-    if (dy > 4) {
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId)
-      } catch {
-        // keep dragging without capture
-      }
-    }
   }
 
   function endDrag() {
@@ -276,23 +261,32 @@ export function Sheet({
         style={dragging ? { opacity: Math.max(0.2, 1 - drag / (DISMISS_AT * 2.5)) } : undefined}
       />
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        // touch-pan-y keeps vertical scrolling native inside the sheet; the
-        // browser only hands us the gesture, it doesn't stop scrolling.
-        className={`touch-pan-y absolute inset-x-0 bottom-0 mx-auto max-w-[520px] overflow-y-auto rounded-t-[32px] bg-[var(--bg)] px-[22px] pb-[30px] pt-3.5 shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${
+        className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-[520px] flex-col rounded-t-[32px] bg-[var(--bg)] shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${
           dragging ? '' : 'gt-up'
         } ${className}`}
         style={dragging ? { transform: `translateY(${drag}px)` } : undefined}
       >
-        <span className="mx-auto mb-[18px] block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
-        {children}
+        {/* The grab handle is the drag zone, and it sits OUTSIDE the scrolling
+            body on purpose. A drag surface inside a scroller has to fight the
+            browser for the gesture: with `touch-action: pan-y` the browser
+            keeps vertical touches for scrolling and cancels our pointer, and
+            with `touch-action: none` the body stops scrolling. Splitting them
+            means neither has to compromise — which is also what the handle has
+            been promising the whole time. */}
+        <div
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          style={{ touchAction: 'none' }}
+          className="shrink-0 cursor-grab px-[22px] pb-3 pt-3.5 active:cursor-grabbing"
+        >
+          <span className="mx-auto block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px] pt-[6px]">{children}</div>
       </div>
     </div>,
     document.body,
