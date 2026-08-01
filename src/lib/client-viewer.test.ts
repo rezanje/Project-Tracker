@@ -90,9 +90,121 @@ async function scenario(viewerRole: 'client' | 'member') {
   return { owner, viewer, boardId, cardId: card!.id as string, columnId: col!.id as string }
 }
 
-async function cleanup(boardId: string | undefined) {
+async function cleanup(boardId: string | undefined, workspaceId?: string) {
   if (boardId) await admin.from('boards').delete().eq('id', boardId)
+  if (workspaceId) await admin.from('workspaces').delete().eq('id', workspaceId)
 }
+
+/** Owner + workspace + a board inside it holding one card. The owner's
+ * workspace_members and board_members rows both arrive by trigger. */
+async function workspaceScenario() {
+  const owner = await makeSignedInUser('cvwsowner')
+
+  const { data: ws, error: wErr } = await admin
+    .from('workspaces')
+    .insert({ owner_id: owner.uid, name: 'CV Test Workspace' })
+    .select('id')
+    .single()
+  if (wErr) throw wErr
+  const workspaceId = ws!.id as string
+
+  const { data: board, error: bErr } = await admin
+    .from('boards')
+    .insert({ owner_id: owner.uid, title: 'CV WS Board', workspace_id: workspaceId })
+    .select('id')
+    .single()
+  if (bErr) throw bErr
+  const boardId = board!.id as string
+
+  const { data: col, error: cErr } = await admin
+    .from('columns')
+    .insert({ board_id: boardId, title: 'Todo', position: 0 })
+    .select('id')
+    .single()
+  if (cErr) throw cErr
+
+  const { data: card, error: kErr } = await admin
+    .from('cards')
+    .insert({ column_id: col!.id as string, title: 'Original title', position: 0 })
+    .select('id')
+    .single()
+  if (kErr) throw kErr
+
+  return { owner, workspaceId, boardId, cardId: card!.id as string }
+}
+
+async function joinWorkspace(workspaceId: string, prefix: string, role = 'member') {
+  const user = await makeSignedInUser(prefix)
+  const { error } = await admin
+    .from('workspace_members')
+    .insert({ workspace_id: workspaceId, user_id: user.uid, role })
+  if (error) throw error
+  return user
+}
+
+async function titleOf(cardId: string): Promise<string> {
+  const { data } = await admin.from('cards').select('title').eq('id', cardId).single()
+  return data!.title as string
+}
+
+test('a workspace member marked client on a board cannot edit that board', async () => {
+  let boardId: string | undefined
+  let workspaceId: string | undefined
+  try {
+    const s = await workspaceScenario()
+    boardId = s.boardId
+    workspaceId = s.workspaceId
+
+    const insider = await joinWorkspace(workspaceId, 'cvinsider')
+    await admin.from('board_members').insert({ board_id: boardId, user_id: insider.uid, role: 'client' })
+
+    await insider.userClient.from('cards').update({ title: 'Hijacked by insider' }).eq('id', s.cardId)
+
+    expect(await titleOf(s.cardId)).toBe('Original title')
+  } finally {
+    await cleanup(boardId, workspaceId)
+  }
+})
+
+test('a workspace member with no board row still edits every board in the workspace', async () => {
+  let boardId: string | undefined
+  let workspaceId: string | undefined
+  try {
+    const s = await workspaceScenario()
+    boardId = s.boardId
+    workspaceId = s.workspaceId
+
+    const insider = await joinWorkspace(workspaceId, 'cvplain')
+    await insider.userClient.from('cards').update({ title: 'Edited by workspace member' }).eq('id', s.cardId)
+
+    expect(await titleOf(s.cardId)).toBe('Edited by workspace member')
+  } finally {
+    await cleanup(boardId, workspaceId)
+  }
+})
+
+test('a workspace owner is not locked out by a stray client row on their own board', async () => {
+  let boardId: string | undefined
+  let workspaceId: string | undefined
+  try {
+    const s = await workspaceScenario()
+    boardId = s.boardId
+    workspaceId = s.workspaceId
+
+    // Overwrite the owner row the board trigger created.
+    await admin
+      .from('board_members')
+      .update({ role: 'client' })
+      .eq('board_id', boardId)
+      .eq('user_id', s.owner.uid)
+
+    await s.owner.userClient.from('cards').update({ title: 'Edited by workspace owner' }).eq('id', s.cardId)
+
+    expect(await titleOf(s.cardId)).toBe('Edited by workspace owner')
+  } finally {
+    await cleanup(boardId, workspaceId)
+  }
+})
 
 test('a client sees the project and its cards', async () => {
   let boardId: string | undefined
