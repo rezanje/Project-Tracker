@@ -35,6 +35,8 @@ interface CardDetailProps {
       title: string
       description: string | null
       due_date: string | null
+      due_time: string | null
+      reminder_offsets: number[] | null
       assignee_id: string | null
       category: string | null
       contact: string | null

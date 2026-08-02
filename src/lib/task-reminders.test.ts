@@ -477,3 +477,35 @@ test('deleting a standalone task leaves no orphaned reminders', async () => {
     await admin.auth.admin.deleteUser(uid)
   }
 })
+
+test('updateCard writes due_time and reminder_offsets', async () => {
+  const { updateCard } = await import('./cards')
+  const uid = await newUser('roundtrip')
+  let boardId: string | undefined
+  try {
+    const b = await newBoardWithColumn(uid)
+    boardId = b.boardId
+    const { data: card } = await admin
+      .from('cards')
+      .insert({ column_id: b.columnId, title: 'Round trip', position: 0 })
+      .select('id')
+      .single()
+
+    await updateCard(admin, card!.id, {
+      due_date: wibPlusDays(3),
+      due_time: '09:15',
+      reminder_offsets: [60],
+    })
+
+    const { data: read } = await admin
+      .from('cards')
+      .select('due_time,reminder_offsets')
+      .eq('id', card!.id)
+      .single()
+    expect(read!.due_time).toBe('09:15:00')
+    expect(read!.reminder_offsets).toEqual([60])
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+})

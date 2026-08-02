@@ -5,6 +5,10 @@ export type CardRow = {
   title: string
   description: string | null
   due_date: string | null
+  /** Local (WIB) time-of-day, 'HH:MM' or 'HH:MM:SS'. Null means 17:00. */
+  due_time: string | null
+  /** Minutes-before-due to remind at. Only 30/60/120/1440/2880 are valid. */
+  reminder_offsets: number[] | null
   assignee_id: string | null
   category: string | null
   contact: string | null
@@ -30,6 +34,16 @@ export const CONTENT_FORMATS = [
   'Reel', 'Carousel', 'Story', 'Single image', 'Video', 'Thread', 'Article',
 ] as const
 export const CONTENT_STATUSES = ['draft', 'scheduled', 'posted'] as const
+/** The reminder offsets a user can pick, longest first — one source for the
+ *  chips in both task detail sheets. Mirrors reminder_offset_label() in
+ *  migration 0040; change both together. */
+export const REMINDER_OFFSETS = [
+  { mins: 2880, label: '2 hari' },
+  { mins: 1440, label: '1 hari' },
+  { mins: 120, label: '2 jam' },
+  { mins: 60, label: '1 jam' },
+  { mins: 30, label: '30 menit' },
+] as const
 export const STATUS_COLOR: Record<string, string> = {
   draft: 'var(--ink3)', scheduled: 'var(--pop)', posted: 'var(--done)',
 }
@@ -162,7 +176,7 @@ export async function loadBoard(
   const { data: columns } = await supabase
     .from('columns')
     .select(
-      'id,title,position,cards(id,title,description,due_date,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id),attachments(count),comments(count))',
+      'id,title,position,cards(id,title,description,due_date,due_time,reminder_offsets,assignee_id,category,contact,phone,source,deal_value,pillar_id,content_status,channels,format,position,card_labels(label_id),attachments(count),comments(count))',
     )
     .eq('board_id', boardId)
     .order('position')

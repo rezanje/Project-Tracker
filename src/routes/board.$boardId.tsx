@@ -321,6 +321,13 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.due_date === 'string' || f.due_date === null
           ? { due_date: f.due_date as string | null }
           : {}),
+        ...(typeof f.due_time === 'string' || f.due_time === null
+          ? { due_time: f.due_time as string | null }
+          : {}),
+        ...((Array.isArray(f.reminder_offsets) && f.reminder_offsets.every((x) => typeof x === 'number')) ||
+        f.reminder_offsets === null
+          ? { reminder_offsets: f.reminder_offsets as number[] | null }
+          : {}),
         ...(typeof f.assignee_id === 'string' || f.assignee_id === null
           ? { assignee_id: f.assignee_id as string | null }
           : {}),
@@ -335,7 +342,7 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.content_status === 'string' || f.content_status === null ? { content_status: f.content_status as string | null } : {}),
         ...((Array.isArray(f.channels) && f.channels.every((x) => typeof x === 'string')) || f.channels === null ? { channels: f.channels as string[] | null } : {}),
         ...(typeof f.format === 'string' || f.format === null ? { format: f.format as string | null } : {}),
-      } as Partial<{ title: string; description: string | null; due_date: string | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null; pillar_id: string | null; content_status: string | null; channels: string[] | null; format: string | null }>,
+      } as Partial<{ title: string; description: string | null; due_date: string | null; due_time: string | null; reminder_offsets: number[] | null; assignee_id: string | null; category: string | null; contact: string | null; phone: string | null; source: string | null; deal_value: number | null; pillar_id: string | null; content_status: string | null; channels: string[] | null; format: string | null }>,
     }
   })
   .handler(async ({ data }) => {

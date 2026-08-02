@@ -12,7 +12,7 @@ test('distinctCategories returns sorted unique non-null categories', () => {
 
 test('groupByCategory buckets by category with an Uncategorised bucket', () => {
   const mk = (id: string, category: string | null) => ({
-    id, title: id, description: null, due_date: null, assignee_id: null,
+    id, title: id, description: null, due_date: null, due_time: null, reminder_offsets: null, assignee_id: null,
     category, contact: null, phone: null, source: null, deal_value: null,
     pillar_id: null, content_status: null, channels: null, format: null,
     position: 0, card_labels: [], attachment_count: 0, comment_count: 0,
