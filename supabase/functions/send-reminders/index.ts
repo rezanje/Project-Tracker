@@ -1,5 +1,17 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+/** The message carries a user-supplied task title, and the mail goes to people
+ *  who did not write it — escape before it becomes markup. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+/** link_path is trigger-written today, but the column is plain text and this
+ *  is the other injection point into the email — only accept an in-app path. */
+function safeLinkPath(p: unknown): string {
+  return typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') ? p : '/home'
+}
+
 // Polled by pg_cron every minute (see migration 0022). Emails every reminder
 // whose remind_at has passed and hasn't been emailed yet, then stamps
 // emailed_at so the same reminder never sends twice.
@@ -55,7 +67,24 @@ Deno.serve(async (req) => {
 
       const { data: userData, error: userErr } = await svc.auth.admin.getUserById(r.user_id as string)
       const email = userData?.user?.email
-      if (userErr || !email) continue
+      if (userErr || !email) {
+        // No usable address — stamp it as handled or this row gets re-read
+        // and re-looked-up every minute forever.
+        console.error(`send-reminders: no email for user ${r.user_id as string}`, userErr)
+        await svc.from('reminders').update({ emailed_at: new Date().toISOString() }).eq('id', r.id as string)
+        continue
+      }
+
+      // Claim the row before sending. The endpoint is unauthenticated and
+      // pg_net has no overlap guard, so two invocations can reach the same
+      // reminder; whoever wins the conditional update owns it.
+      const { data: claimed } = await svc
+        .from('reminders')
+        .update({ emailed_at: new Date().toISOString() })
+        .eq('id', r.id as string)
+        .is('emailed_at', null)
+        .select('id')
+      if (!claimed?.length) continue
 
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -67,14 +96,19 @@ Deno.serve(async (req) => {
           from: 'Rakit <onboarding@resend.dev>',
           to: email,
           subject: 'Reminder',
-          html: `<p>${r.message}</p><p><a href="${appUrl}${(r.link_path as string | null) ?? '/home'}">Open Rakit</a></p>`,
+          html: `<p>${escapeHtml(r.message as string)}</p><p><a href="${appUrl}${safeLinkPath(r.link_path)}">Open Rakit</a></p>`,
         }),
       })
       if (!res.ok) {
-        console.error(`send-reminders: Resend failed for ${email}: ${res.status} ${await res.text()}`)
+        const body = await res.text()
+        console.error(`send-reminders: Resend failed for ${email}: ${res.status} ${body}`)
+        // 429 and 5xx are worth another minute; a 4xx is the address or the
+        // payload, and retrying it every minute forever helps nobody.
+        if (res.status === 429 || res.status >= 500) {
+          await svc.from('reminders').update({ emailed_at: null }).eq('id', r.id as string)
+        }
         continue
       }
-      await svc.from('reminders').update({ emailed_at: new Date().toISOString() }).eq('id', r.id as string)
       sent++
     }
 

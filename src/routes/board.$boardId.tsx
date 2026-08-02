@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { getServiceSupabase } from '#/lib/supabase/server'
-import { loadBoard, distinctCategories, groupByCategory, type ColumnRow } from '#/lib/board-data'
+import { loadBoard, distinctCategories, groupByCategory, REMINDER_OFFSETS, type ColumnRow } from '#/lib/board-data'
 import { inviteClient } from '#/lib/invites'
 import {
   addWorkspaceMemberForCaller,
@@ -324,10 +324,17 @@ const updateCardFn = createServerFn({ method: 'POST' })
         ...(typeof f.due_time === 'string' || f.due_time === null
           ? { due_time: f.due_time as string | null }
           : {}),
-        ...((Array.isArray(f.reminder_offsets) && f.reminder_offsets.every((x) => typeof x === 'number')) ||
-        f.reminder_offsets === null
-          ? { reminder_offsets: f.reminder_offsets as number[] | null }
-          : {}),
+        ...(f.reminder_offsets === null
+          ? { reminder_offsets: null }
+          : Array.isArray(f.reminder_offsets)
+            ? (() => {
+                const allowed = new Set<number>(REMINDER_OFFSETS.map((o) => o.mins))
+                if (!f.reminder_offsets!.every((x) => typeof x === 'number' && allowed.has(x))) {
+                  throw new Error('reminder_offsets contains an unsupported value')
+                }
+                return { reminder_offsets: f.reminder_offsets as number[] }
+              })()
+            : {}),
         ...(typeof f.assignee_id === 'string' || f.assignee_id === null
           ? { assignee_id: f.assignee_id as string | null }
           : {}),

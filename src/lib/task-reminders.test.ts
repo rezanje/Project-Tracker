@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
+import { REMINDER_OFFSETS } from './board-data'
 
 // Creds from gitignored .dev.vars (keeps the service_role key out of the repo).
 const env = Object.fromEntries(
@@ -199,6 +200,66 @@ test('changing the deadline reschedules, clearing it cancels', async () => {
   }
 })
 
+test('clearing every offset cancels a card\'s reminders', async () => {
+  const uid = await newUser('card-clear-offsets')
+  let boardId: string | undefined
+  try {
+    const b = await newBoardWithColumn(uid)
+    boardId = b.boardId
+    const { data: card } = await admin
+      .from('cards')
+      .insert({
+        column_id: b.columnId,
+        title: 'Kosongkan offset',
+        due_date: wibPlusDays(4),
+        reminder_offsets: [1440],
+        assignee_id: uid,
+        position: 0,
+      })
+      .select('id')
+      .single()
+    expect((await remindersFor(card!.id)).data).toHaveLength(1)
+
+    // The path a user hits by un-ticking their last reminder chip.
+    await admin.from('cards').update({ reminder_offsets: null }).eq('id', card!.id)
+    expect((await remindersFor(card!.id)).data).toHaveLength(0)
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+})
+
+test('removing one offset keeps the reminder for the rest', async () => {
+  const uid = await newUser('card-partial-offset')
+  let boardId: string | undefined
+  try {
+    const b = await newBoardWithColumn(uid)
+    boardId = b.boardId
+    const { data: card } = await admin
+      .from('cards')
+      .insert({
+        column_id: b.columnId,
+        title: 'Offset sebagian',
+        due_date: wibPlusDays(4),
+        reminder_offsets: [1440, 60],
+        assignee_id: uid,
+        position: 0,
+      })
+      .select('id')
+      .single()
+    expect((await remindersFor(card!.id)).data).toHaveLength(2)
+
+    // Only the case where the sweep must delete some rows and keep others.
+    await admin.from('cards').update({ reminder_offsets: [60] }).eq('id', card!.id)
+    const { data: rows } = await remindersFor(card!.id)
+    expect(rows).toHaveLength(1)
+    expect(rows![0].source_key.endsWith(`:60:${uid}`)).toBe(true)
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+})
+
 test('moving a card to a Done column cancels its reminders', async () => {
   const uid = await newUser('card-done')
   let boardId: string | undefined
@@ -262,6 +323,44 @@ test('reminders go to the assignee and every board owner', async () => {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
     await admin.auth.admin.deleteUser(owner)
     await admin.auth.admin.deleteUser(worker)
+  }
+})
+
+test('reassigning a card sweeps the old assignee\'s pending reminder', async () => {
+  const owner = await newUser('card-reassign-owner')
+  const member = await newUser('card-reassign-member')
+  let boardId: string | undefined
+  try {
+    const b = await newBoardWithColumn(owner)
+    boardId = b.boardId
+    await admin.from('board_members').insert({ board_id: boardId, user_id: member, role: 'member' })
+
+    const { data: card } = await admin
+      .from('cards')
+      .insert({
+        column_id: b.columnId,
+        title: 'Pindah tangan',
+        due_date: wibPlusDays(4),
+        reminder_offsets: [1440],
+        assignee_id: member,
+        position: 0,
+      })
+      .select('id')
+      .single()
+
+    const { data: before } = await remindersFor(card!.id)
+    expect(new Set(before!.map((r) => r.user_id))).toEqual(new Set([owner, member]))
+
+    // The "email to the wrong person" case: reassigning must cancel the
+    // former assignee's pending row, not just add one for the new assignee.
+    await admin.from('cards').update({ assignee_id: owner }).eq('id', card!.id)
+    const { data: after } = await remindersFor(card!.id)
+    expect(after!.some((r) => r.user_id === member)).toBe(false)
+    expect(after!.some((r) => r.user_id === owner)).toBe(true)
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(owner)
+    await admin.auth.admin.deleteUser(member)
   }
 })
 
@@ -362,6 +461,7 @@ test('an offset outside the allowed set is rejected', async () => {
 test('an archived board schedules nothing', async () => {
   const uid = await newUser('card-archived')
   let boardId: string | undefined
+  let activeBoardId: string | undefined
   try {
     const b = await newBoardWithColumn(uid)
     boardId = b.boardId
@@ -381,8 +481,27 @@ test('an archived board schedules nothing', async () => {
       .single()
 
     expect((await remindersFor(card!.id)).data).toHaveLength(0)
+
+    // Positive control: an identical card on a board that is NOT archived
+    // must schedule, or this test would pass even with the trigger dropped.
+    const active = await newBoardWithColumn(uid)
+    activeBoardId = active.boardId
+    const { data: activeCard } = await admin
+      .from('cards')
+      .insert({
+        column_id: active.columnId,
+        title: 'Aktif',
+        due_date: wibPlusDays(4),
+        reminder_offsets: [1440],
+        assignee_id: uid,
+        position: 0,
+      })
+      .select('id')
+      .single()
+    expect((await remindersFor(activeCard!.id)).data).toHaveLength(1)
   } finally {
     if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    if (activeBoardId) await admin.from('boards').delete().eq('id', activeBoardId)
     await admin.auth.admin.deleteUser(uid)
   }
 })
@@ -474,6 +593,96 @@ test('moving the deadline re-arms a reminder that already fired', async () => {
   }
 })
 
+test(
+  'a reminder whose time has arrived is not swept by an unrelated edit',
+  async () => {
+    const uid = await newUser('card-sweep-window')
+    let boardId: string | undefined
+    try {
+      const b = await newBoardWithColumn(uid)
+      boardId = b.boardId
+
+      // Schedule the reminder to land a few seconds from now (30-minute
+      // offset, due_time picked so remind_at is ~5s out), wait for that
+      // moment to actually pass, then fire the trigger with an edit that has
+      // nothing to do with the deadline. This is the regression case for the
+      // 0045 fix: the instant remind_at passes, the offset drops out of the
+      // freshly recomputed "wanted" set on its own, even though the mailer
+      // hasn't run yet — before 0045 the sweep read that as "cancelled" and
+      // deleted a reminder that was never sent.
+      const wibNow = new Date(Date.now() + 7 * 3600 * 1000)
+      const dueAt = new Date(wibNow.getTime() + 30 * 60_000 + 5000)
+      const { data: card } = await admin
+        .from('cards')
+        .insert({
+          column_id: b.columnId,
+          title: 'Waktu tiba',
+          due_date: dueAt.toISOString().slice(0, 10),
+          due_time: dueAt.toISOString().slice(11, 19),
+          reminder_offsets: [30],
+          assignee_id: uid,
+          position: 0,
+        })
+        .select('id')
+        .single()
+
+      const { data: before } = await remindersFor(card!.id)
+      expect(before).toHaveLength(1)
+
+      await new Promise((r) => setTimeout(r, 7000))
+
+      await admin.from('cards').update({ title: 'Waktu tiba (edited)' }).eq('id', card!.id)
+
+      const { data: after } = await remindersFor(card!.id)
+      expect(after).toHaveLength(1)
+      const { data: full } = await admin
+        .from('reminders')
+        .select('emailed_at')
+        .eq('source_key', before![0].source_key)
+        .single()
+      expect(full!.emailed_at).toBeNull()
+    } finally {
+      if (boardId) await admin.from('boards').delete().eq('id', boardId)
+      await admin.auth.admin.deleteUser(uid)
+    }
+  },
+  20_000,
+)
+
+test('the offset vocabulary agrees across board-data, the CHECK constraint, and the label function', async () => {
+  const uid = await newUser('card-vocab')
+  let boardId: string | undefined
+  try {
+    const b = await newBoardWithColumn(uid)
+    boardId = b.boardId
+
+    const { data: card } = await admin
+      .from('cards')
+      .insert({
+        column_id: b.columnId,
+        title: 'Semua offset',
+        due_date: wibPlusDays(5),
+        due_time: '23:59',
+        reminder_offsets: REMINDER_OFFSETS.map((o) => o.mins),
+        assignee_id: uid,
+        position: 0,
+      })
+      .select('id')
+      .single()
+
+    const { data: rows } = await remindersFor(card!.id)
+    expect(rows).toHaveLength(REMINDER_OFFSETS.length)
+    for (const { mins, label } of REMINDER_OFFSETS) {
+      const row = rows!.find((r) => r.source_key.endsWith(`:${mins}:${uid}`))
+      expect(row).toBeTruthy()
+      expect(row!.message).toContain(label)
+    }
+  } finally {
+    if (boardId) await admin.from('boards').delete().eq('id', boardId)
+    await admin.auth.admin.deleteUser(uid)
+  }
+})
+
 function remindersForTask(taskId: string) {
   return admin
     .from('reminders')
@@ -525,6 +734,28 @@ test('completing a standalone task cancels its reminders', async () => {
     expect((await remindersForTask(task!.id)).data).toHaveLength(1)
 
     await admin.from('standalone_tasks').update({ done: true }).eq('id', task!.id)
+    expect((await remindersForTask(task!.id)).data).toHaveLength(0)
+  } finally {
+    await admin.auth.admin.deleteUser(uid)
+  }
+})
+
+test('clearing every offset cancels a standalone task\'s reminders', async () => {
+  const uid = await newUser('sa-clear-offsets')
+  try {
+    const { data: task } = await admin
+      .from('standalone_tasks')
+      .insert({
+        user_id: uid,
+        title: 'Kosongkan offset pribadi',
+        due_date: wibPlusDays(4),
+        reminder_offsets: [1440],
+      })
+      .select('id')
+      .single()
+    expect((await remindersForTask(task!.id)).data).toHaveLength(1)
+
+    await admin.from('standalone_tasks').update({ reminder_offsets: null }).eq('id', task!.id)
     expect((await remindersForTask(task!.id)).data).toHaveLength(0)
   } finally {
     await admin.auth.admin.deleteUser(uid)

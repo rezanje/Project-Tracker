@@ -12,6 +12,7 @@ import {
   deleteStandaloneTask,
 } from './standalone-tasks'
 import { isDoneColumn } from './home'
+import { REMINDER_OFFSETS } from './board-data'
 
 // Shared client-callable mutations used by the chrome (sidebar / dashboards).
 
@@ -156,10 +157,17 @@ export const updateStandaloneTaskFn = createServerFn({ method: 'POST' })
         ...(typeof f.due_time === 'string' || f.due_time === null
           ? { due_time: f.due_time as string | null }
           : {}),
-        ...((Array.isArray(f.reminder_offsets) && f.reminder_offsets.every((x) => typeof x === 'number')) ||
-        f.reminder_offsets === null
-          ? { reminder_offsets: f.reminder_offsets as number[] | null }
-          : {}),
+        ...(f.reminder_offsets === null
+          ? { reminder_offsets: null }
+          : Array.isArray(f.reminder_offsets)
+            ? (() => {
+                const allowed = new Set<number>(REMINDER_OFFSETS.map((o) => o.mins))
+                if (!f.reminder_offsets!.every((x) => typeof x === 'number' && allowed.has(x))) {
+                  throw new Error('reminder_offsets contains an unsupported value')
+                }
+                return { reminder_offsets: f.reminder_offsets as number[] }
+              })()
+            : {}),
       },
     }
   })
