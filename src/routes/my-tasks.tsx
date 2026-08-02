@@ -4,7 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { Check } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
-import { isDoneColumn, localDateStr } from '#/lib/home'
+import { dueHour, isDoneColumn, localDateStr } from '#/lib/home'
 import {
   completeCardFn,
   completeStandaloneTaskFn,
@@ -28,7 +28,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
     const [{ data: boards }, { data: standalone }] = await Promise.all([
       supabase
         .from('boards')
-        .select('id,title,workspace_id,workspaces(name),columns(title,cards(id,title,due_date,assignee_id))')
+        .select('id,title,workspace_id,workspaces(name),columns(title,cards(id,title,due_date,due_time,assignee_id))')
         .neq('status', 'archived'),
       supabase
         .from('standalone_tasks')
@@ -44,7 +44,13 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
       workspaces: { name: string } | { name: string }[] | null
       columns?: Array<{
         title: string
-        cards?: Array<{ id: string; title: string; due_date: string | null; assignee_id: string | null }>
+        cards?: Array<{
+          id: string
+          title: string
+          due_date: string | null
+          due_time: string | null
+          assignee_id: string | null
+        }>
       }>
     }>) {
       const ws = Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces
@@ -62,7 +68,9 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
             workspaceId: b.workspace_id,
             workspaceName,
             due: c.due_date,
-            dueTime: null,
+            dueTime: c.due_time,
+            // Only the card sheet edits a board card's reminders, and it reads
+            // them from the board loader — this list never needs them.
             offsets: null,
             done: colDone,
           })
@@ -107,9 +115,11 @@ export const Route = createFileRoute('/my-tasks')({
   component: MyTasks,
 })
 
-function fmtDue(due: string | null): string {
+function fmtDue(due: string | null, dueTime?: string | null): string {
   if (!due) return ''
-  return new Date(due + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  const day = new Date(due + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  const hour = dueHour(dueTime)
+  return hour ? `${day} ${hour}` : day
 }
 
 /** 54px conic ring with the percentage on a disc inside it. */
@@ -237,7 +247,7 @@ function TaskRow({
                 overdue ? 'font-bold text-[var(--accent-ink)]' : 'font-medium text-[var(--ink3)]'
               }`}
             >
-              {fmtDue(task.due)}
+              {fmtDue(task.due, task.dueTime)}
             </span>
           )}
         </div>

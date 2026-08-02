@@ -9,6 +9,7 @@ import {
   Tag,
 } from 'lucide-react'
 import type { CardRow } from '#/lib/board-data'
+import { dueHour } from '#/lib/home'
 
 export type CardAssignee = { id: string; name: string; avatar_url: string | null }
 
@@ -159,6 +160,7 @@ export default function Card({
             <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--ink3)]">
               <Calendar size={13} aria-hidden="true" />
               {shortDate(card.due_date)}
+              {dueHour(card.due_time) && ` ${dueHour(card.due_time)}`}
             </span>
           )}
           {labelCount > 0 && (

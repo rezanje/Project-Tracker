@@ -11,11 +11,11 @@ import {
 } from 'lucide-react'
 import BackButton from '#/components/BackButton'
 import { requireUser } from '#/lib/auth'
-import { isDoneColumn } from '#/lib/home'
+import { dueHour, isDoneColumn } from '#/lib/home'
 import { listSchedule, type ScheduleEvent } from '#/lib/events'
 import { inScope, useScope } from '#/lib/workspace-scope'
 
-type CalTask = { id: string; title: string; boardTitle: string; boardId: string; wsId: string | null; due: string; done: boolean }
+type CalTask = { id: string; title: string; boardTitle: string; boardId: string; wsId: string | null; due: string; dueTime: string | null; done: boolean }
 type CalendarData = { tasks: CalTask[]; events: ScheduleEvent[] }
 
 const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
@@ -34,7 +34,7 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
     const [{ data: boards }, events] = await Promise.all([
       supabase
         .from('boards')
-        .select('id,title,workspace_id,columns(title,cards(id,title,due_date))')
+        .select('id,title,workspace_id,columns(title,cards(id,title,due_date,due_time))')
         .neq('status', 'archived'),
       listSchedule(supabase),
     ])
@@ -44,7 +44,7 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
       id: string
       title: string
       workspace_id: string | null
-      columns?: Array<{ title: string; cards?: Array<{ id: string; title: string; due_date: string | null }> }>
+      columns?: Array<{ title: string; cards?: Array<{ id: string; title: string; due_date: string | null; due_time: string | null }> }>
     }>) {
       for (const col of b.columns ?? []) {
         const done = isDoneColumn(col.title)
@@ -57,6 +57,7 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
               boardId: b.id,
               wsId: b.workspace_id,
               due: c.due_date,
+              dueTime: c.due_time,
               done,
             })
         }
@@ -326,7 +327,9 @@ function DayTimeline({
                   >
                     {t.title}
                   </span>
-                  <span className="mt-0.5 block truncate text-[13px] text-[var(--ink3)]">{t.boardTitle}</span>
+                  <span className="mt-0.5 block truncate text-[13px] text-[var(--ink3)]">
+                    {dueHour(t.dueTime) ? `${dueHour(t.dueTime)} · ${t.boardTitle}` : t.boardTitle}
+                  </span>
                 </span>
               </button>
             ))}

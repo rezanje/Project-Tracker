@@ -16,6 +16,16 @@ export function localDateStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/** A deadline's hour, as `HH:MM`, or null when the task never got one.
+ *  Postgres renders a `time` as `HH:MM:SS`; nothing in the UI wants the seconds.
+ *  A task with no `due_time` is treated as 17:00 by the reminder trigger, but
+ *  that default is deliberately NOT shown on list surfaces — only the detail
+ *  sheets say it, where there is room to explain it. Elsewhere an absent hour
+ *  should read as "no particular time", not as a 17:00 the user never chose. */
+export function dueHour(dueTime: string | null | undefined): string | null {
+  return dueTime ? dueTime.slice(0, 5) : null
+}
+
 /** Monday-start weekday index (0=Mon..6=Sun) for a local `YYYY-MM-DD` date string. */
 export function weekdayIndex(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
