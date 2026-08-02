@@ -231,7 +231,8 @@ only unscheduled.
 | `supabase/functions/send-reminders/index.ts` | use `link_path` in the email link; select the column |
 | `src/lib/board-data.ts`, `src/lib/cards.ts` | add `due_time`, `reminder_offsets` to the card type and select lists |
 | `src/routes/board.$boardId.tsx` | whitelist the two new fields in `updateCardFn` |
-| `src/components/CardDetail.tsx` | time control, reminder chips, remove duplicate date field |
+| `src/components/DeadlineFields.tsx` | new — shared date + time + reminder-chip editor, used by both sheets |
+| `src/components/CardDetail.tsx` | mount DeadlineFields, remove duplicate date field |
 | `src/components/StandaloneTaskSheet.tsx` | new — minimal personal-task detail sheet |
 | `src/lib/standalone-tasks.ts` | `updateStandaloneTask`, `deleteStandaloneTask` data helpers |
 | `src/lib/actions.ts` | `updateStandaloneTaskFn`, `deleteStandaloneTaskFn` server functions |

@@ -960,174 +960,265 @@ Types, select lists and the update whitelist only — no UI yet."
 
 ---
 
-## Task 5: Deadline time + reminder chips in the card detail sheet
+## Task 5: A shared deadline editor, wired into the card detail sheet
+
+Both detail sheets need the same three controls. Build them once here as
+`DeadlineFields`; Task 6 mounts the same component for personal tasks.
 
 **Files:**
-- Modify: `src/components/CardDetail.tsx` — the deadline block (currently lines 254-292 after the earlier tap-to-edit change), the `Edit detail` disclosure's duplicate date field, and the save handler
+- Create: `src/components/DeadlineFields.tsx`
+- Modify: `src/components/CardDetail.tsx` — the deadline block (lines 254-292 after the earlier tap-to-edit change), the `Edit detail` disclosure's duplicate date field, and the save handler
 - Test: manual, via the browser preview (this is presentation; the behaviour it drives is covered by Tasks 1-4)
 
 **Interfaces:**
-- Consumes: `REMINDER_OFFSETS` and `CardRow` from Task 4; the existing `onUpdateCard` / `onRefresh` props.
-- Produces: no new exports.
+- Consumes: `REMINDER_OFFSETS` and `CardRow` from Task 4; the existing `onUpdateCard` / `onRefresh` props on `CardDetail`.
+- Produces, from `src/components/DeadlineFields.tsx`:
+  - `export type DeadlinePatch = Partial<{ due_date: string | null; due_time: string | null; reminder_offsets: number[] | null }>`
+  - `export default function DeadlineFields(props: { dueDate: string | null; dueTime: string | null; offsets: number[] | null; hint: string; readOnly?: boolean; trailing?: React.ReactNode; onSave: (patch: DeadlinePatch) => Promise<unknown> })`
 
-- [ ] **Step 1: Replace the single-field save handler with a shared one**
+- [ ] **Step 1: Build the shared component**
 
-`CardDetail.tsx` currently has `handleDueDateChange`. Replace it (and the `dueSaving` state it uses) with a handler that takes any deadline-shaped patch, so the date, the time and the chips all share one optimistic-save path. Add the `dueTime` and `offsets` state beside the existing `dueDate` state:
+Create `src/components/DeadlineFields.tsx`. It owns the three controls, their
+optimistic state, and the revert-on-failure behaviour, so the two sheets can
+never drift apart:
 
 ```tsx
-const [dueTime, setDueTime] = useState(hhmm(card.due_time))
-const [offsets, setOffsets] = useState<number[]>(card.reminder_offsets ?? [])
-const [dueSaving, setDueSaving] = useState(false)
+import { useState } from 'react'
+import { toast } from '#/components/Toast'
+import { REMINDER_OFFSETS } from '#/lib/board-data'
 
-/** Postgres `time` comes back as 'HH:MM:SS'; <input type="time"> wants 'HH:MM'. */
+export type DeadlinePatch = Partial<{
+  due_date: string | null
+  due_time: string | null
+  reminder_offsets: number[] | null
+}>
+
+const eyebrow =
+  'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]'
+
+function longDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+/** Postgres `time` renders as 'HH:MM:SS'; <input type="time"> wants 'HH:MM'. */
 function hhmm(t: string | null): string {
   return t ? t.slice(0, 5) : ''
 }
 
-/** The deadline block saves on every change — no Save button. On failure the
- *  control snaps back, matching how the status pills behave. */
-async function saveDeadline(
-  patch: Partial<{ due_date: string | null; due_time: string | null; reminder_offsets: number[] | null }>,
-  revert: () => void,
-  okMessage: string,
-) {
-  setDueSaving(true)
-  try {
-    await onUpdateCard(card.id, patch)
-    toast(okMessage)
-    onRefresh?.()
-  } catch {
-    revert()
-    toast('Gagal menyimpan')
-  } finally {
-    setDueSaving(false)
+/**
+ * The deadline of a task: date, time-of-day, and which reminders to send.
+ * Everything saves on change — there is no Save button — and a failed save
+ * snaps the control back, the same way the status pills behave.
+ *
+ * The caller owns persistence: `onSave` writes the patch and should reject on
+ * failure. Mount with `key={taskId}` — the state below initialises once, so a
+ * sheet reused for a different task would otherwise show the old values.
+ */
+export default function DeadlineFields({
+  dueDate: initialDate,
+  dueTime: initialTime,
+  offsets: initialOffsets,
+  hint,
+  readOnly = false,
+  trailing,
+  onSave,
+}: {
+  dueDate: string | null
+  dueTime: string | null
+  offsets: number[] | null
+  /** One line under the chips naming who gets the email. */
+  hint: string
+  readOnly?: boolean
+  /** Rendered at the right of the deadline row — the assignee avatar, on cards. */
+  trailing?: React.ReactNode
+  onSave: (patch: DeadlinePatch) => Promise<unknown>
+}) {
+  const [dueDate, setDueDate] = useState(initialDate ?? '')
+  const [dueTime, setDueTime] = useState(hhmm(initialTime))
+  const [offsets, setOffsets] = useState<number[]>(initialOffsets ?? [])
+  const [saving, setSaving] = useState(false)
+
+  async function save(patch: DeadlinePatch, revert: () => void, okMessage: string) {
+    setSaving(true)
+    try {
+      await onSave(patch)
+      toast(okMessage)
+    } catch {
+      revert()
+      toast('Gagal menyimpan')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  return (
+    <>
+      <div className="mt-[18px] flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className={eyebrow}>Deadline</p>
+          {readOnly ? (
+            <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
+              {dueDate ? (
+                <>
+                  {longDate(dueDate)}
+                  {dueTime ? ` · ${dueTime}` : ''}
+                </>
+              ) : (
+                <span className="text-[var(--ink3)]">Belum diatur</span>
+              )}
+            </p>
+          ) : (
+            <div className={`mt-[3px] flex items-baseline gap-2 ${saving ? 'opacity-60' : ''}`}>
+              {/* A bare input[type=date] reads as an empty slot ("dd/mm/yyyy"),
+                  so keep the sentence and lay the real control over it. */}
+              <div className="relative w-fit">
+                <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
+                  {dueDate ? longDate(dueDate) : <span className="text-[var(--ink3)]">Belum diatur</span>}
+                </p>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    const prev = dueDate
+                    const next = e.target.value
+                    setDueDate(next)
+                    save(
+                      { due_date: next || null },
+                      () => setDueDate(prev),
+                      next ? `Deadline: ${longDate(next)}` : 'Deadline dihapus',
+                    )
+                  }}
+                  disabled={saving}
+                  aria-label="Tanggal deadline"
+                  className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+                />
+              </div>
+              {dueDate && (
+                <div className="relative w-fit">
+                  {/* 17:00 shown in muted ink rather than hidden: it is the
+                      default the reminder times are measured from, so leaving
+                      it out would make those times look arbitrary. */}
+                  <p
+                    className={`text-[14.5px] font-semibold underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px] ${
+                      dueTime ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
+                    }`}
+                  >
+                    {dueTime || '17:00'}
+                  </p>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => {
+                      const prev = dueTime
+                      const next = e.target.value
+                      setDueTime(next)
+                      save(
+                        { due_time: next || null },
+                        () => setDueTime(prev),
+                        next ? `Jam: ${next}` : 'Jam direset ke 17:00',
+                      )
+                    }}
+                    disabled={saving}
+                    aria-label="Jam deadline"
+                    className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {trailing}
+      </div>
+
+      {!readOnly && dueDate && (
+        <>
+          <p className={`mb-[9px] mt-[18px] ${eyebrow}`}>Pengingat</p>
+          <div className="flex flex-wrap gap-2">
+            {REMINDER_OFFSETS.map(({ mins, label }) => {
+              const on = offsets.includes(mins)
+              return (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => {
+                    const prev = offsets
+                    const next = on ? offsets.filter((m) => m !== mins) : [...offsets, mins]
+                    setOffsets(next)
+                    save(
+                      { reminder_offsets: next.length ? next : null },
+                      () => setOffsets(prev),
+                      on ? `Pengingat ${label} dimatikan` : `Diingetin ${label} sebelum deadline`,
+                    )
+                  }}
+                  disabled={saving}
+                  aria-pressed={on}
+                  className={`rounded-full px-3.5 py-[9px] text-[12.5px] font-bold transition active:scale-[.96] ${
+                    on
+                      ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                      : 'bg-[var(--col)] text-[var(--ink3)] hover:text-[var(--ink2)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink3)]">{hint}</p>
+        </>
+      )}
+    </>
+  )
 }
 ```
 
-Place `hhmm` next to the existing `longDate` helper at module scope (above the component), not inside it.
+- [ ] **Step 2: Mount it in `CardDetail`**
 
-- [ ] **Step 2: Render the time next to the date**
-
-Replace the `isOwner` branch of the deadline block so the date and time sit side by side, each a visible label with a transparent native input over it:
+Replace the whole existing deadline block in `src/components/CardDetail.tsx`
+(the `<div className="mt-[18px] flex items-center justify-between gap-3">` …
+`</div>` that holds the eyebrow, the tap-to-edit date and the assignee avatar)
+with:
 
 ```tsx
-{isOwner ? (
-  <div className={`mt-[3px] flex items-baseline gap-2 ${dueSaving ? 'opacity-60' : ''}`}>
-    {/* A bare input[type=date] reads as an empty slot ("dd/mm/yyyy"), so keep
-        the sentence and lay the real control over it invisibly. */}
-    <div className="relative w-fit">
-      <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
-        {dueDate ? longDate(dueDate) : <span className="text-[var(--ink3)]">Belum diatur</span>}
-      </p>
-      <input
-        type="date"
-        value={dueDate}
-        onChange={(e) => {
-          const prev = dueDate
-          setDueDate(e.target.value)
-          saveDeadline(
-            { due_date: e.target.value || null },
-            () => setDueDate(prev),
-            e.target.value ? `Deadline: ${longDate(e.target.value)}` : 'Deadline dihapus',
-          )
+      <DeadlineFields
+        key={card.id}
+        dueDate={card.due_date}
+        dueTime={card.due_time}
+        offsets={card.reminder_offsets}
+        readOnly={!isOwner}
+        hint="Email ke yang ditugasin dan owner project. Pengingat yang waktunya udah lewat dilewati."
+        onSave={async (patch) => {
+          await onUpdateCard(card.id, patch)
+          onRefresh?.()
         }}
-        disabled={dueSaving}
-        aria-label="Tanggal deadline"
-        className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+        trailing={
+          assignee && (
+            <span
+              title={assignee.name}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+              style={{ background: accentFor(assignee.id) }}
+            >
+              {assignee.avatar_url ? (
+                <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+              ) : (
+                initials(assignee.name)
+              )}
+            </span>
+          )
+        }
       />
-    </div>
-    {dueDate && (
-      <div className="relative w-fit">
-        {/* 17:00 shown in muted ink when unset — the default the reminder maths
-            uses, so hiding it would make the reminder times look arbitrary. */}
-        <p
-          className={`text-[14.5px] font-semibold underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px] ${
-            dueTime ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
-          }`}
-        >
-          {dueTime || '17:00'}
-        </p>
-        <input
-          type="time"
-          value={dueTime}
-          onChange={(e) => {
-            const prev = dueTime
-            setDueTime(e.target.value)
-            saveDeadline(
-              { due_time: e.target.value || null },
-              () => setDueTime(prev),
-              e.target.value ? `Jam: ${e.target.value}` : 'Jam direset ke 17:00',
-            )
-          }}
-          disabled={dueSaving}
-          aria-label="Jam deadline"
-          className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
-        />
-      </div>
-    )}
-  </div>
-) : (
-  <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
-    {card.due_date ? (
-      <>
-        {longDate(card.due_date)}
-        {card.due_time ? ` · ${card.due_time.slice(0, 5)}` : ''}
-      </>
-    ) : (
-      <span className="text-[var(--ink3)]">Belum diatur</span>
-    )}
-  </p>
-)}
 ```
 
-- [ ] **Step 3: Render the reminder chips**
+Import it: `import DeadlineFields from '#/components/DeadlineFields'`.
 
-Immediately after the deadline block's closing `</div>` (before the `Status` section), add:
+- [ ] **Step 3: Delete what the component replaced**
 
-```tsx
-{isOwner && dueDate && (
-  <>
-    <p className={`mb-[9px] mt-[18px] ${eyebrow}`}>Pengingat</p>
-    <div className="flex flex-wrap gap-2">
-      {REMINDER_OFFSETS.map(({ mins, label }) => {
-        const on = offsets.includes(mins)
-        return (
-          <button
-            key={mins}
-            type="button"
-            onClick={() => {
-              const prev = offsets
-              const next = on ? offsets.filter((m) => m !== mins) : [...offsets, mins]
-              setOffsets(next)
-              saveDeadline(
-                { reminder_offsets: next.length ? next : null },
-                () => setOffsets(prev),
-                on ? `Pengingat ${label} dimatikan` : `Diingetin ${label} sebelum deadline`,
-              )
-            }}
-            disabled={dueSaving}
-            aria-pressed={on}
-            className={`rounded-full px-3.5 py-[9px] text-[12.5px] font-bold transition active:scale-[.96] ${
-              on
-                ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
-                : 'bg-[var(--col)] text-[var(--ink3)] hover:text-[var(--ink2)]'
-            }`}
-          >
-            {label}
-          </button>
-        )
-      })}
-    </div>
-    <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink3)]">
-      Email ke yang ditugasin dan owner project. Pengingat yang waktunya udah
-      lewat dilewati.
-    </p>
-  </>
-)}
-```
+`CardDetail.tsx` no longer needs its own deadline machinery. Remove:
+- the `dueDate` and `dueSaving` state and the `handleDueDateChange` function
+- the module-scope `longDate` helper, if nothing else in the file uses it (check first — the description block and labels do not)
 
-Add `REMINDER_OFFSETS` to the existing import from `#/lib/board-data`.
+Leave `toast`, `initials` and `accentFor` alone; they are still used.
 
 - [ ] **Step 4: Delete the duplicate date field from `Edit detail`**
 
@@ -1152,7 +1243,7 @@ Two editors for one field is how they drift apart. In the `<details>` block, rem
           </div>
 ```
 
-Then drop `due_date: dueDate || null` from the `handleSave` payload — the deadline block owns that field now. Keep the `dueDate` state itself; the deadline block still uses it.
+Then drop `due_date: dueDate || null` from the `handleSave` payload — `DeadlineFields` owns that field now, and Step 3 removed the state it read.
 
 - [ ] **Step 5: Typecheck**
 
@@ -1173,7 +1264,7 @@ Check, in order:
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/components/CardDetail.tsx
+git add src/components/DeadlineFields.tsx src/components/CardDetail.tsx
 git commit -m "Put the hour and the reminder switches on the deadline itself
 
 The date, the time and the reminder chips all save on change through
@@ -1377,28 +1468,16 @@ In the board-card `tasks.push` (around line 57), set both to `null` — the card
 Create `src/components/StandaloneTaskSheet.tsx`:
 
 ```tsx
-import { useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { Sheet } from '#/components/WorkspaceSwitcher'
-import { toast } from '#/components/Toast'
-import { REMINDER_OFFSETS } from '#/lib/board-data'
+import DeadlineFields, { type DeadlinePatch } from '#/components/DeadlineFields'
 
 const eyebrow =
   'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]'
 
-function longDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-/** Postgres `time` comes back as 'HH:MM:SS'; <input type="time"> wants 'HH:MM'. */
-function hhmm(t: string | null): string {
-  return t ? t.slice(0, 5) : ''
-}
-
 /** Personal tasks have no board, so this is deliberately thin: a deadline, its
- *  reminders, and a way out. Everything saves on change. */
+ *  reminders, and a way out. DeadlineFields owns all three controls and their
+ *  save behaviour — the same ones the card sheet uses. */
 export default function StandaloneTaskSheet({
   task,
   onClose,
@@ -1409,35 +1488,9 @@ export default function StandaloneTaskSheet({
   task: { id: string; title: string; due: string | null; dueTime: string | null; offsets: number[] | null }
   onClose: () => void
   onSaved: () => void
-  onUpdate: (
-    id: string,
-    fields: Partial<{ due_date: string | null; due_time: string | null; reminder_offsets: number[] | null }>,
-  ) => Promise<unknown>
+  onUpdate: (id: string, fields: DeadlinePatch) => Promise<unknown>
   onDelete: (id: string) => void
 }) {
-  const [dueDate, setDueDate] = useState(task.due ?? '')
-  const [dueTime, setDueTime] = useState(hhmm(task.dueTime))
-  const [offsets, setOffsets] = useState<number[]>(task.offsets ?? [])
-  const [saving, setSaving] = useState(false)
-
-  async function save(
-    patch: Partial<{ due_date: string | null; due_time: string | null; reminder_offsets: number[] | null }>,
-    revert: () => void,
-    okMessage: string,
-  ) {
-    setSaving(true)
-    try {
-      await onUpdate(task.id, patch)
-      toast(okMessage)
-      onSaved()
-    } catch {
-      revert()
-      toast('Gagal menyimpan')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <Sheet
       onClose={onClose}
@@ -1466,96 +1519,17 @@ export default function StandaloneTaskSheet({
         </div>
       }
     >
-      <p className={`mt-[18px] ${eyebrow}`}>Deadline</p>
-      <div className={`mt-[3px] flex items-baseline gap-2 ${saving ? 'opacity-60' : ''}`}>
-        <div className="relative w-fit">
-          <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
-            {dueDate ? longDate(dueDate) : <span className="text-[var(--ink3)]">Belum diatur</span>}
-          </p>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => {
-              const prev = dueDate
-              setDueDate(e.target.value)
-              save(
-                { due_date: e.target.value || null },
-                () => setDueDate(prev),
-                e.target.value ? `Deadline: ${longDate(e.target.value)}` : 'Deadline dihapus',
-              )
-            }}
-            disabled={saving}
-            aria-label="Tanggal deadline"
-            className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
-          />
-        </div>
-        {dueDate && (
-          <div className="relative w-fit">
-            <p
-              className={`text-[14.5px] font-semibold underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px] ${
-                dueTime ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
-              }`}
-            >
-              {dueTime || '17:00'}
-            </p>
-            <input
-              type="time"
-              value={dueTime}
-              onChange={(e) => {
-                const prev = dueTime
-                setDueTime(e.target.value)
-                save(
-                  { due_time: e.target.value || null },
-                  () => setDueTime(prev),
-                  e.target.value ? `Jam: ${e.target.value}` : 'Jam direset ke 17:00',
-                )
-              }}
-              disabled={saving}
-              aria-label="Jam deadline"
-              className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
-            />
-          </div>
-        )}
-      </div>
-
-      {dueDate && (
-        <>
-          <p className={`mb-[9px] mt-[18px] ${eyebrow}`}>Pengingat</p>
-          <div className="flex flex-wrap gap-2">
-            {REMINDER_OFFSETS.map(({ mins, label }) => {
-              const on = offsets.includes(mins)
-              return (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => {
-                    const prev = offsets
-                    const next = on ? offsets.filter((m) => m !== mins) : [...offsets, mins]
-                    setOffsets(next)
-                    save(
-                      { reminder_offsets: next.length ? next : null },
-                      () => setOffsets(prev),
-                      on ? `Pengingat ${label} dimatikan` : `Diingetin ${label} sebelum deadline`,
-                    )
-                  }}
-                  disabled={saving}
-                  aria-pressed={on}
-                  className={`rounded-full px-3.5 py-[9px] text-[12.5px] font-bold transition active:scale-[.96] ${
-                    on
-                      ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
-                      : 'bg-[var(--col)] text-[var(--ink3)] hover:text-[var(--ink2)]'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-          <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink3)]">
-            Email ke kamu sendiri. Pengingat yang waktunya udah lewat dilewati.
-          </p>
-        </>
-      )}
+      <DeadlineFields
+        key={task.id}
+        dueDate={task.due}
+        dueTime={task.dueTime}
+        offsets={task.offsets}
+        hint="Email ke kamu sendiri. Pengingat yang waktunya udah lewat dilewati."
+        onSave={async (patch) => {
+          await onUpdate(task.id, patch)
+          onSaved()
+        }}
+      />
 
       <button
         type="button"
