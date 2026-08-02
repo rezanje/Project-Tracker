@@ -28,3 +28,39 @@ export async function completeStandaloneTask(
     .eq('user_id', userId)
   if (error) throw error
 }
+
+/** Edit a personal task's deadline and reminders. Scoped by user_id as well as
+ *  id so a service-role caller can't cross accounts by mistake; RLS already
+ *  covers the browser path. */
+export async function updateStandaloneTask(
+  supabase: SupabaseClient,
+  userId: string,
+  taskId: string,
+  fields: Partial<{
+    title: string
+    due_date: string | null
+    due_time: string | null
+    reminder_offsets: number[] | null
+    done: boolean
+  }>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('standalone_tasks')
+    .update(fields)
+    .eq('id', taskId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
+export async function deleteStandaloneTask(
+  supabase: SupabaseClient,
+  userId: string,
+  taskId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('standalone_tasks')
+    .delete()
+    .eq('id', taskId)
+    .eq('user_id', userId)
+  if (error) throw error
+}

@@ -5,7 +5,12 @@ import { createNote, deleteNote, updateNote } from './notes'
 import { createWorkspace } from './workspaces'
 import { createBoard } from './boards'
 import { createCard } from './cards'
-import { createStandaloneTask, completeStandaloneTask } from './standalone-tasks'
+import {
+  createStandaloneTask,
+  completeStandaloneTask,
+  updateStandaloneTask,
+  deleteStandaloneTask,
+} from './standalone-tasks'
 import { isDoneColumn } from './home'
 
 // Shared client-callable mutations used by the chrome (sidebar / dashboards).
@@ -133,6 +138,49 @@ export const completeStandaloneTaskFn = createServerFn({ method: 'POST' })
     const headers = new Headers()
     const { user, supabase } = await requireUser(getRequest(), headers)
     await completeStandaloneTask(supabase, user.id, data.id)
+    flush(headers)
+    return { ok: true }
+  })
+
+export const updateStandaloneTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const { id, fields } = (d ?? {}) as { id?: unknown; fields?: unknown }
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    const f = (fields ?? {}) as Record<string, unknown>
+    return {
+      id,
+      fields: {
+        ...(typeof f.due_date === 'string' || f.due_date === null
+          ? { due_date: f.due_date as string | null }
+          : {}),
+        ...(typeof f.due_time === 'string' || f.due_time === null
+          ? { due_time: f.due_time as string | null }
+          : {}),
+        ...((Array.isArray(f.reminder_offsets) && f.reminder_offsets.every((x) => typeof x === 'number')) ||
+        f.reminder_offsets === null
+          ? { reminder_offsets: f.reminder_offsets as number[] | null }
+          : {}),
+      },
+    }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await updateStandaloneTask(supabase, user.id, data.id, data.fields)
+    flush(headers)
+    return { ok: true }
+  })
+
+export const deleteStandaloneTaskFn = createServerFn({ method: 'POST' })
+  .validator((d: unknown) => {
+    const id = (d as { id?: unknown })?.id
+    if (typeof id !== 'string' || !id) throw new Error('id required')
+    return { id }
+  })
+  .handler(async ({ data }) => {
+    const headers = new Headers()
+    const { user, supabase } = await requireUser(getRequest(), headers)
+    await deleteStandaloneTask(supabase, user.id, data.id)
     flush(headers)
     return { ok: true }
   })

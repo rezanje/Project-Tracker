@@ -10,6 +10,9 @@ export type Task = {
   workspaceId: string | null
   workspaceName: string
   due: string | null
+  /** Personal tasks only — board cards edit their hour in the card sheet. */
+  dueTime: string | null
+  offsets: number[] | null
   /** Completed tasks are loaded too now, for the Selesai filter and the
    *  checkbox's checked state. */
   done: boolean

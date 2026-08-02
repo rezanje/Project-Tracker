@@ -10,6 +10,8 @@ function task(over: Partial<Task> & { id: string }): Task {
     workspaceId: 'w1',
     workspaceName: 'Workspace One',
     due: null,
+    dueTime: null,
+    offsets: null,
     done: false,
     ...over,
   }

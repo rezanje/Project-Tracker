@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
 import { Check } from 'lucide-react'
 import { requireUser } from '#/lib/auth'
 import { isDoneColumn, localDateStr } from '#/lib/home'
-import { completeCardFn, completeStandaloneTaskFn, setCardColumnFn } from '#/lib/actions'
+import {
+  completeCardFn,
+  completeStandaloneTaskFn,
+  setCardColumnFn,
+  updateStandaloneTaskFn,
+  deleteStandaloneTaskFn,
+} from '#/lib/actions'
 import { fetchBoardAssigneesFn, type BoardColumn } from '#/lib/nav'
 import Popover from '#/components/Popover'
 import { bucketize, type Task } from '#/lib/my-tasks'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import { toast } from '#/components/Toast'
+import StandaloneTaskSheet from '#/components/StandaloneTaskSheet'
 
 const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise<Task[]> => {
   const headers = new Headers()
@@ -25,7 +32,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
         .neq('status', 'archived'),
       supabase
         .from('standalone_tasks')
-        .select('id,title,due_date,workspace_id,workspaces(name),done')
+        .select('id,title,due_date,due_time,reminder_offsets,workspace_id,workspaces(name),done')
         .eq('user_id', user.id),
     ])
 
@@ -55,6 +62,8 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
             workspaceId: b.workspace_id,
             workspaceName,
             due: c.due_date,
+            dueTime: null,
+            offsets: null,
             done: colDone,
           })
         }
@@ -64,6 +73,8 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
       id: string
       title: string
       due_date: string | null
+      due_time: string | null
+      reminder_offsets: number[] | null
       workspace_id: string | null
       workspaces: { name: string } | { name: string }[] | null
       done: boolean
@@ -79,6 +90,8 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
         workspaceId: s.workspace_id,
         workspaceName: ws?.name ?? 'Personal',
         due: s.due_date,
+        dueTime: s.due_time,
+        offsets: s.reminder_offsets,
         done: s.done,
       })
     }
@@ -256,8 +269,10 @@ function MyTasks() {
     )
   }, [initialTasks])
   const navigate = useNavigate()
+  const router = useRouter()
   const scope = useScope()
   const [filter, setFilter] = useState<'all' | 'today' | 'done'>('all')
+  const [sheetTask, setSheetTask] = useState<Task | null>(null)
   const today = localDateStr()
 
   const scoped = tasks.filter((t) => inScope(scope, t.workspaceId))
@@ -272,6 +287,7 @@ function MyTasks() {
 
   function openTask(task: Task) {
     if (task.boardId) navigate({ to: '/board/$boardId', params: { boardId: task.boardId } })
+    else setSheetTask(task)
   }
 
   /** Ticking a task marks it done in place — it moves to the Selesai filter
@@ -380,6 +396,25 @@ function MyTasks() {
         ))}
       </div>
 
+      {sheetTask && (
+        <StandaloneTaskSheet
+          task={sheetTask}
+          onClose={() => setSheetTask(null)}
+          onSaved={() => router.invalidate()}
+          onUpdate={(id, fields) => updateStandaloneTaskFn({ data: { id, fields } })}
+          onDelete={async (id) => {
+            setSheetTask(null)
+            setTasks((prev) => prev.filter((t) => t.id !== id))
+            toast('Task dihapus')
+            try {
+              await deleteStandaloneTaskFn({ data: { id } })
+            } catch {
+              router.invalidate()
+              toast('Gagal hapus — coba lagi')
+            }
+          }}
+        />
+      )}
     </main>
   )
 }
