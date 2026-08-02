@@ -233,8 +233,10 @@ only unscheduled.
 | `src/routes/board.$boardId.tsx` | whitelist the two new fields in `updateCardFn` |
 | `src/components/CardDetail.tsx` | time control, reminder chips, remove duplicate date field |
 | `src/components/StandaloneTaskSheet.tsx` | new — minimal personal-task detail sheet |
-| `src/lib/standalone-tasks.ts` | `updateStandaloneTaskFn`, delete fn |
-| `src/routes/my-tasks.tsx` | open the new sheet for tasks with no board |
+| `src/lib/standalone-tasks.ts` | `updateStandaloneTask`, `deleteStandaloneTask` data helpers |
+| `src/lib/actions.ts` | `updateStandaloneTaskFn`, `deleteStandaloneTaskFn` server functions |
+| `src/lib/my-tasks.ts` | `Task` gains `dueTime` and `offsets` |
+| `src/routes/my-tasks.tsx` | load the new fields, open the new sheet for tasks with no board |
 
 ## Out of scope
 
