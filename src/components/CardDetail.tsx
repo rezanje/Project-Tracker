@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import Attachments from '#/components/Attachments'
 import Comments from '#/components/Comments'
+import DeadlineFields from '#/components/DeadlineFields'
 import { Sheet } from '#/components/WorkspaceSwitcher'
 import { toast } from '#/components/Toast'
 import { accentFor } from '#/lib/accent'
@@ -76,12 +77,6 @@ function barColor(title: string | undefined): string {
   return 'var(--ink3)'
 }
 
-function longDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
 export default function CardDetail({
   card,
   boardId,
@@ -104,7 +99,6 @@ export default function CardDetail({
 }: CardDetailProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
-  const [dueDate, setDueDate] = useState(card.due_date ?? '')
   const [assigneeId, setAssigneeId] = useState(card.assignee_id ?? '')
   const [category, setCategory] = useState(card.category ?? '')
   const [contact, setContact] = useState(card.contact ?? '')
@@ -121,23 +115,6 @@ export default function CardDetail({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
-  const [dueSaving, setDueSaving] = useState(false)
-
-  async function handleDueDateChange(value: string) {
-    const prev = dueDate
-    setDueDate(value)
-    setDueSaving(true)
-    try {
-      await onUpdateCard(card.id, { due_date: value || null })
-      toast(value ? `Deadline: ${longDate(value)}` : 'Deadline dihapus')
-      onRefresh?.()
-    } catch {
-      setDueDate(prev)
-      toast('Gagal menyimpan deadline')
-    } finally {
-      setDueSaving(false)
-    }
-  }
 
   function toggleLabel(id: string) {
     setSelectedLabelIds((prev) =>
@@ -156,7 +133,6 @@ export default function CardDetail({
       await onUpdateCard(card.id, {
         title: title.trim() || card.title,
         description: description.trim() || null,
-        due_date: dueDate || null,
         assignee_id: assigneeId || null,
         category: category.trim() || null,
         ...(isLeads
@@ -273,50 +249,33 @@ export default function CardDetail({
         </div>
       )}
 
-      <div className="mt-[18px] flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className={eyebrow}>Deadline</p>
-          {isOwner ? (
-            // A bare `input[type=date]` reads as an empty slot ("dd/mm/yyyy"),
-            // so keep the sentence and lay the real control over it invisibly —
-            // the tap still opens the OS picker.
-            <div className={`relative mt-[3px] w-fit ${dueSaving ? 'opacity-60' : ''}`}>
-              <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
-                {dueDate ? longDate(dueDate) : (
-                  <span className="text-[var(--ink3)]">Belum diatur</span>
-                )}
-              </p>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => handleDueDateChange(e.target.value)}
-                disabled={dueSaving}
-                aria-label="Deadline"
-                className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
-              />
-            </div>
-          ) : (
-            <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
-              {card.due_date ? longDate(card.due_date) : (
-                <span className="text-[var(--ink3)]">Belum diatur</span>
+      <DeadlineFields
+        key={card.id}
+        dueDate={card.due_date}
+        dueTime={card.due_time}
+        offsets={card.reminder_offsets}
+        readOnly={!isOwner}
+        hint="Email ke yang ditugasin dan owner project. Pengingat yang waktunya udah lewat dilewati."
+        onSave={async (patch) => {
+          await onUpdateCard(card.id, patch)
+          onRefresh?.()
+        }}
+        trailing={
+          assignee && (
+            <span
+              title={assignee.name}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+              style={{ background: accentFor(assignee.id) }}
+            >
+              {assignee.avatar_url ? (
+                <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+              ) : (
+                initials(assignee.name)
               )}
-            </p>
-          )}
-        </div>
-        {assignee && (
-          <span
-            title={assignee.name}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ background: accentFor(assignee.id) }}
-          >
-            {assignee.avatar_url ? (
-              <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-            ) : (
-              initials(assignee.name)
-            )}
-          </span>
-        )}
-      </div>
+            </span>
+          )
+        }
+      />
 
       {onMove && columns.length > 0 && (
         <>
@@ -399,33 +358,21 @@ export default function CardDetail({
             />
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className={fieldLabel} htmlFor="cd-due">Deadline</label>
-              <input
-                id="cd-due"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="field"
-              />
-            </div>
-            <div>
-              <label className={fieldLabel} htmlFor="cd-assignee">Assignee</label>
-              <select
-                id="cd-assignee"
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                className="field cursor-pointer"
-              >
-                <option value="">Belum ditugaskan</option>
-                {meta.members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="mt-3">
+            <label className={fieldLabel} htmlFor="cd-assignee">Assignee</label>
+            <select
+              id="cd-assignee"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              className="field cursor-pointer"
+            >
+              <option value="">Belum ditugaskan</option>
+              {meta.members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {meta.labels.length > 0 && (
