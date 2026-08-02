@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
     const { data: due, error } = await svc
       .from('reminders')
-      .select('id,user_id,message')
+      .select('id,user_id,message,link_path')
       .is('emailed_at', null)
       .is('dismissed_at', null)
       .lte('remind_at', new Date().toISOString())
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
           from: 'Rakit <onboarding@resend.dev>',
           to: email,
           subject: 'Reminder',
-          html: `<p>${r.message}</p><p><a href="${appUrl}/home">Open Rakit</a></p>`,
+          html: `<p>${r.message}</p><p><a href="${appUrl}${(r.link_path as string | null) ?? '/home'}">Open Rakit</a></p>`,
         }),
       })
       if (!res.ok) {
