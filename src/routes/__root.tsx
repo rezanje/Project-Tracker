@@ -11,6 +11,15 @@ import appCss from '../styles.css?url'
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'light';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
+// `user-scalable=no` plus `touch-action` (see styles.css) is enough for Chrome
+// and Android, but iOS Safari has ignored the meta tag since iOS 10 and treats
+// pinch as a browser-level gesture that never reaches touch-action. The only
+// lever left there is the non-standard `gesture*` events, with a two-finger
+// touchmove guard for the in-page pinches Safari does route through the DOM.
+// Double-tap zoom is handled purely by touch-action — swallowing `touchend`
+// would also swallow the synthetic click and break fast repeat taps.
+const NO_ZOOM_SCRIPT = `(function(){try{var stop=function(e){e.preventDefault()};['gesturestart','gesturechange','gestureend'].forEach(function(t){document.addEventListener(t,stop,{passive:false})});document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1){e.preventDefault()}},{passive:false});}catch(e){}})();`
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -19,10 +28,19 @@ export const Route = createRootRoute({
       },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content:
+          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
       },
       {
         title: 'Rakit',
+      },
+      // Installed to the home screen, Rakit should run chromeless like an app.
+      { name: 'mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-title', content: 'Rakit' },
+      {
+        name: 'apple-mobile-web-app-status-bar-style',
+        content: 'default',
       },
     ],
     links: [
@@ -30,6 +48,10 @@ export const Route = createRootRoute({
         rel: 'stylesheet',
         href: appCss,
       },
+      // Was shipped in /public but never referenced, so "add to home screen"
+      // fell back to a bookmark instead of a standalone window.
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/logo192.png' },
     ],
   }),
   shellComponent: RootDocument,
@@ -47,6 +69,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: NO_ZOOM_SCRIPT }} />
         <HeadContent />
       </head>
       <body className="flex min-h-screen font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--accent-soft)]">

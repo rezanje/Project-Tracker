@@ -342,6 +342,23 @@ a {
 .gt-pop { animation: gtpop 0.24s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 .gt-back { animation: gtback 0.2s ease both; }
 
+/* On a phone Rakit should read as an app, not a web page: no pinch- or
+   double-tap zoom, no font auto-inflation on rotate, no grey tap flash, and no
+   rubber-band / pull-to-refresh past the ends of a scroll.
+   `pan-x pan-y` still permits every scroll the app needs; the parts that claim
+   a gesture outright (dnd-kit cards, the sheet handle) set their own stricter
+   `touch-action` and win, because the effective value is the intersection. */
+html {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
 /* The redesign leans on motion; honour the OS setting rather than ignoring it. */
 @media (prefers-reduced-motion: reduce) {
   *,
