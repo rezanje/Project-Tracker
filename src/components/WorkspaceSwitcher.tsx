@@ -221,6 +221,32 @@ export function dragVerdict(dy: number, dx: number): 'wait' | 'release' | 'claim
  *  `backdrop-filter`, which makes it a containing block for `position: fixed`
  *  descendants — a sheet opened from the header bell would otherwise pin itself
  *  to the bottom of the *header* instead of the viewport. */
+// Freeze the page behind a sheet. `overflow: hidden` alone is ignored by iOS
+// Safari once the page is scrolled, so pin the body and put the scroll
+// position back afterwards. Counted, because sheets can stack — only the first
+// one to open takes the lock, only the last to close releases it.
+let scrollLocks = 0
+let lockedY = 0
+
+function lockPageScroll(): () => void {
+  const { body } = document
+  if (scrollLocks++ === 0) {
+    lockedY = window.scrollY
+    body.style.position = 'fixed'
+    body.style.top = `-${lockedY}px`
+    body.style.insetInline = '0'
+    body.style.overflow = 'hidden'
+  }
+  return () => {
+    if (--scrollLocks > 0) return
+    body.style.position = ''
+    body.style.top = ''
+    body.style.insetInline = ''
+    body.style.overflow = ''
+    window.scrollTo(0, lockedY)
+  }
+}
+
 export function Sheet({
   onClose,
   label,
@@ -257,6 +283,8 @@ export function Sheet({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  useEffect(lockPageScroll, [])
 
   /** True when anything between `target` and the sheet body is a scroller that
    *  has already been scrolled — pulling down there means "scroll back up",

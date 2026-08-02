@@ -26,6 +26,8 @@ interface CardDetailProps {
   onMove?: (toColumnId: string) => void
   onClose: () => void
   onSaved: () => void
+  /** Refetch board data after a quick, single-field save (deadline) that shouldn't close the sheet. */
+  onRefresh?: () => void
   onDelete: () => void
   onUpdateCard: (
     cardId: string,
@@ -89,6 +91,7 @@ export default function CardDetail({
   onMove,
   onClose,
   onSaved,
+  onRefresh,
   onDelete,
   onUpdateCard,
   onSetLabels,
@@ -116,6 +119,23 @@ export default function CardDetail({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [dueSaving, setDueSaving] = useState(false)
+
+  async function handleDueDateChange(value: string) {
+    const prev = dueDate
+    setDueDate(value)
+    setDueSaving(true)
+    try {
+      await onUpdateCard(card.id, { due_date: value || null })
+      toast(value ? `Deadline: ${longDate(value)}` : 'Deadline dihapus')
+      onRefresh?.()
+    } catch {
+      setDueDate(prev)
+      toast('Gagal menyimpan deadline')
+    } finally {
+      setDueSaving(false)
+    }
+  }
 
   function toggleLabel(id: string) {
     setSelectedLabelIds((prev) =>
@@ -252,13 +272,34 @@ export default function CardDetail({
       )}
 
       <div className="mt-[18px] flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className={eyebrow}>Deadline</p>
-          <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
-            {card.due_date ? longDate(card.due_date) : (
-              <span className="text-[var(--ink3)]">Belum diatur</span>
-            )}
-          </p>
+          {isOwner ? (
+            // A bare `input[type=date]` reads as an empty slot ("dd/mm/yyyy"),
+            // so keep the sentence and lay the real control over it invisibly —
+            // the tap still opens the OS picker.
+            <div className={`relative mt-[3px] w-fit ${dueSaving ? 'opacity-60' : ''}`}>
+              <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
+                {dueDate ? longDate(dueDate) : (
+                  <span className="text-[var(--ink3)]">Belum diatur</span>
+                )}
+              </p>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => handleDueDateChange(e.target.value)}
+                disabled={dueSaving}
+                aria-label="Deadline"
+                className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+              />
+            </div>
+          ) : (
+            <p className="mt-[3px] text-[14.5px] font-semibold text-[var(--ink)]">
+              {card.due_date ? longDate(card.due_date) : (
+                <span className="text-[var(--ink3)]">Belum diatur</span>
+              )}
+            </p>
+          )}
         </div>
         {assignee && (
           <span

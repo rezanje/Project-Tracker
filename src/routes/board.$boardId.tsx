@@ -1562,6 +1562,7 @@ function BoardView() {
             router.invalidate()
             closeCardDetail()
           }}
+          onRefresh={() => router.invalidate()}
           onDelete={() => handleDeleteCard(selectedCard)}
           onUpdateCard={(cardId, fields) => updateCardFn({ data: { cardId, fields } })}
           onSetLabels={(cardId, labelIds) => setCardLabelsFn({ data: { cardId, labelIds } })}
