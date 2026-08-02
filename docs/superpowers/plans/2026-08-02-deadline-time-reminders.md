@@ -535,7 +535,7 @@ path is covered without any of them knowing about reminders."
 Same behaviour for personal tasks. Recipient is the task's owner; the skip condition is `done` rather than a Done column.
 
 **Files:**
-- Create: `supabase/migrations/0041_standalone_task_reminders.sql`
+- Create: `supabase/migrations/0042_standalone_task_reminders.sql`
 - Modify: `src/lib/task-reminders.test.ts` (append)
 
 **Interfaces:**
@@ -634,47 +634,58 @@ Expected: FAIL — the first assertion gets 0 rows back, because no trigger exis
 
 - [ ] **Step 3: Write the migration**
 
-Create `supabase/migrations/0041_standalone_task_reminders.sql`:
+Create `supabase/migrations/0042_standalone_task_reminders.sql`:
 
 ```sql
--- Personal-task half of the reminder triggers (see 0040 for the card half and
--- the reasoning). Recipient is always the task's owner, and "finished" is the
--- done flag rather than a Done column.
+-- Personal-task half of the reminder triggers. Mirrors sync_card_reminders()
+-- as hardened in 0041 — read that file's header for why the sweep spares
+-- already-fired rows and why the whole thing is one set-based statement.
+-- Differences here: the recipient is always the task's owner, and "finished"
+-- is the done flag rather than a Done column.
 
 create or replace function sync_standalone_reminders() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  v_task_id uuid := coalesce(new.id, old.id);
+  v_task_id uuid := case tg_op when 'DELETE' then old.id else new.id end;
   v_due_ts  timestamptz;
-  v_offs    int;
 begin
-  delete from reminders where source_key like 'duer:standalone:' || v_task_id || ':%';
-
   if tg_op = 'DELETE' then
+    delete from reminders where source_key like 'duer:standalone:' || v_task_id || ':%';
     return old;
   end if;
 
-  if new.done
-     or new.due_date is null
-     or coalesce(array_length(new.reminder_offsets, 1), 0) = 0 then
-    return new;
+  if not new.done
+     and new.due_date is not null
+     and coalesce(array_length(new.reminder_offsets, 1), 0) > 0 then
+    v_due_ts := (new.due_date + coalesce(new.due_time, time '17:00')) at time zone 'Asia/Jakarta';
   end if;
 
-  v_due_ts := (new.due_date + coalesce(new.due_time, time '17:00')) at time zone 'Asia/Jakarta';
-
-  foreach v_offs in array new.reminder_offsets loop
-    if v_due_ts - make_interval(mins => v_offs) > now() then
-      insert into reminders (user_id, message, remind_at, source_key, link_path)
-      values (
-        new.user_id,
-        'Deadline "' || new.title || '" ' || reminder_offset_label(v_offs) || ' lagi',
-        v_due_ts - make_interval(mins => v_offs),
-        'duer:standalone:' || v_task_id || ':' || v_offs || ':' || new.user_id,
-        '/my-tasks'
-      )
-      on conflict (source_key) do nothing;
-    end if;
-  end loop;
+  -- v_due_ts stays null when the task is done, undated or has no offsets, so
+  -- `wanted` comes out empty and the sweep cancels everything still pending.
+  with wanted as (
+    select 'Deadline "' || new.title || '" ' || reminder_offset_label(o.mins) || ' lagi' as message,
+           v_due_ts - make_interval(mins => o.mins) as remind_at,
+           'duer:standalone:' || v_task_id || ':' || o.mins || ':' || new.user_id as source_key
+    from unnest(coalesce(new.reminder_offsets, '{}'::int[])) as o(mins)
+    where v_due_ts - make_interval(mins => o.mins) > now()
+  ),
+  upserted as (
+    insert into reminders (user_id, message, remind_at, source_key, link_path)
+    select new.user_id, message, remind_at, source_key, '/my-tasks' from wanted
+    on conflict (source_key) do update
+      set message   = excluded.message,
+          link_path = excluded.link_path,
+          remind_at = excluded.remind_at,
+          emailed_at = case when reminders.remind_at is distinct from excluded.remind_at
+                            then null else reminders.emailed_at end,
+          dismissed_at = case when reminders.remind_at is distinct from excluded.remind_at
+                            then null else reminders.dismissed_at end
+    returning 1
+  )
+  delete from reminders
+   where source_key like 'duer:standalone:' || v_task_id || ':%'
+     and emailed_at is null
+     and source_key not in (select source_key from wanted);
 
   return new;
 end $$;
@@ -693,7 +704,7 @@ create trigger standalone_sync_reminders_delete
 
 - [ ] **Step 4: Apply the migration to the remote database**
 
-Same flow as Task 1 Step 4, migration name `0041_standalone_task_reminders`.
+Same flow as Task 1 Step 4, migration name `0042_standalone_task_reminders`.
 
 - [ ] **Step 5: Run the whole file to verify everything passes**
 
@@ -703,7 +714,7 @@ Expected: PASS, 11 tests.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add supabase/migrations/0041_standalone_task_reminders.sql src/lib/task-reminders.test.ts
+git add supabase/migrations/0042_standalone_task_reminders.sql src/lib/task-reminders.test.ts
 git commit -m "Schedule reminders for personal tasks too
 
 Same trigger shape as cards, minus the board: the owner is the only
@@ -717,7 +728,7 @@ recipient and the done flag is what cancels."
 The blanket morning scan contradicts opt-in reminders and would double-send. Unschedule it. While the mailer is open, use the new `link_path` so a reminder email opens the board it came from.
 
 **Files:**
-- Create: `supabase/migrations/0042_disable_daily_due_scan.sql`
+- Create: `supabase/migrations/0043_disable_daily_due_scan.sql`
 - Modify: `supabase/functions/send-reminders/index.ts:28-31` (select list) and `:69` (email body)
 
 **Interfaces:**
@@ -726,7 +737,7 @@ The blanket morning scan contradicts opt-in reminders and would double-send. Uns
 
 - [ ] **Step 1: Write the migration**
 
-Create `supabase/migrations/0042_disable_daily_due_scan.sql`:
+Create `supabase/migrations/0043_disable_daily_due_scan.sql`:
 
 ```sql
 -- The 08:00 WIB blanket scan (0033) emailed every assignee of every task due
@@ -745,7 +756,7 @@ end $$;
 
 - [ ] **Step 2: Apply the migration to the remote database**
 
-Same flow as Task 1 Step 4, migration name `0042_disable_daily_due_scan`.
+Same flow as Task 1 Step 4, migration name `0043_disable_daily_due_scan`.
 
 - [ ] **Step 3: Verify the job is gone**
 
@@ -784,7 +795,7 @@ Expected: `Deployed Functions on project tzhquesopfxevsucoapb: send-reminders`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add supabase/migrations/0042_disable_daily_due_scan.sql supabase/functions/send-reminders/index.ts
+git add supabase/migrations/0043_disable_daily_due_scan.sql supabase/functions/send-reminders/index.ts
 git commit -m "Stop the blanket morning email, point reminders at their task
 
 Reminders are opt-in per task now, so the 08:00 scan is duplicate mail
