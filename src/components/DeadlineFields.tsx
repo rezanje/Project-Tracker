@@ -38,6 +38,7 @@ export default function DeadlineFields({
   hint,
   readOnly = false,
   trailing,
+  remindersDisabledReason,
   onSave,
 }: {
   dueDate: string | null
@@ -48,12 +49,23 @@ export default function DeadlineFields({
   readOnly?: boolean
   /** Rendered at the right of the deadline row — the assignee avatar, on cards. */
   trailing?: React.ReactNode
+  /** Why reminders cannot be scheduled for this task at all. Renders in place
+   *  of the chips — a task in a Done lane or on an archived board is one the
+   *  trigger will refuse, and a switch that silently does nothing is worse
+   *  than no switch. */
+  remindersDisabledReason?: string
   onSave: (patch: DeadlinePatch) => Promise<unknown>
 }) {
   const [dueDate, setDueDate] = useState(initialDate ?? '')
   const [dueTime, setDueTime] = useState(hhmm(initialTime))
   const [offsets, setOffsets] = useState<number[]>(initialOffsets ?? [])
   const [saving, setSaving] = useState(false)
+
+  // The instant the trigger schedules from (Asia/Jakarta, default 17:00 when
+  // no time is set) — used only to grey out offsets whose moment has already
+  // passed. The database silently refuses to schedule those; the UI should
+  // say so rather than promise a reminder that will never send.
+  const deadlineMs = dueDate ? Date.parse(`${dueDate}T${dueTime || '17:00'}:00+07:00`) : NaN
 
   async function save(patch: DeadlinePatch, revert: () => void, okMessage: string) {
     setSaving(true)
@@ -97,11 +109,28 @@ export default function DeadlineFields({
                   value={dueDate}
                   onChange={(e) => {
                     const prev = dueDate
+                    const prevTime = dueTime
+                    const prevOffsets = offsets
                     const next = e.target.value
                     setDueDate(next)
+                    // Clearing the date hides the time and reminder controls, but
+                    // they'd otherwise stay set-and-invisible — re-picking a date
+                    // later would silently re-arm the old hour and offsets.
+                    if (!next) {
+                      setDueTime('')
+                      setOffsets([])
+                    }
                     save(
-                      { due_date: next || null },
-                      () => setDueDate(prev),
+                      next
+                        ? { due_date: next }
+                        : { due_date: null, due_time: null, reminder_offsets: null },
+                      () => {
+                        setDueDate(prev)
+                        if (!next) {
+                          setDueTime(prevTime)
+                          setOffsets(prevOffsets)
+                        }
+                      },
                       next ? `Deadline: ${longDate(next)}` : 'Deadline dihapus',
                     )
                   }}
@@ -150,37 +179,53 @@ export default function DeadlineFields({
       {!readOnly && dueDate && (
         <>
           <p className={`mb-[9px] mt-[18px] ${eyebrow}`}>Pengingat</p>
-          <div className="flex flex-wrap gap-2">
-            {REMINDER_OFFSETS.map(({ mins, label }) => {
-              const on = offsets.includes(mins)
-              return (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => {
-                    const prev = offsets
-                    const next = on ? offsets.filter((m) => m !== mins) : [...offsets, mins]
-                    setOffsets(next)
-                    save(
-                      { reminder_offsets: next.length ? next : null },
-                      () => setOffsets(prev),
-                      on ? `Pengingat ${label} dimatikan` : `Diingetin ${label} sebelum deadline`,
-                    )
-                  }}
-                  disabled={saving}
-                  aria-pressed={on}
-                  className={`rounded-full px-3.5 py-[9px] text-[12.5px] font-bold transition active:scale-[.96] ${
-                    on
-                      ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
-                      : 'bg-[var(--col)] text-[var(--ink3)] hover:text-[var(--ink2)]'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-          <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink3)]">{hint}</p>
+          {remindersDisabledReason ? (
+            <p className="text-[11.5px] leading-snug text-[var(--ink3)]">{remindersDisabledReason}</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {REMINDER_OFFSETS.map(({ mins, label }) => {
+                  const on = offsets.includes(mins)
+                  // Past its moment: the trigger refuses to schedule this offset,
+                  // so the chip goes inert rather than promising an email that
+                  // will never send. Still reflects on/off — moving the deadline
+                  // back out is a legitimate way to un-mute it.
+                  const past = !Number.isNaN(deadlineMs) && deadlineMs - mins * 60_000 <= Date.now()
+                  const reason = 'Waktunya udah lewat — pengingat ini nggak akan dikirim.'
+                  return (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => {
+                        const prev = offsets
+                        const next = on ? offsets.filter((m) => m !== mins) : [...offsets, mins]
+                        setOffsets(next)
+                        save(
+                          { reminder_offsets: next.length ? next : null },
+                          () => setOffsets(prev),
+                          on ? `Pengingat ${label} dimatikan` : `Diingetin ${label} sebelum deadline`,
+                        )
+                      }}
+                      disabled={saving || past}
+                      aria-pressed={on}
+                      title={past ? reason : undefined}
+                      aria-label={past ? `${label}: ${reason}` : undefined}
+                      className={`rounded-full px-3.5 py-[9px] text-[12.5px] font-bold transition active:scale-[.96] ${
+                        past
+                          ? 'bg-[var(--col)] text-[var(--ink3)] opacity-60'
+                          : on
+                            ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
+                            : 'bg-[var(--col)] text-[var(--ink3)] hover:text-[var(--ink2)]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink3)]">{hint}</p>
+            </>
+          )}
         </>
       )}
     </>

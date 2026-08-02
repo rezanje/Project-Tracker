@@ -90,7 +90,8 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
     if (!n.read) {
       await markNotificationReadFn({ data: { id: n.id, kind: n.kind } }).catch(() => {})
     }
-    if (n.boardId) navigate({ to: '/board/$boardId', params: { boardId: n.boardId } })
+    if (n.linkPath) navigate({ to: n.linkPath })
+    else if (n.boardId) navigate({ to: '/board/$boardId', params: { boardId: n.boardId } })
   }
 
   async function markAll() {

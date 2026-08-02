@@ -63,7 +63,7 @@ handlers). A database trigger catches all of them and cannot be bypassed.
 
 Chosen — **database triggers.** One on `cards`, one on `standalone_tasks`.
 
-## Schema (migration `0040_task_time_and_reminders.sql`)
+## Schema (migration `0040_task_due_time_reminders.sql`)
 
 ```
 cards.due_time            time            null
@@ -87,10 +87,11 @@ Two `security definer` trigger functions. Both follow the same shape.
 **`sync_card_reminders()`** — `after insert or update of due_date, due_time,
 reminder_offsets, assignee_id, column_id on cards`, plus `after delete on cards`.
 
-1. Delete every row where `source_key like 'duer:card:<id>:%'`. This is the reset;
-   everything below rebuilds from scratch. Deleting already-emailed rows is
-   deliberate — if the deadline moves, the reminder for the new deadline should be
-   sent again.
+1. Delete every row where `source_key like 'duer:card:<id>:%'`, **except** rows
+   that have already been emailed (`emailed_at is not null`) or whose moment has
+   already arrived (`remind_at <= now()`). Everything else is the reset; the
+   still-pending rows rebuild from scratch below. Sparing sent/due rows is
+   deliberate — an edit should not retract a reminder that already went out.
 2. Bail out (leaving nothing scheduled) if any of these hold:
    - `due_date is null`
    - `reminder_offsets` is null or empty
@@ -125,8 +126,11 @@ behaviour, not an error.
 - Adding or removing a board owner does not re-run the card triggers, so the
   recipient set is frozen at the last task edit.
 - Dismissing a reminder in the bell then editing the deadline resurrects it.
+- Completing a task or clearing its deadline does not retract a notification that
+  was already delivered — the sweep spares sent/due rows, so an emailed or
+  arrived reminder stands even though the task it names is now done or dateless.
 
-## Turning off the daily scan (migration `0041_disable_daily_due_scan.sql`)
+## Turning off the daily scan (migration `0043_disable_daily_due_scan.sql`)
 
 `cron.unschedule('scan-due-tasks')`, guarded by an existence check so re-running is
 safe. The `due-reminders` edge function stays deployed but dormant — no code or
@@ -172,7 +176,7 @@ This feature needs one. A minimal sheet, reusing the shared `Sheet` primitive:
 - Title (read-only text)
 - Deadline: date + time, same controls as above
 - Pengingat: same chip row
-- `Tandai selesai` and `Hapus`
+- `Hapus`
 
 Opened from `TaskRow`'s existing `onOpen` when `task.boardId` is null.
 
@@ -226,8 +230,8 @@ only unscheduled.
 
 | File | Change |
 |---|---|
-| `supabase/migrations/0040_task_time_and_reminders.sql` | new — columns, constraints, both trigger functions |
-| `supabase/migrations/0041_disable_daily_due_scan.sql` | new — `cron.unschedule('scan-due-tasks')` |
+| `supabase/migrations/0040_task_due_time_reminders.sql` | new — columns, constraints, both trigger functions |
+| `supabase/migrations/0043_disable_daily_due_scan.sql` | new — `cron.unschedule('scan-due-tasks')` |
 | `supabase/functions/send-reminders/index.ts` | use `link_path` in the email link; select the column |
 | `src/lib/board-data.ts`, `src/lib/cards.ts` | add `due_time`, `reminder_offsets` to the card type and select lists |
 | `src/routes/board.$boardId.tsx` | whitelist the two new fields in `updateCardFn` |

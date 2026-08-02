@@ -7,6 +7,9 @@ export type Notification = {
   kind: 'assignment' | 'reminder' | 'mention' | 'status' | 'pic'
   message: string
   boardId: string | null
+  /** Where tapping this notification should navigate, e.g. '/board/<uuid>' or
+   *  '/my-tasks'. Only reminders carry one today (`reminders.link_path`). */
+  linkPath: string | null
   read: boolean
   createdAt: string
 }
@@ -37,7 +40,7 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
         .limit(20),
       supabase
         .from('reminders')
-        .select('id,message,remind_at')
+        .select('id,message,remind_at,link_path')
         .is('dismissed_at', null)
         .lte('remind_at', nowIso)
         .order('remind_at', { ascending: false })
@@ -57,6 +60,7 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
       kind: n.kind,
       message: n.message,
       boardId: n.board_id,
+      linkPath: null,
       read: n.read_at != null,
       createdAt: n.created_at,
     }))
@@ -65,11 +69,13 @@ export const fetchNotificationsFn = createServerFn({ method: 'GET' }).handler(
       id: string
       message: string
       remind_at: string
+      link_path: string | null
     }>).map((r) => ({
       id: r.id,
       kind: 'reminder',
       message: `Reminder: ${r.message}`,
       boardId: null,
+      linkPath: r.link_path,
       read: false,
       createdAt: r.remind_at,
     }))

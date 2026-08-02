@@ -103,9 +103,11 @@ byte-identical to each other and superseded; `App UI Redesign Modern/` is a diff
 8. **Bottom nav** — four icons with accent dots, accent FAB opening the "Task baru" sheet.
 9. **Toast** — `src/components/Toast.tsx`, single slot, 1.9s, mounted in `__root.tsx`.
 10. **Task detail sheet** — `src/components/CardDetail.tsx`, now built on `Sheet`. Lane bar,
-    project eyebrow, title, note block, deadline + assignee, a status segmented control driven by
-    the board's real lanes, `Tandai selesai` / `Buka lagi`, round delete. Everything the old modal
-    could edit lives in an "Edit detail" `<details>` block; comments and attachments sit below.
+    project eyebrow, title, note block, a Deadline row (date + time + Pengingat reminder chips,
+    `DeadlineFields.tsx`) with the assignee avatar, a status segmented control driven by the
+    board's real lanes, `Tandai selesai` / `Buka lagi`, round delete. Everything else the old modal
+    could edit — title, note, assignee, labels, and the board-kind-specific fields — lives in an
+    "Edit detail" `<details>` block; comments and attachments sit below.
 11. **Notifications sheet** — `src/components/NotificationSheet.tsx`. The bell (`NotificationsBell`,
     exported from `Header.tsx`, `compact` for the Command Center) opens it. "Notifikasi | Pesan"
     segments; message rows deep-link into `/inbox?t=<threadId>`.
@@ -162,6 +164,9 @@ Two harmless things you will see and should not chase:
 - A `_nonReactive` TypeError from TanStack Router's `preloadRoute` in the dev console. It predates
   this branch (verified by stashing) and does not affect rendering.
 - `src/lib/due-reminders.test.ts` is occasionally flaky — it creates a real Supabase user. Re-run.
+  (The daily 08:00 WIB `scan-due-tasks` cron it covers has since been retired — migration
+  `0043_disable_daily_due_scan.sql` — in favour of per-task opt-in deadline reminders. The edge
+  function and this test stay in place, dormant, rather than being deleted.)
 
 ## How Reza works
 

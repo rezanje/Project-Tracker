@@ -15,7 +15,14 @@ export default function StandaloneTaskSheet({
   onUpdate,
   onDelete,
 }: {
-  task: { id: string; title: string; due: string | null; dueTime: string | null; offsets: number[] | null }
+  task: {
+    id: string
+    title: string
+    due: string | null
+    dueTime: string | null
+    offsets: number[] | null
+    done: boolean
+  }
   onClose: () => void
   onSaved: () => void
   onUpdate: (id: string, fields: DeadlinePatch) => Promise<unknown>
@@ -55,6 +62,7 @@ export default function StandaloneTaskSheet({
         dueTime={task.dueTime}
         offsets={task.offsets}
         hint="Email ke kamu sendiri. Pengingat yang waktunya udah lewat dilewati."
+        remindersDisabledReason={task.done ? 'Task yang udah selesai nggak dikirimin pengingat.' : undefined}
         onSave={async (patch) => {
           await onUpdate(task.id, patch)
           onSaved()

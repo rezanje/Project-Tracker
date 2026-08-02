@@ -256,6 +256,7 @@ export default function CardDetail({
         offsets={card.reminder_offsets}
         readOnly={!isOwner}
         hint="Email ke yang ditugasin dan owner project. Pengingat yang waktunya udah lewat dilewati."
+        remindersDisabledReason={done ? 'Task yang udah selesai nggak dikirimin pengingat.' : undefined}
         onSave={async (patch) => {
           await onUpdateCard(card.id, patch)
           onRefresh?.()

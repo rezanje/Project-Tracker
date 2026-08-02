@@ -35,8 +35,10 @@ export const CONTENT_FORMATS = [
 ] as const
 export const CONTENT_STATUSES = ['draft', 'scheduled', 'posted'] as const
 /** The reminder offsets a user can pick, longest first — one source for the
- *  chips in both task detail sheets. Mirrors reminder_offset_label() in
- *  migration 0040; change both together. */
+ *  chips in both task detail sheets. Two other places must stay in step:
+ *  reminder_offset_label(), now in migration 0045, and the `CHECK` constraint
+ *  on both `reminder_offsets` columns added in migration 0040. Change all three
+ *  together. */
 export const REMINDER_OFFSETS = [
   { mins: 2880, label: '2 hari' },
   { mins: 1440, label: '1 hari' },
