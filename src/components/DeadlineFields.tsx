@@ -134,7 +134,6 @@ export default function DeadlineFields({
                       next ? `Deadline: ${longDate(next)}` : 'Deadline dihapus',
                     )
                   }}
-                  disabled={saving}
                   aria-label="Tanggal deadline"
                   className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
                 />
@@ -164,7 +163,6 @@ export default function DeadlineFields({
                         next ? `Jam: ${next}` : 'Jam direset ke 17:00',
                       )
                     }}
-                    disabled={saving}
                     aria-label="Jam deadline"
                     className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
                   />

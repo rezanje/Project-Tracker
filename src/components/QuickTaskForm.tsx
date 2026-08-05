@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { Check } from 'lucide-react'
 import {
   fetchNav,
   fetchBoardAssigneesFn,
@@ -76,7 +75,7 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
   const [boards, setBoards] = useState<NavBoard[]>([])
   const [workspaceId, setWorkspaceId] = useState('')
   const [boardId, setBoardId] = useState('')
-  const [today, setToday] = useState(false)
+  const [dueDate, setDueDate] = useState(localDateStr())
   const [title, setTitle] = useState('')
   const [assignees, setAssignees] = useState<BoardAssignee[]>([])
   const [columns, setColumns] = useState<BoardColumn[]>([])
@@ -140,17 +139,19 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
     if (!title.trim()) return
     setSaving(true)
     setError(null)
-    const dueDate = today ? localDateStr() : null
+    // Cleared by the user, it still defaults to today rather than shipping
+    // with no deadline at all.
+    const dueDateToSend = dueDate || localDateStr()
     try {
       if (boardId === NO_PROJECT) {
-        await createStandaloneTaskFn({ data: { title, workspaceId, dueDate } })
+        await createStandaloneTaskFn({ data: { title, workspaceId, dueDate: dueDateToSend } })
         router.invalidate()
         toast('Task ditambahin')
         onDone()
         return
       }
       const { boardId: bId } = await quickCreateTaskFn({
-        data: { boardId, title, assigneeId, columnId, dueDate },
+        data: { boardId, title, assigneeId, columnId, dueDate: dueDateToSend },
       })
       toast('Task ditambahin')
       onDone()
@@ -217,23 +218,18 @@ export default function QuickTaskForm({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      <button
-        type="button"
-        onClick={() => setToday((v) => !v)}
-        aria-pressed={today}
-        className="mb-4 flex w-full items-center gap-3 rounded-[18px] bg-[var(--col)] px-4 py-3.5 text-left"
-      >
-        <span
-          className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full ${
-            today
-              ? 'bg-[var(--btn)] text-[var(--btn-ink)]'
-              : 'text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)]'
-          }`}
-        >
-          <Check size={13} strokeWidth={3} aria-hidden="true" />
-        </span>
-        <span className="text-[14px] font-semibold text-[var(--ink)]">Jadwalkan hari ini</span>
-      </button>
+      <div className="mb-4">
+        <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+          Tanggal
+        </label>
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          aria-label="Tanggal deadline"
+          className="w-full rounded-[18px] bg-[var(--col)] px-4 py-3.5 text-[14.5px] font-semibold text-[var(--ink)] outline-none"
+        />
+      </div>
 
       {boardsInWorkspace.length === 0 && (
         <p className="mb-3 text-[12.5px] text-[var(--ink3)]">

@@ -16,9 +16,11 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 // pinch as a browser-level gesture that never reaches touch-action. The only
 // lever left there is the non-standard `gesture*` events, with a two-finger
 // touchmove guard for the in-page pinches Safari does route through the DOM.
+// `preventDefault()` alone stops the event but not the visual zoom Safari has
+// already started applying — nudging `body.style.zoom` forces it to snap back.
 // Double-tap zoom is handled purely by touch-action — swallowing `touchend`
 // would also swallow the synthetic click and break fast repeat taps.
-const NO_ZOOM_SCRIPT = `(function(){try{var stop=function(e){e.preventDefault()};['gesturestart','gesturechange','gestureend'].forEach(function(t){document.addEventListener(t,stop,{passive:false})});document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1){e.preventDefault()}},{passive:false});}catch(e){}})();`
+const NO_ZOOM_SCRIPT = `(function(){try{var pin=function(e){e.preventDefault();document.body.style.zoom=0.99};var reset=function(e){e.preventDefault();document.body.style.zoom=1};document.addEventListener('gesturestart',pin,{passive:false});document.addEventListener('gesturechange',pin,{passive:false});document.addEventListener('gestureend',reset,{passive:false});document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1){e.preventDefault()}},{passive:false});}catch(e){}})();`
 
 export const Route = createRootRoute({
   head: () => ({

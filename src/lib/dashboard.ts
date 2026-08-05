@@ -49,7 +49,8 @@ export type DashTask = {
   id: string
   title: string
   boardTitle: string
-  boardId: string
+  /** Null for a standalone (personal) task — it has no board to link to. */
+  boardId: string | null
   /** The lane the card sits in — the comp's status line under the title. */
   status: string
   /** Resolved from the board's member list. Null when unassigned, or when the
@@ -170,7 +171,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
   // not swallowed by the data-error fallback below.
   const { user, supabase } = await requireUser(getRequest(), headers)
   try {
-    const [{ data: me }, { data: workspaces }, { data: boards }, { data: notes }, { data: anns }, { data: finance }] =
+    const [{ data: me }, { data: workspaces }, { data: boards }, { data: notes }, { data: anns }, { data: finance }, { data: standalone }] =
       await Promise.all([
         supabase.from('profiles').select('name, is_super_admin').eq('id', user.id).single(),
         supabase.from('workspaces').select('id,name').order('created_at'),
@@ -185,6 +186,10 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
           .order('created_at', { ascending: false })
           .limit(6),
         supabase.from('project_finance').select('value_idr'),
+        // Board-less personal tasks (my-tasks.tsx's other source). Home's "my"
+        // aggregates (myStats/myToday) must include these or a personal task
+        // due today reads as "no tasks" here while /my-tasks still lists it.
+        supabase.from('standalone_tasks').select('id,title,due_date,workspace_id,done').eq('user_id', user.id),
       ])
 
     const revenue = ((finance ?? []) as Array<{ value_idr: number | null }>).reduce(
@@ -334,6 +339,39 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       })
       if (bTotal > 0 && bDone === bTotal) pDone++
       else if (bDone > 0) pInProgress++
+    }
+
+    // standalone_tasks is already scoped to this user (eq user_id above), so
+    // every row here counts toward "my" stats — never the org-wide totals,
+    // which stay board-only.
+    for (const s of (standalone ?? []) as Array<{
+      id: string
+      title: string
+      due_date: string | null
+      workspace_id: string | null
+      done: boolean
+    }>) {
+      myTotal++
+      if (s.done) {
+        myDone++
+        continue
+      }
+      if (!s.due_date) continue
+      const d = dayDiff(s.due_date, today)
+      if (d < 0) {
+        myOverdue++
+      } else if (d === 0) {
+        myDueToday++
+        myToday_.push({
+          id: s.id,
+          title: s.title,
+          boardTitle: 'Personal',
+          boardId: null,
+          status: 'Personal',
+          assignee: null,
+          wsId: s.workspace_id,
+        })
+      }
     }
 
     const wsList: DashWorkspace[] = (workspaces ?? []).map((w) => {

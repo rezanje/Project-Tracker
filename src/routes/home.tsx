@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { accentFor } from '#/lib/accent'
-import { completeCardFn } from '#/lib/actions'
+import { completeCardFn, completeStandaloneTaskFn } from '#/lib/actions'
 import { isDoneColumn, isInProgressColumn } from '#/lib/home'
 import { inScope, useScope } from '#/lib/workspace-scope'
 import { fetchDashboard, type DashboardData, type DashProjectMember, type DashTask } from '#/lib/dashboard'
@@ -104,7 +104,7 @@ function TodayCard({
   busy,
 }: {
   task: DashTask
-  onComplete: (id: string) => void
+  onComplete: (task: DashTask) => void
   busy: boolean
 }) {
   return (
@@ -116,16 +116,22 @@ function TodayCard({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <Link
-            to="/board/$boardId"
-            params={{ boardId: task.boardId }}
-            className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)] no-underline"
-          >
-            {task.title}
-          </Link>
+          {task.boardId ? (
+            <Link
+              to="/board/$boardId"
+              params={{ boardId: task.boardId }}
+              className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)] no-underline"
+            >
+              {task.title}
+            </Link>
+          ) : (
+            <span className="min-w-0 flex-1 text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">
+              {task.title}
+            </span>
+          )}
           <button
             type="button"
-            onClick={() => onComplete(task.id)}
+            onClick={() => onComplete(task)}
             disabled={busy}
             aria-label={`Tandai "${task.title}" selesai`}
             className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
@@ -163,10 +169,11 @@ function Home() {
   const scope = useScope()
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  async function complete(id: string) {
-    setBusyId(id)
+  async function complete(task: DashTask) {
+    setBusyId(task.id)
     try {
-      await completeCardFn({ data: { cardId: id } })
+      if (task.boardId) await completeCardFn({ data: { cardId: task.id } })
+      else await completeStandaloneTaskFn({ data: { id: task.id } })
       toast('Task selesai ✓')
       router.invalidate()
     } catch {
@@ -253,7 +260,7 @@ function Home() {
             <p className="text-[14px] text-[var(--ink3)]">No projects yet.</p>
           ) : (
             <div className="gt-scroll -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0">
-              {projects.slice(0, 3).map((p) => (
+              {projects.map((p) => (
                 <Link
                   key={p.id}
                   to="/board/$boardId"

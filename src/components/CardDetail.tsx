@@ -126,6 +126,21 @@ export default function CardDetail({
     setChannels((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
   }
 
+  /** Assignee saves the instant it's picked, same as the deadline fields —
+   *  no separate "Simpan" step for a single chip tap. */
+  async function saveAssignee(id: string) {
+    const prev = assigneeId
+    setAssigneeId(id)
+    try {
+      await onUpdateCard(card.id, { assignee_id: id || null })
+      onRefresh?.()
+      toast(id ? `Ditugaskan ke ${meta.members.find((m) => m.id === id)?.name}` : 'Assignee dihapus')
+    } catch {
+      setAssigneeId(prev)
+      toast('Gagal menyimpan')
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     setError(null)
@@ -261,22 +276,50 @@ export default function CardDetail({
           await onUpdateCard(card.id, patch)
           onRefresh?.()
         }}
-        trailing={
-          assignee && (
-            <span
-              title={assignee.name}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ background: accentFor(assignee.id) }}
-            >
-              {assignee.avatar_url ? (
-                <img src={assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-              ) : (
-                initials(assignee.name)
-              )}
-            </span>
-          )
-        }
       />
+
+      <p className={`mb-[9px] mt-5 ${eyebrow}`}>Ditugaskan ke</p>
+      {isOwner ? (
+        <div className="gt-scroll flex gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => saveAssignee('')}
+            aria-pressed={!assigneeId}
+            className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-bold transition ${
+              !assigneeId ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'bg-[var(--col)] text-[var(--ink2)]'
+            }`}
+          >
+            Belum ditugaskan
+          </button>
+          {meta.members.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => saveAssignee(m.id)}
+              aria-pressed={assigneeId === m.id}
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-bold transition ${
+                assigneeId === m.id ? 'bg-[var(--btn)] text-[var(--btn-ink)]' : 'bg-[var(--col)] text-[var(--ink2)]'
+              }`}
+            >
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                style={{ background: accentFor(m.id) }}
+              >
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  initials(m.name)
+                )}
+              </span>
+              {m.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[13.5px] font-semibold text-[var(--ink)]">
+          {assignee ? assignee.name : <span className="text-[var(--ink3)]">Belum ditugaskan</span>}
+        </p>
+      )}
 
       {onMove && columns.length > 0 && (
         <>
@@ -307,32 +350,6 @@ export default function CardDetail({
       )}
 
       {isOwner && (
-        <div className="mt-5 flex gap-2.5">
-          {primaryTarget && onMove && (
-            <button
-              type="button"
-              onClick={() => move(primaryTarget.id, primaryTarget.title)}
-              className={`h-[52px] flex-1 rounded-full text-[15px] font-bold transition active:scale-[.99] ${
-                done
-                  ? 'bg-[var(--col)] text-[var(--ink)]'
-                  : 'bg-[var(--btn)] text-[var(--btn-ink)] shadow-[0_8px_22px_rgba(28,26,23,.2)]'
-              }`}
-            >
-              {done ? 'Buka lagi' : 'Tandai selesai'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label="Hapus task"
-            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--danger-ink)] active:scale-[.95]"
-          >
-            <Trash2 size={19} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-
-      {isOwner && (
         <details className="mt-5 rounded-[18px] bg-[var(--col)] px-4 py-3.5">
           <summary className="cursor-pointer list-none text-[13.5px] font-bold text-[var(--ink2)] [&::-webkit-details-marker]:hidden">
             Edit detail
@@ -357,23 +374,6 @@ export default function CardDetail({
               placeholder="Tambah catatan…"
               className="field min-h-[88px] resize-y leading-relaxed"
             />
-          </div>
-
-          <div className="mt-3">
-            <label className={fieldLabel} htmlFor="cd-assignee">Assignee</label>
-            <select
-              id="cd-assignee"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-              className="field cursor-pointer"
-            >
-              <option value="">Belum ditugaskan</option>
-              {meta.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {meta.labels.length > 0 && (
@@ -514,6 +514,32 @@ export default function CardDetail({
         <Comments cardId={card.id} members={meta.members} />
       </div>
       <Attachments cardId={card.id} boardId={boardId} />
+
+      {isOwner && (
+        <div className="mt-6 flex gap-2.5">
+          {primaryTarget && onMove && (
+            <button
+              type="button"
+              onClick={() => move(primaryTarget.id, primaryTarget.title)}
+              className={`h-[52px] flex-1 rounded-full text-[15px] font-bold transition active:scale-[.99] ${
+                done
+                  ? 'bg-[var(--col)] text-[var(--ink)]'
+                  : 'bg-[var(--btn)] text-[var(--btn-ink)] shadow-[0_8px_22px_rgba(28,26,23,.2)]'
+              }`}
+            >
+              {done ? 'Buka lagi' : 'Tandai selesai'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label="Hapus task"
+            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--col)] text-[var(--ink2)] transition hover:text-[var(--danger-ink)] active:scale-[.95]"
+          >
+            <Trash2 size={19} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </Sheet>
   )
 }

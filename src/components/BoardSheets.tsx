@@ -41,8 +41,8 @@ function Segments<T extends string>({
 
 export type FilterSheetProps = {
   onClose: () => void
-  view: 'board' | 'list'
-  onView: (v: 'board' | 'list') => void
+  view: 'board' | 'list' | 'calendar'
+  onView: (v: 'board' | 'list' | 'calendar') => void
   groupBy: 'phase' | 'category'
   onGroupBy: (g: 'phase' | 'category') => void
   search: string
@@ -101,7 +101,7 @@ export function BoardFilterSheet({
       <Segments
         label="Tampilan"
         value={view}
-        options={[['board', 'Board'], ['list', 'List']]}
+        options={[['board', 'Board'], ['list', 'List'], ['calendar', 'Kalender']]}
         onPick={onView}
       />
 

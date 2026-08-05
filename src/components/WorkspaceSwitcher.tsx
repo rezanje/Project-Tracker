@@ -197,6 +197,10 @@ function Row({
 /** Past this many pixels of downward drag, letting go dismisses the sheet. */
 const DISMISS_AT = 110
 
+/** Matches Tailwind's `md` breakpoint — the width at which a Sheet stops being
+ *  a bottom sheet and becomes a centred dialog. */
+const DESKTOP_QUERY = '(min-width: 768px)'
+
 /** How a touch that started at the top of a sheet's body should be read, from
  *  how far it has travelled so far.
  *
@@ -270,6 +274,14 @@ export function Sheet({
   const dragRef = useRef(0)
   const [drag, setDrag] = useState(0)
   const bodyRef = useRef<HTMLDivElement>(null)
+  // A sheet slid up from the bottom edge reads as a phone affordance; on a wide
+  // screen the same content wants to be a centred dialog. Read eagerly rather
+  // than in an effect — this component already bails before painting on the
+  // server (see the `document` guard below), so there is no hydration pass to
+  // mismatch, and deferring would flash the phone layout for a frame.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(DESKTOP_QUERY).matches,
+  )
   // Read by listeners that are attached once; a prop captured directly would
   // go stale, and re-attaching on every render would reset the gesture
   // mid-drag (setDrag re-renders on every move).
@@ -283,6 +295,15 @@ export function Sheet({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Resizing across the breakpoint with a sheet open (or rotating a tablet)
+  // should reshape it, not leave a bottom sheet stranded on a wide screen.
+  useEffect(() => {
+    const media = window.matchMedia(DESKTOP_QUERY)
+    const onChange = () => setIsDesktop(media.matches)
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(lockPageScroll, [])
 
@@ -307,7 +328,9 @@ export function Sheet({
   // overscroll; by then we know the gesture is ours.
   useEffect(() => {
     const el = bodyRef.current
-    if (!el) return
+    // Drag-to-dismiss is a bottom-sheet gesture — a centred dialog has no edge
+    // to be flicked back toward, so a touchscreen laptop shouldn't get it either.
+    if (!el || isDesktop) return
     let startY = 0
     let startX = 0
     let watching = false
@@ -359,9 +382,10 @@ export function Sheet({
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', onTouchEnd)
     }
-  }, [])
+  }, [isDesktop])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (isDesktop) return
     // The header can carry real buttons (e.g. "Keluar"); let taps on those
     // through instead of hijacking them into a drag.
     if ((e.target as HTMLElement).closest('button, a, input, textarea, select')) return
@@ -407,8 +431,15 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-[520px] flex-col rounded-t-[32px] bg-[var(--bg)] shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${
-          dragging ? '' : 'gt-up'
+        // Desktop: `inset-0 m-auto h-fit` is the auto-margin centring trick for
+        // an absolutely positioned box — it centres on both axes without
+        // transforms, leaving the entrance animation free to use one. The
+        // callers' own `max-h-[N%]` still applies (percentages resolve against
+        // the full-viewport wrapper), so it is not repeated here.
+        className={`absolute flex flex-col bg-[var(--bg)] ${
+          isDesktop
+            ? `inset-0 m-auto h-fit w-[min(680px,calc(100%-64px))] rounded-[28px] shadow-[0_28px_80px_rgba(20,17,14,.34)] ${dragging ? '' : 'gt-pop'}`
+            : `inset-x-0 bottom-0 mx-auto max-w-[520px] rounded-t-[32px] shadow-[0_-18px_50px_rgba(20,17,14,.28)] ${dragging ? '' : 'gt-up'}`
         } ${className}`}
         style={dragging ? { transform: `translateY(${drag}px)` } : undefined}
       >
@@ -421,10 +452,15 @@ export function Sheet({
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          style={{ touchAction: 'none' }}
-          className="shrink-0 cursor-grab px-[22px] pb-3 pt-3.5 active:cursor-grabbing"
+          style={isDesktop ? undefined : { touchAction: 'none' }}
+          className={`shrink-0 px-[22px] pb-3 ${
+            isDesktop ? 'pt-[22px]' : 'cursor-grab pt-3.5 active:cursor-grabbing'
+          }`}
         >
-          <span className="mx-auto mb-3 block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
+          {/* The grab bar advertises a gesture that only the bottom sheet has. */}
+          {!isDesktop && (
+            <span className="mx-auto mb-3 block h-[5px] w-11 rounded-full bg-[var(--sunk)]" aria-hidden="true" />
+          )}
           {header}
         </div>
         {/* overscroll-contain keeps the browser's own rubber-band and

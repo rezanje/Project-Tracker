@@ -554,7 +554,7 @@ function BoardView() {
   const [addInitialDate, setAddInitialDate] = useState<string>('')
   const [groupBy, setGroupBy] = useState<'phase' | 'category'>('phase')
   const [filterCat, setFilterCat] = useState<string>('')
-  const [view, setView] = useState<'board' | 'list'>('board')
+  const [view, setView] = useState<'board' | 'list' | 'calendar'>('board')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'none' | 'due' | 'title'>('none')
   const [filterOpen, setFilterOpen] = useState(false)
@@ -565,23 +565,38 @@ function BoardView() {
   // Deferred delete + undo: hide the card immediately, but only commit the DB
   // delete after a grace window. Undo re-syncs from the server, where the card
   // still exists — so nothing (comments/labels/attachments) is ever lost.
-  const [pendingDelete, setPendingDelete] = useState<CardRow | null>(null)
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // A list, not a single card: deleting a second card before the first one's
+  // grace window elapses used to clobber the first timer (and its resync
+  // guard), so the first card was never actually deleted server-side and
+  // reappeared on the next unrelated invalidate.
+  const [pendingDeletes, setPendingDeletes] = useState<CardRow[]>([])
+  const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // Once a delete actually lands server-side, its id goes here and stays
+  // forever (never removed) — a card that's really gone can never legitimately
+  // reappear in any future fetch, so there's no need to time this against when
+  // `initialBoard` catches up. Clearing an id from `pendingDeletes` instead
+  // (right after the delete call) raced router.invalidate()'s refetch: for the
+  // instant between the id leaving pendingDeletes and the fresh, card-less data
+  // actually landing, `initialBoard` was still the pre-delete snapshot, so the
+  // card flashed back into view before disappearing again a beat later.
+  const confirmedDeletedIdsRef = useRef<Set<string>>(new Set())
   // Sync back from server whenever the loader re-runs (e.g. after router.invalidate).
   // While a card is mid-grace-period (see handleDeleteCard below), it still exists
   // server-side, so a resync triggered by an unrelated action (drag, edit, invite,
   // ...) must keep hiding it too — otherwise it flickers back until the deferred
   // delete finally lands.
   useEffect(() => {
+    const hiddenIds = new Set(confirmedDeletedIdsRef.current)
+    for (const c of pendingDeletes) hiddenIds.add(c.id)
     setColumns(
-      pendingDelete
+      hiddenIds.size
         ? initialBoard.columns.map((col) => ({
             ...col,
-            cards: col.cards.filter((c) => c.id !== pendingDelete.id),
+            cards: col.cards.filter((c) => !hiddenIds.has(c.id)),
           }))
         : initialBoard.columns,
     )
-  }, [initialBoard, pendingDelete])
+  }, [initialBoard, pendingDeletes])
   // Load members/labels on mount so the Add-task assignee list is ready.
   useEffect(() => {
     if (!boardMeta) fetchBoardMeta({ data: { boardId: initialBoard.id } }).then(setBoardMeta)
@@ -647,22 +662,26 @@ function BoardView() {
         col.id === columnId ? { ...col, cards: col.cards.filter((c) => c.id !== card.id) } : col,
       ),
     )
-    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-    setPendingDelete(card)
-    deleteTimerRef.current = setTimeout(async () => {
-      deleteTimerRef.current = null
-      // Keep pendingDelete set (still filtering the card out of resyncs) until
-      // the delete has actually landed server-side.
+    setPendingDeletes((prev) => [...prev, card])
+    const timer = setTimeout(async () => {
+      deleteTimersRef.current.delete(card.id)
       await deleteCardFn({ data: { cardId: card.id } })
-      setPendingDelete(null)
+      // Permanent, from this point on — see the ref's comment above. No race
+      // with router.invalidate() left to worry about, so it can fire-and-forget.
+      confirmedDeletedIdsRef.current.add(card.id)
       router.invalidate()
+      setPendingDeletes((prev) => prev.filter((c) => c.id !== card.id))
     }, 5000)
+    deleteTimersRef.current.set(card.id, timer)
   }
 
-  function undoDelete() {
-    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-    deleteTimerRef.current = null
-    setPendingDelete(null)
+  /** Only the most recently deleted card is undoable — matches the single-slot
+   *  banner below. Earlier pending deletes keep counting down in the background. */
+  function undoDelete(cardId: string) {
+    const timer = deleteTimersRef.current.get(cardId)
+    if (timer) clearTimeout(timer)
+    deleteTimersRef.current.delete(cardId)
+    setPendingDeletes((prev) => prev.filter((c) => c.id !== cardId))
     router.invalidate() // card was never deleted server-side; refetch restores it
   }
 
@@ -1075,8 +1094,8 @@ function BoardView() {
           </div>
         )}
 
-        {/* Filter stays available to clients — on mobile this row is the only
-            way to reach it, since the toolbar below is desktop-only. */}
+        {/* Mobile-only filter trigger — the toolbar below (which carries the
+            same button on desktop) is hidden below md. */}
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
             {canEdit && (
@@ -1093,7 +1112,7 @@ function BoardView() {
                 type="button"
                 onClick={() => setFilterOpen(true)}
                 aria-label="Filter & urutan"
-                className={roundBtn}
+                className={`${roundBtn} md:hidden`}
               >
                 <SlidersHorizontal size={17} aria-hidden="true" />
               </button>
@@ -1312,7 +1331,7 @@ function BoardView() {
       <div className="mx-auto mb-4 hidden max-w-[1400px] flex-wrap items-center gap-3 px-1 md:flex">
         {/* view tabs */}
         <div className="flex gap-1 rounded-full bg-[var(--col)] p-1">
-          {(['board', 'list'] as const).map((v) => (
+          {(['board', 'list', 'calendar'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -1374,6 +1393,14 @@ function BoardView() {
             <option value="title">Sort: title</option>
           </select>
         )}
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          aria-label="Filter & urutan"
+          className={roundBtn}
+        >
+          <SlidersHorizontal size={17} aria-hidden="true" />
+        </button>
       </div>
       )}
 
@@ -1518,6 +1545,16 @@ function BoardView() {
             )}
           </div>
         </div>
+      ) : view === 'calendar' ? (
+        <div className="mx-auto max-w-[1400px]">
+          <CalendarView
+            cards={allCards}
+            pillars={board.pillars}
+            canEdit={canEdit}
+            onCardClick={openCardDetail}
+            onAddOnDay={openAddContent}
+          />
+        </div>
       ) : (
         // Always wrap in DndContext so Column's useDroppable hook is inside a
         // context even for clients. Drag is a no-op for clients anyway: cards
@@ -1631,12 +1668,12 @@ function BoardView() {
         />
       )}
 
-      {pendingDelete && (
+      {pendingDeletes.length > 0 && (
         <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-4 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--bg)] shadow-[0_12px_40px_-8px_rgba(28,26,23,0.42)] gt-back">
-          <span>Card deleted</span>
+          <span>Card deleted{pendingDeletes.length > 1 ? ` (${pendingDeletes.length})` : ''}</span>
           <button
             type="button"
-            onClick={undoDelete}
+            onClick={() => undoDelete(pendingDeletes[pendingDeletes.length - 1].id)}
             className="font-bold text-[var(--accent)] underline-offset-2 hover:underline"
           >
             Undo
