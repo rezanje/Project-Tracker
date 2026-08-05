@@ -112,5 +112,10 @@ export async function fetchGoogleEvents(opts: {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } })
   if (!res.ok) throw new Error(`Google events fetch failed: ${res.status}`)
   const json = (await res.json()) as { items: RawGoogleEvent[] }
-  return (json.items ?? []).map(mapGoogleEvent)
+  // A malformed/cancelled recurring-instance exception can have neither
+  // start.dateTime nor start.date — mapGoogleEvent's non-null assertion would
+  // otherwise let `start: undefined` through as a typed string, which crashes
+  // the calendar page's date-slicing logic downstream. Drop those here so
+  // every GCalEvent this module returns has a real, usable start.
+  return (json.items ?? []).map(mapGoogleEvent).filter((e) => e.start)
 }
