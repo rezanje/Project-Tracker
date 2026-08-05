@@ -4,6 +4,7 @@ import { ChevronRight, LogOut, Sparkles, UserCheck } from 'lucide-react'
 import { Sheet } from '#/components/WorkspaceSwitcher'
 import { toast } from '#/components/Toast'
 import { accentFor } from '#/lib/accent'
+import { disconnectGoogleCalendarFn, googleCalendarStatusFn, startGoogleCalendarConnectFn } from '#/lib/google-calendar-actions'
 import { fetchProfileFn, updateProfileFn } from '#/lib/profile'
 import { getBrowserSupabase } from '#/lib/supabase/browser'
 
@@ -73,6 +74,8 @@ export default function SettingsSheet({
   const [approvals, setApprovals] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null)
+  const [gcalBusy, setGcalBusy] = useState(false)
   const navigate = useNavigate()
 
   async function logout() {
@@ -91,6 +94,34 @@ export default function SettingsSheet({
       .catch(() => setError('Gagal memuat pengaturan'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    googleCalendarStatusFn().then((r) => setGcalConnected(r.connected))
+  }, [])
+
+  async function connectGoogleCalendar() {
+    setGcalBusy(true)
+    try {
+      const { url } = await startGoogleCalendarConnectFn()
+      window.location.assign(url)
+    } catch {
+      toast('Gagal menyambungkan')
+      setGcalBusy(false)
+    }
+  }
+
+  async function disconnectGoogleCalendar() {
+    setGcalBusy(true)
+    try {
+      await disconnectGoogleCalendarFn()
+      setGcalConnected(false)
+      toast('Google Calendar diputus')
+    } catch {
+      toast('Gagal memutus koneksi')
+    } finally {
+      setGcalBusy(false)
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -178,6 +209,39 @@ export default function SettingsSheet({
               label="Email pengingat"
               hint="Kirimi saya email saat ada pengingat atau tugas jatuh tempo."
             />
+          </div>
+
+          <div className="mt-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+              Kalender
+            </p>
+            <div className="flex items-center gap-3 rounded-[18px] bg-[var(--col)] px-4 py-3.5">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-bold text-[var(--ink)]">Google Calendar</span>
+                <span className="mt-0.5 block text-[12.5px] leading-snug text-[var(--ink3)]">
+                  {gcalConnected ? 'Terhubung — jadwal masuk ke Schedule.' : 'Belum terhubung.'}
+                </span>
+              </span>
+              {gcalConnected === null ? null : gcalConnected ? (
+                <button
+                  type="button"
+                  onClick={disconnectGoogleCalendar}
+                  disabled={gcalBusy}
+                  className="shrink-0 rounded-full bg-[var(--card)] px-3.5 py-2 text-[12.5px] font-bold text-[var(--ink2)]"
+                >
+                  Putuskan
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={connectGoogleCalendar}
+                  disabled={gcalBusy}
+                  className="shrink-0 rounded-full bg-[var(--btn)] px-3.5 py-2 text-[12.5px] font-bold text-[var(--btn-ink)]"
+                >
+                  Hubungkan
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Super admin only. Unsaved edits above are deliberately dropped on
