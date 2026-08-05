@@ -14,9 +14,11 @@ import { requireUser } from '#/lib/auth'
 import { dueHour, isDoneColumn } from '#/lib/home'
 import { listSchedule, type ScheduleEvent } from '#/lib/events'
 import { inScope, useScope } from '#/lib/workspace-scope'
+import { fetchGoogleCalendarEventsFn } from '#/lib/google-calendar-actions'
+import type { GCalEvent } from '#/lib/google-calendar'
 
 type CalTask = { id: string; title: string; boardTitle: string; boardId: string; wsId: string | null; due: string; dueTime: string | null; done: boolean }
-type CalendarData = { tasks: CalTask[]; events: ScheduleEvent[] }
+type CalendarData = { tasks: CalTask[]; events: ScheduleEvent[]; gcalEvents: GCalEvent[] }
 
 const ACCENTS = ['#8a7f73', '#a8927c', '#6e7a66', '#9c8b7a']
 function accentFor(id: string): string {
@@ -24,6 +26,7 @@ function accentFor(id: string): string {
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
   return ACCENTS[h % ACCENTS.length]
 }
+const GOOGLE_TONE = '#4285F4' // Google's own blue — reads as "external" at a glance
 
 const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promise<CalendarData> => {
   const headers = new Headers()
@@ -31,12 +34,17 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
   // try so the redirect is not swallowed by the empty-list fallback.
   const { supabase } = await requireUser(getRequest(), headers)
   try {
-    const [{ data: boards }, events] = await Promise.all([
+    const [{ data: boards }, events, gcal] = await Promise.all([
       supabase
         .from('boards')
         .select('id,title,workspace_id,columns(title,cards(id,title,due_date,due_time))')
         .neq('status', 'archived'),
       listSchedule(supabase),
+      // Independent of the boards/events queries above: a Google API hiccup
+      // must not take down the rest of the page (design spec's error-handling
+      // table), so its own failure is caught right here, not left to bubble
+      // into the outer catch that would also blank out tasks/events.
+      fetchGoogleCalendarEventsFn().catch(() => ({ connected: false, events: [] as GCalEvent[] })),
     ])
 
     const tasks: CalTask[] = []
@@ -64,9 +72,9 @@ const fetchCalendar = createServerFn({ method: 'GET' }).handler(async (): Promis
       }
     }
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
-    return { tasks, events }
+    return { tasks, events, gcalEvents: gcal.events }
   } catch {
-    return { tasks: [], events: [] }
+    return { tasks: [], events: [], gcalEvents: [] }
   }
 })
 
@@ -103,7 +111,7 @@ function prettyTime(hhmm: string): string {
 }
 
 function CalendarPage() {
-  const { tasks: allTasks, events } = Route.useLoaderData() as CalendarData
+  const { tasks: allTasks, events, gcalEvents } = Route.useLoaderData() as CalendarData
   const navigate = useNavigate()
   const scope = useScope()
   const tasks = allTasks.filter((t) => inScope(scope, t.wsId))
@@ -130,6 +138,13 @@ function CalendarPage() {
     const arr = eventsByDay.get(e.date) ?? []
     arr.push(e)
     eventsByDay.set(e.date, arr)
+  }
+  const gcalByDay = new Map<string, GCalEvent[]>()
+  for (const e of gcalEvents) {
+    const day = e.start.slice(0, 10) // 'YYYY-MM-DDTHH:mm:ss...' or 'YYYY-MM-DD' — first 10 chars are the date either way
+    const arr = gcalByDay.get(day) ?? []
+    arr.push(e)
+    gcalByDay.set(day, arr)
   }
 
   function shiftMonth(delta: number) {
@@ -203,6 +218,7 @@ function CalendarPage() {
                 <DayTimeline
                   events={eventsByDay.get(keyOf(selected)) ?? []}
                   tasks={byDay.get(keyOf(selected)) ?? []}
+                  gcalEvents={gcalByDay.get(keyOf(selected)) ?? []}
                   onOpenBoard={openBoard}
                 />
               </>
@@ -212,6 +228,7 @@ function CalendarPage() {
                 m={selected.getMonth()}
                 byDay={byDay}
                 eventsByDay={eventsByDay}
+                gcalByDay={gcalByDay}
                 todayStr={todayStr}
                 onPickDay={(d) => {
                   setSelected(d)
@@ -284,20 +301,31 @@ function WeekStrip({
 function DayTimeline({
   events,
   tasks,
+  gcalEvents,
   onOpenBoard,
 }: {
   events: ScheduleEvent[]
   tasks: CalTask[]
+  gcalEvents: GCalEvent[]
   onOpenBoard: (boardId: string) => void
 }) {
-  const byHour = new Map<number, ScheduleEvent[]>()
+  const byHour = new Map<number, Array<{ kind: 'event'; e: ScheduleEvent } | { kind: 'gcal'; e: GCalEvent }>>()
   for (const e of events) {
     const h = Number(e.time.slice(0, 2))
     const slot = Math.min(Math.max(h, HOURS[0]), HOURS[HOURS.length - 1])
     const arr = byHour.get(slot) ?? []
-    arr.push(e)
+    arr.push({ kind: 'event', e })
     byHour.set(slot, arr)
   }
+  for (const e of gcalEvents) {
+    if (e.allDay) continue // shown separately below, same reasoning as tasks having no "hour"
+    const h = Number(e.start.slice(11, 13))
+    const slot = Math.min(Math.max(h, HOURS[0]), HOURS[HOURS.length - 1])
+    const arr = byHour.get(slot) ?? []
+    arr.push({ kind: 'gcal', e })
+    byHour.set(slot, arr)
+  }
+  const allDayGcal = gcalEvents.filter((e) => e.allDay)
 
   return (
     <div className="mt-4 flex flex-col gap-4">
@@ -337,6 +365,28 @@ function DayTimeline({
         </section>
       )}
 
+      {allDayGcal.length > 0 && (
+        <section>
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink3)]">
+            Google Calendar
+          </p>
+          <div className="flex flex-col gap-2.5">
+            {allDayGcal.map((e) => (
+              <a
+                key={e.id}
+                href={e.htmlLink}
+                target="_blank"
+                rel="noreferrer"
+                className="card card-hover flex gap-3.5 px-4 py-[15px] text-left no-underline"
+              >
+                <span className="w-[3px] shrink-0 rounded-full" style={{ background: GOOGLE_TONE }} aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-[var(--ink)]">{e.title}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="flex gap-3">
         <div className="flex w-11 shrink-0 flex-col pt-1">
           {HOURS.map((h) => (
@@ -346,7 +396,7 @@ function DayTimeline({
           ))}
         </div>
         <div className="min-w-0 flex-1">
-          {events.length === 0 && tasks.length === 0 && (
+          {events.length === 0 && tasks.length === 0 && gcalEvents.length === 0 && (
             <p className="py-6 text-[14px] text-[var(--ink3)]">Nothing scheduled 🎉</p>
           )}
           {HOURS.map((h) => {
@@ -354,26 +404,42 @@ function DayTimeline({
             if (slot.length === 0) return <div key={h} className="h-10" aria-hidden="true" />
             return (
               <div key={h} className="mb-2.5 flex flex-col gap-2.5">
-                {slot.map((e) => (
-                  <article key={e.id} className="card flex gap-3.5 px-4 py-[14px]">
-                    <span
-                      className="w-[3px] shrink-0 rounded-full"
-                      style={{ background: accentFor(e.type) }}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{e.title}</p>
-                      <p className="mt-0.5 truncate text-[13px] text-[var(--ink3)]">{e.sub || e.type}</p>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <Attendees n={e.people} />
-                        <span className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--ink2)]">
-                          <Clock size={13} aria-hidden="true" />
-                          {prettyTime(e.time)}
-                        </span>
+                {slot.map((item) =>
+                  item.kind === 'event' ? (
+                    <article key={item.e.id} className="card flex gap-3.5 px-4 py-[14px]">
+                      <span
+                        className="w-[3px] shrink-0 rounded-full"
+                        style={{ background: accentFor(item.e.type) }}
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{item.e.title}</p>
+                        <p className="mt-0.5 truncate text-[13px] text-[var(--ink3)]">{item.e.sub || item.e.type}</p>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <Attendees n={item.e.people} />
+                          <span className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--ink2)]">
+                            <Clock size={13} aria-hidden="true" />
+                            {prettyTime(item.e.time)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  ) : (
+                    <a
+                      key={item.e.id}
+                      href={item.e.htmlLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="card flex gap-3.5 px-4 py-[14px] no-underline"
+                    >
+                      <span className="w-[3px] shrink-0 rounded-full" style={{ background: GOOGLE_TONE }} aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14.5px] font-semibold text-[var(--ink)]">{item.e.title}</p>
+                        <p className="mt-0.5 text-[13px] text-[var(--ink3)]">Google Calendar</p>
+                      </div>
+                    </a>
+                  ),
+                )}
               </div>
             )
           })}
@@ -413,6 +479,7 @@ function MonthGrid({
   m,
   byDay,
   eventsByDay,
+  gcalByDay,
   todayStr,
   onPickDay,
 }: {
@@ -420,6 +487,7 @@ function MonthGrid({
   m: number
   byDay: Map<string, CalTask[]>
   eventsByDay: Map<string, ScheduleEvent[]>
+  gcalByDay: Map<string, GCalEvent[]>
   todayStr: string
   onPickDay: (d: Date) => void
 }) {
@@ -447,6 +515,7 @@ function MonthGrid({
           const ds = `${y}-${pad(m + 1)}-${pad(day)}`
           const items = [
             ...(eventsByDay.get(ds) ?? []).map((e) => ({ id: e.id, title: e.title, tone: accentFor(e.type), done: false })),
+            ...(gcalByDay.get(ds) ?? []).map((e) => ({ id: e.id, title: e.title, tone: GOOGLE_TONE, done: false })),
             ...(byDay.get(ds) ?? []).map((t) => ({ id: t.id, title: t.title, tone: accentFor(t.boardId), done: t.done })),
           ]
           const isToday = ds === todayStr
