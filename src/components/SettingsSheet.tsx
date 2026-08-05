@@ -96,7 +96,9 @@ export default function SettingsSheet({
   }, [])
 
   useEffect(() => {
-    googleCalendarStatusFn().then((r) => setGcalConnected(r.connected))
+    googleCalendarStatusFn()
+      .then((r) => setGcalConnected(r.connected))
+      .catch(() => setGcalConnected(false))
   }, [])
 
   async function connectGoogleCalendar() {
