@@ -23,18 +23,22 @@ function flush(headers: Headers) {
 }
 
 /** Random per-attempt token, stashed in a short-lived cookie and checked back
- *  on the callback — the standard OAuth CSRF guard. Not cryptographically
- *  precious (nothing sensitive is gated behind guessing it beyond "which
- *  browser tab initiated this"), so Math.random is fine here. */
+ *  on the callback — the standard OAuth CSRF guard. */
 function randomState(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+  return crypto.randomUUID()
 }
 
 export const startGoogleCalendarConnectFn = createServerFn({ method: 'GET' }).handler(async () => {
   const headers = new Headers()
   await requireUser(getRequest(), headers)
   const state = randomState()
-  setCookie('gcal_oauth_state', state, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 600 })
+  setCookie('gcal_oauth_state', state, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 600,
+    secure: process.env['APP_BASE_URL']?.startsWith('https://') ?? false,
+  })
   flush(headers)
   const clientId = process.env['GOOGLE_CLIENT_ID']
   if (!clientId) throw new Error('GOOGLE_CLIENT_ID not configured')
@@ -112,14 +116,17 @@ export const fetchGoogleCalendarEventsFn = createServerFn({ method: 'GET' }).han
       .maybeSingle()
     if (!row) return { connected: false, events: [] }
 
-    try {
-      const clientId = process.env['GOOGLE_CLIENT_ID']
-      const clientSecret = process.env['GOOGLE_CLIENT_SECRET']
-      if (!clientId || !clientSecret) throw new Error('Google credentials not configured')
+    const clientId = process.env['GOOGLE_CLIENT_ID']
+    const clientSecret = process.env['GOOGLE_CLIENT_SECRET']
+    if (!clientId || !clientSecret) {
+      console.error('fetchGoogleCalendarEventsFn: Google credentials not configured')
+      return { connected: false, events: [] }
+    }
 
-      let accessToken = row.access_token as string
-      const expiresAt = new Date(row.expires_at as string)
-      if (expiresAt.getTime() <= Date.now()) {
+    let accessToken = row.access_token as string
+    const expiresAt = new Date(row.expires_at as string)
+    if (expiresAt.getTime() <= Date.now()) {
+      try {
         const refreshed = await refreshAccessToken({
           refreshToken: row.refresh_token as string,
           clientId,
@@ -130,19 +137,27 @@ export const fetchGoogleCalendarEventsFn = createServerFn({ method: 'GET' }).han
           .from('google_calendar_connections')
           .update({ access_token: refreshed.accessToken, expires_at: refreshed.expiresAt })
           .eq('user_id', user.id)
+      } catch (error) {
+        // Refresh token itself is dead (revoked, expired) — the connection
+        // can never recover on its own, so clean it up. Settings will show
+        // "not connected" and prompt reconnect next time it's opened.
+        console.error('fetchGoogleCalendarEventsFn: token refresh failed, dropping connection', error)
+        await supabase.from('google_calendar_connections').delete().eq('user_id', user.id)
+        return { connected: false, events: [] }
       }
+    }
 
+    try {
       const now = Date.now()
       const timeMin = new Date(now - WINDOW_PAST_DAYS * 86_400_000).toISOString()
       const timeMax = new Date(now + WINDOW_FUTURE_DAYS * 86_400_000).toISOString()
       const events = await fetchGoogleEvents({ accessToken, timeMin, timeMax })
       return { connected: true, events }
-    } catch {
-      // Revoked/expired refresh token, Google API hiccup, missing creds —
-      // all degrade to "not connected" rather than failing the page. A
-      // revoked token also gets its dead row cleaned up so Settings shows
-      // "not connected" and prompts reconnect next time it's opened.
-      await supabase.from('google_calendar_connections').delete().eq('user_id', user.id)
+    } catch (error) {
+      // The token is still good — this is a transient Google-side hiccup
+      // (rate limit, 5xx, network blip). Leave the connection row alone so
+      // the next fetch just retries, rather than forcing a full reconnect.
+      console.error('fetchGoogleCalendarEventsFn: event fetch failed, connection kept', error)
       return { connected: false, events: [] }
     }
   },
