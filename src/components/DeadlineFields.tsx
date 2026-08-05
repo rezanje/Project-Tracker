@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CalendarDays, Clock } from 'lucide-react'
 import { toast } from '#/components/Toast'
 import { REMINDER_OFFSETS } from '#/lib/board-data'
 
@@ -97,13 +98,19 @@ export default function DeadlineFields({
               )}
             </p>
           ) : (
-            <div className={`mt-[3px] flex items-baseline gap-2 ${saving ? 'opacity-60' : ''}`}>
+            <div className={`mt-[6px] flex items-center gap-2 ${saving ? 'opacity-60' : ''}`}>
               {/* A bare input[type=date] reads as an empty slot ("dd/mm/yyyy"),
-                  so keep the sentence and lay the real control over it. */}
+                  so a visible pill carries the label and the real control sits
+                  on top of it, invisible but clickable across the whole pill. */}
               <div className="relative w-fit">
-                <p className="text-[14.5px] font-semibold text-[var(--ink)] underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px]">
-                  {dueDate ? longDate(dueDate) : <span className="text-[var(--ink3)]">Belum diatur</span>}
-                </p>
+                <span
+                  className={`chip inline-flex cursor-pointer items-center gap-1.5 py-[7px] text-[13px] ${
+                    dueDate ? 'chip-accent' : ''
+                  }`}
+                >
+                  <CalendarDays size={13} aria-hidden="true" />
+                  {dueDate ? longDate(dueDate) : 'Atur tanggal'}
+                </span>
                 <input
                   type="date"
                   value={dueDate}
@@ -135,7 +142,7 @@ export default function DeadlineFields({
                     )
                   }}
                   aria-label="Tanggal deadline"
-                  className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
               </div>
               {dueDate && (
@@ -143,13 +150,14 @@ export default function DeadlineFields({
                   {/* 17:00 shown in muted ink rather than hidden: it is the
                       default the reminder times are measured from, so leaving
                       it out would make those times look arbitrary. */}
-                  <p
-                    className={`text-[14.5px] font-semibold underline decoration-[var(--ink3)] decoration-dotted underline-offset-[5px] ${
-                      dueTime ? 'text-[var(--ink)]' : 'text-[var(--ink3)]'
+                  <span
+                    className={`chip inline-flex cursor-pointer items-center gap-1.5 py-[7px] text-[13px] ${
+                      dueTime ? 'chip-accent' : ''
                     }`}
                   >
+                    <Clock size={13} aria-hidden="true" />
                     {dueTime || '17:00'}
-                  </p>
+                  </span>
                   <input
                     type="time"
                     value={dueTime}
@@ -164,7 +172,7 @@ export default function DeadlineFields({
                       )
                     }}
                     aria-label="Jam deadline"
-                    className="absolute -inset-y-2.5 inset-x-0 h-[44px] w-full cursor-pointer opacity-0"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   />
                 </div>
               )}

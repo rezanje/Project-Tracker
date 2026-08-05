@@ -57,6 +57,10 @@ export type DashTask = {
    *  assignee has no board_members row (workspace-level access). */
   assignee: DashProjectMember | null
   wsId: string | null
+  /** True for a card on a content-calendar board — those boards have no Done
+   *  column (status lives in content_status instead), so "complete" via the
+   *  checklist checkbox has nowhere to move the card and always fails. */
+  isContent: boolean
 }
 
 export type DashboardData = {
@@ -177,7 +181,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
         supabase.from('workspaces').select('id,name').order('created_at'),
         supabase
           .from('boards')
-          .select('id,title,priority,workspace_id,columns(title,cards(id,title,due_date,assignee_id,completed_at))')
+          .select('id,title,priority,workspace_id,kind,columns(title,cards(id,title,due_date,assignee_id,completed_at))')
           .neq('status', 'archived'),
         supabase.from('notes').select('id,body,category,created_at').order('created_at', { ascending: false }).limit(50),
         supabase
@@ -248,9 +252,11 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
       title: string
       priority: string | null
       workspace_id: string | null
+      kind: string | null
       columns?: unknown[]
     }>) {
       const ws = b.workspace_id
+      const isContentBoard = b.kind === 'content'
       const s = ws ? wsStat.get(ws) ?? { total: 0, done: 0, projects: 0 } : null
       if (s) s.projects++
 
@@ -302,6 +308,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
                     (membersByBoard.get(b.id) ?? []).find((m) => m.id === c.assignee_id)) ||
                   null,
                 wsId: ws,
+                isContent: isContentBoard,
               }
               today_.push(task)
               if (mine) {
@@ -370,6 +377,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' }).handler(async ()
           status: 'Personal',
           assignee: null,
           wsId: s.workspace_id,
+          isContent: false,
         })
       }
     }

@@ -28,7 +28,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
     const [{ data: boards }, { data: standalone }] = await Promise.all([
       supabase
         .from('boards')
-        .select('id,title,workspace_id,workspaces(name),columns(title,cards(id,title,due_date,due_time,assignee_id))')
+        .select('id,title,workspace_id,kind,workspaces(name),columns(title,cards(id,title,due_date,due_time,assignee_id))')
         .neq('status', 'archived'),
       supabase
         .from('standalone_tasks')
@@ -41,6 +41,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
       id: string
       title: string
       workspace_id: string | null
+      kind: string | null
       workspaces: { name: string } | { name: string }[] | null
       columns?: Array<{
         title: string
@@ -55,6 +56,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
     }>) {
       const ws = Array.isArray(b.workspaces) ? b.workspaces[0] : b.workspaces
       const workspaceName = ws?.name ?? 'No workspace'
+      const isContent = b.kind === 'content'
       for (const col of b.columns ?? []) {
         const colDone = isDoneColumn(col.title)
         for (const c of col.cards ?? []) {
@@ -73,6 +75,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
             // them from the board loader — this list never needs them.
             offsets: null,
             done: colDone,
+            isContent,
           })
         }
       }
@@ -101,6 +104,7 @@ const fetchMyTasks = createServerFn({ method: 'GET' }).handler(async (): Promise
         dueTime: s.due_time,
         offsets: s.reminder_offsets,
         done: s.done,
+        isContent: false,
       })
     }
     for (const c of headers.getSetCookie()) setResponseHeader('Set-Cookie', c)
@@ -396,7 +400,9 @@ function MyTasks() {
                   task={t}
                   overdue={!t.done && !!t.due && t.due < today}
                   showWorkspace={scope === 'all'}
-                  onToggle={() => complete(t)}
+                  // Content-calendar cards have no Done column to move into,
+                  // so their row falls back to opening the item instead.
+                  onToggle={t.isContent ? null : () => complete(t)}
                   onOpen={() => openTask(t)}
                   onSetColumn={(columnId, title) => setColumn(t, columnId, title)}
                 />

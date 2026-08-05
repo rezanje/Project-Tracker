@@ -16,6 +16,9 @@ export type Task = {
   /** Completed tasks are loaded too now, for the Selesai filter and the
    *  checkbox's checked state. */
   done: boolean
+  /** True for a card on a content-calendar board — those boards have no Done
+   *  column, so completing via the checkbox has nowhere to move the card. */
+  isContent: boolean
 }
 
 /** One rendered section of the My Tasks list. Every grouping mode produces this

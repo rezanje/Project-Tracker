@@ -13,6 +13,7 @@ function task(over: Partial<Task> & { id: string }): Task {
     dueTime: null,
     offsets: null,
     done: false,
+    isContent: false,
     ...over,
   }
 }

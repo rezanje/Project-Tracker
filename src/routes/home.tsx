@@ -129,15 +129,19 @@ function TodayCard({
               {task.title}
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => onComplete(task)}
-            disabled={busy}
-            aria-label={`Tandai "${task.title}" selesai`}
-            className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
-          >
-            <Check size={12} strokeWidth={3.2} aria-hidden="true" />
-          </button>
+          {/* Content-calendar cards have no Done column to move into — their
+              status is draft/scheduled/posted, set from the board itself. */}
+          {!task.isContent && (
+            <button
+              type="button"
+              onClick={() => onComplete(task)}
+              disabled={busy}
+              aria-label={`Tandai "${task.title}" selesai`}
+              className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
+            >
+              <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <p className="mt-[3px] text-[13px] text-[var(--ink3)]">{task.status}</p>
         <div className="mt-2.5 flex items-center justify-between gap-2.5">

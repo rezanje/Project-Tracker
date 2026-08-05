@@ -226,15 +226,19 @@ export default function CommandCenter({ d }: { d: DashboardData }) {
                   key={t.id}
                   className="flex items-start gap-3.5 rounded-[20px] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)]"
                 >
-                  <button
-                    type="button"
-                    onClick={() => complete(t.id)}
-                    disabled={busyId === t.id}
-                    aria-label={`Tandai "${t.title}" selesai`}
-                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
-                  >
-                    <Check size={12} strokeWidth={3.2} aria-hidden="true" />
-                  </button>
+                  {/* Content-calendar cards have no Done column to move into —
+                      their status is draft/scheduled/posted, set on the board. */}
+                  {!t.isContent && (
+                    <button
+                      type="button"
+                      onClick={() => complete(t.id)}
+                      disabled={busyId === t.id}
+                      aria-label={`Tandai "${t.title}" selesai`}
+                      className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-transparent shadow-[inset_0_0_0_1.8px_var(--sunk)] transition hover:text-[var(--ink3)] active:scale-90 disabled:opacity-40"
+                    >
+                      <Check size={12} strokeWidth={3.2} aria-hidden="true" />
+                    </button>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-[14.5px] font-semibold leading-[1.35] text-[var(--ink)]">{t.title}</p>
                     <div className="mt-2 flex items-center gap-2">
