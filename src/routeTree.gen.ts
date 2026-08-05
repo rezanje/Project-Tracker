@@ -24,6 +24,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceWorkspaceIdRouteImport } from './routes/workspace.$workspaceId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as AuthGoogleCalendarCallbackRouteImport } from './routes/auth.google-calendar-callback'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiAcceptInviteRouteImport } from './routes/api/accept-invite'
 import { Route as AdminApprovalsRouteImport } from './routes/admin/approvals'
@@ -103,6 +104,12 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   path: '/board/$boardId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthGoogleCalendarCallbackRoute =
+  AuthGoogleCalendarCallbackRouteImport.update({
+    id: '/auth/google-calendar-callback',
+    path: '/auth/google-calendar-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google-calendar-callback': typeof AuthGoogleCalendarCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
@@ -156,6 +164,7 @@ export interface FileRoutesByTo {
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google-calendar-callback': typeof AuthGoogleCalendarCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
@@ -177,6 +186,7 @@ export interface FileRoutesById {
   '/admin/approvals': typeof AdminApprovalsRoute
   '/api/accept-invite': typeof ApiAcceptInviteRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google-calendar-callback': typeof AuthGoogleCalendarCallbackRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/workspace/$workspaceId': typeof WorkspaceWorkspaceIdRoute
 }
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
+    | '/auth/google-calendar-callback'
     | '/board/$boardId'
     | '/workspace/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
+    | '/auth/google-calendar-callback'
     | '/board/$boardId'
     | '/workspace/$workspaceId'
   id:
@@ -239,6 +251,7 @@ export interface FileRouteTypes {
     | '/admin/approvals'
     | '/api/accept-invite'
     | '/auth/callback'
+    | '/auth/google-calendar-callback'
     | '/board/$boardId'
     | '/workspace/$workspaceId'
   fileRoutesById: FileRoutesById
@@ -260,6 +273,7 @@ export interface RootRouteChildren {
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   ApiAcceptInviteRoute: typeof ApiAcceptInviteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthGoogleCalendarCallbackRoute: typeof AuthGoogleCalendarCallbackRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
   WorkspaceWorkspaceIdRoute: typeof WorkspaceWorkspaceIdRoute
 }
@@ -371,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardBoardIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/google-calendar-callback': {
+      id: '/auth/google-calendar-callback'
+      path: '/auth/google-calendar-callback'
+      fullPath: '/auth/google-calendar-callback'
+      preLoaderRoute: typeof AuthGoogleCalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -412,6 +433,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminApprovalsRoute: AdminApprovalsRoute,
   ApiAcceptInviteRoute: ApiAcceptInviteRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  AuthGoogleCalendarCallbackRoute: AuthGoogleCalendarCallbackRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
   WorkspaceWorkspaceIdRoute: WorkspaceWorkspaceIdRoute,
 }
